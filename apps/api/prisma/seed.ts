@@ -49,10 +49,53 @@ async function seedPaymentMethods(): Promise<void> {
   }
 }
 
+const MENU_ITEMS = [
+  { sku: 'AGU-CLASICO', name: 'Aguachile clásico', price: 180, cost: 95 },
+  { sku: 'AGU-NEGRO', name: 'Aguachile negro', price: 195, cost: 105 },
+  { sku: 'AGU-MANGO', name: 'Aguachile de mango', price: 190, cost: 100 },
+  { sku: 'TOS-ATUN', name: 'Tostada de atún', price: 95, cost: 50 },
+  { sku: 'CEV-VERDE', name: 'Ceviche verde', price: 165, cost: 85 },
+  { sku: 'CALLO-HACHA', name: 'Callo de hacha', price: 220, cost: 130 },
+  { sku: 'TOSTICEVICHE', name: 'Tosticeviche', price: 110, cost: 55 },
+  { sku: 'AGUA-PEPINO', name: 'Agua de pepino', price: 45, cost: 15 },
+  { sku: 'ORD-TOSTADAS', name: 'Orden de tostadas', price: 35, cost: 12 },
+] as const;
+
+const INITIAL_STOCK = 50;
+
+async function seedMenu(): Promise<void> {
+  const existingCategory = await prisma.category.findFirst({
+    where: { name: 'Menú', parentId: null },
+  });
+  const category = existingCategory ?? (await prisma.category.create({ data: { name: 'Menú' } }));
+
+  for (const item of MENU_ITEMS) {
+    const product = await prisma.product.upsert({
+      where: { sku: item.sku },
+      update: {},
+      create: {
+        sku: item.sku,
+        name: item.name,
+        categoryId: category.id,
+        price: item.price,
+        cost: item.cost,
+        unit: 'pieza',
+      },
+    });
+
+    await prisma.inventory.upsert({
+      where: { productId: product.id },
+      update: {},
+      create: { productId: product.id, quantity: INITIAL_STOCK, minStock: 5 },
+    });
+  }
+}
+
 async function main(): Promise<void> {
   const roleIds = await seedRoles();
   await seedAdminUser(roleIds['admin'] as string);
   await seedPaymentMethods();
+  await seedMenu();
 
   console.warn(`Seed completado. Usuario admin: ${SEED_ADMIN_EMAIL} / ${SEED_ADMIN_PASSWORD}`);
 }

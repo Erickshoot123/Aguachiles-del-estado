@@ -304,7 +304,7 @@ audit_logs N───1 users (nullable, para acciones de sistema)
 | customer_id | uuid, FK → customers.id, nullable | venta a público general si es nulo |
 | user_id | uuid, FK → users.id, not null | cajero |
 | cash_register_session_id | uuid, FK → cash_register_sessions.id, nullable | `ON DELETE RESTRICT`; nulo mientras el pedido no se ha cobrado (puede crearse en estado `received` antes del cobro) |
-| status | enum(`completed`,`cancelled`,`refunded`,`partially_refunded`) | estado de **pago/venta** |
+| status | enum(`pending`,`completed`,`cancelled`,`refunded`,`partially_refunded`) | estado de **pago/venta**; `pending` = pedido creado y en cocina pero aún no cobrado |
 | channel | enum(`own_app`,`phone`,`whatsapp`,`digital_counter`,`other`) | canal de origen del pedido |
 | fulfillment_status | enum(`received`,`in_prep`,`waiting_pickup`,`in_delivery`,`delivered`,`cancelled`) | estado de **cocina/despacho**, independiente de `status`; impulsa el tablero Kanban de "Pedidos" |
 | subtotal | decimal(12,2), not null | |
