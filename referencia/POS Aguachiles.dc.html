@@ -1,0 +1,395 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<link rel="preconnect" href="https://fonts.googleapis.com" />
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin="" />
+<link href="https://fonts.googleapis.com/css2?family=Archivo:wght@400;500;600;700&family=IBM+Plex+Mono:wght@400;500;600&display=swap" rel="stylesheet" />
+<style>
+  html, body { margin: 0; padding: 0; background: #F6F3EF; }
+  * { box-sizing: border-box; }
+  a { color: #E0651B; text-decoration: none; }
+  a:hover { color: #B84E10; }
+  ::-webkit-scrollbar { width: 10px; height: 10px; }
+  ::-webkit-scrollbar-thumb { background: #DCD5CC; border-radius: 8px; }
+  ::-webkit-scrollbar-track { background: transparent; }
+</style>
+</helmet>
+<div style="display: flex; min-height: 100vh; width: 100%; font-family: Archivo, Helvetica, sans-serif; color: #1A1614; background: #F6F3EF">
+
+  <aside style="width: 232px; flex: 0 0 232px; background: #FFFFFF; border-right: 1px solid #E7E1D9; display: flex; flex-direction: column; padding: 20px 16px; gap: 26px">
+    <div style="display: flex; flex-direction: column; gap: 2px; padding: 0 6px">
+      <div style="font-size: 19px; font-weight: 700; letter-spacing: -0.02em">Aguachiles</div>
+      <div style="font-family: 'IBM Plex Mono', monospace; font-size: 11px; letter-spacing: 0.14em; text-transform: uppercase; color: #9A8F82">Cocina · solo delivery</div>
+    </div>
+
+    <button onClick="{{ nuevoPedido }}" style="display: flex; align-items: center; justify-content: center; gap: 8px; min-height: 48px; border: none; border-radius: 10px; background: #E0651B; color: #FFFFFF; font-family: Archivo, sans-serif; font-size: 15px; font-weight: 600; cursor: pointer" style-hover="background: #C4530F">
+      <span style="font-size: 19px; line-height: 1; font-weight: 400">+</span>
+      Nuevo pedido
+    </button>
+
+    <nav style="display: flex; flex-direction: column; gap: 2px">
+      <div style="font-family: 'IBM Plex Mono', monospace; font-size: 10px; letter-spacing: 0.16em; text-transform: uppercase; color: #B0A69A; padding: 0 10px 8px">Operación</div>
+      <div style="display: flex; align-items: center; min-height: 44px; padding: 0 12px; border-radius: 9px; background: #FDF1E7; color: #C4530F; font-size: 15px; font-weight: 600; cursor: pointer">Pedidos</div>
+      <div style="display: flex; align-items: center; min-height: 44px; padding: 0 12px; border-radius: 9px; font-size: 15px; color: #4B443D; cursor: pointer" style-hover="background: #F6F3EF">Menú y productos</div>
+      <div style="display: flex; align-items: center; min-height: 44px; padding: 0 12px; border-radius: 9px; font-size: 15px; color: #4B443D; cursor: pointer" style-hover="background: #F6F3EF">Inventario</div>
+      <div style="font-family: 'IBM Plex Mono', monospace; font-size: 10px; letter-spacing: 0.16em; text-transform: uppercase; color: #B0A69A; padding: 18px 10px 8px">Administración</div>
+      <div style="display: flex; align-items: center; min-height: 44px; padding: 0 12px; border-radius: 9px; font-size: 15px; color: #4B443D; cursor: pointer" style-hover="background: #F6F3EF">Caja y cierre</div>
+      <div style="display: flex; align-items: center; min-height: 44px; padding: 0 12px; border-radius: 9px; font-size: 15px; color: #4B443D; cursor: pointer" style-hover="background: #F6F3EF">Reportes</div>
+    </nav>
+
+    <div style="margin-top: auto; border-top: 1px solid #E7E1D9; padding-top: 16px; display: flex; flex-direction: column; gap: 10px">
+      <div style="display: flex; justify-content: space-between; align-items: baseline">
+        <span style="font-size: 13px; color: #7D7368">Vendido hoy</span>
+        <span style="font-family: 'IBM Plex Mono', monospace; font-size: 16px; font-weight: 600">{{ ventaHoy }}</span>
+      </div>
+      <div style="display: flex; justify-content: space-between; align-items: baseline">
+        <span style="font-size: 13px; color: #7D7368">Tickets</span>
+        <span style="font-family: 'IBM Plex Mono', monospace; font-size: 16px; font-weight: 600">{{ ticketsHoy }}</span>
+      </div>
+      <div style="display: flex; align-items: center; gap: 9px; padding-top: 6px">
+        <span style="width: 8px; height: 8px; border-radius: 50%; background: #3F9E5A"></span>
+        <span style="font-size: 13px; color: #4B443D">Caja abierta · Turno noche</span>
+      </div>
+    </div>
+  </aside>
+
+  <main style="flex: 1 1 auto; min-width: 0; display: flex; flex-direction: column">
+
+    <header style="background: #FFFFFF; border-bottom: 1px solid #E7E1D9; padding: 18px 28px; display: flex; align-items: center; gap: 24px; flex-wrap: wrap">
+      <div style="display: flex; flex-direction: column; gap: 3px; min-width: 0">
+        <h1 style="margin: 0; font-size: 23px; font-weight: 700; letter-spacing: -0.02em">Tablero de pedidos</h1>
+        <div style="font-size: 13px; color: #7D7368">{{ resumenLinea }}</div>
+      </div>
+      <div style="display: flex; gap: 8px; margin-left: auto; align-items: center; flex-wrap: wrap">
+        <div style="display: flex; align-items: center; gap: 8px; height: 44px; padding: 0 14px; border: 1px solid #E7E1D9; border-radius: 10px; background: #FFFFFF; font-size: 14px; color: #4B443D">
+          <span style="width: 7px; height: 7px; border-radius: 50%; background: #E0651B"></span>
+          Tiempo promedio <strong style="font-family: 'IBM Plex Mono', monospace; font-weight: 600">{{ promedio }}</strong>
+        </div>
+        <button onClick="{{ toggleAuto }}" style="height: 44px; padding: 0 16px; border: 1px solid #E7E1D9; border-radius: 10px; background: #FFFFFF; font-family: Archivo, sans-serif; font-size: 14px; color: #1A1614; cursor: pointer" style-hover="border-color: #C9C0B5">{{ etiquetaAuto }}</button>
+      </div>
+    </header>
+
+    <section style="flex: 1 1 auto; min-height: 0; display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 12px; padding: 22px 20px 28px; align-items: start">
+
+      <div onDragOver="{{ permitir }}" onDrop="{{ dropPrep }}" style="background: #FFFFFF; border: 1px solid #E7E1D9; border-radius: 14px; display: flex; flex-direction: column; min-height: 420px; min-width: 0; overflow: hidden">
+        <div style="padding: 14px 12px 12px; border-bottom: 1px solid #F0EBE4; display: flex; align-items: center; gap: 10px">
+          <span style="width: 4px; height: 22px; border-radius: 3px; background: #E0651B"></span>
+          <div style="display: flex; flex-direction: column; gap: 1px; min-width: 0">
+            <div style="font-size: 15px; font-weight: 600">En preparación</div>
+            <div style="font-family: 'IBM Plex Mono', monospace; font-size: 11px; color: #9A8F82">Cocina</div>
+          </div>
+          <span style="margin-left: auto; font-family: 'IBM Plex Mono', monospace; font-size: 13px; font-weight: 600; color: #C4530F; background: #FDF1E7; border-radius: 20px; padding: 4px 10px">{{ nPrep }}</span>
+        </div>
+        <div style="padding: 9px; display: flex; flex-direction: column; gap: 9px">
+          <sc-for list="{{ prep }}" as="o" hint-placeholder-count="3">
+            <article draggable="true" data-id="{{ o.id }}" onDragStart="{{ empezarArrastre }}" onDragEnd="{{ finArrastre }}" onClick="{{ abrirDetalle }}" style="border: 1px solid #E7E1D9; border-radius: 11px; padding: 10px; background: #FFFFFF; min-width: 0; cursor: grab; display: flex; flex-direction: column; gap: 10px" style-hover="border-color: #E0651B">
+              <div style="display: flex; align-items: baseline; gap: 8px">
+                <span style="font-family: 'IBM Plex Mono', monospace; font-size: 15px; font-weight: 600">{{ o.id }}</span>
+                <span style="font-size: 12px; color: #7D7368">{{ o.canal }}</span>
+                <span style="margin-left: auto; font-family: 'IBM Plex Mono', monospace; font-size: 12px; color: {{ o.tiempoColor }}">{{ o.tiempo }}</span>
+              </div>
+              <div style="display: flex; flex-direction: column; gap: 4px">
+                <sc-for list="{{ o.items }}" as="it" hint-placeholder-count="2">
+                  <div style="display: flex; gap: 8px; font-size: 13px; color: #4B443D">
+                    <span style="font-family: 'IBM Plex Mono', monospace; color: #9A8F82">{{ it.q }}x</span>
+                    <span>{{ it.nombre }}</span>
+                  </div>
+                </sc-for>
+              </div>
+              <div style="display: flex; align-items: center; flex-wrap: wrap; gap: 8px; border-top: 1px solid #F0EBE4; padding-top: 10px">
+                <span style="font-family: 'IBM Plex Mono', monospace; font-size: 14px; font-weight: 600; flex: 1 1 auto; min-width: 0">{{ o.total }}</span>
+                <button data-id="{{ o.id }}" onClick="{{ avanzar }}" style="margin-left: auto; height: 36px; padding: 0 10px; border: none; border-radius: 8px; background: #1A1614; color: #FFFFFF; font-family: Archivo, sans-serif; font-size: 13px; font-weight: 600; white-space: nowrap; cursor: pointer" style-hover="background: #E0651B">Listo</button>
+              </div>
+            </article>
+          </sc-for>
+        </div>
+      </div>
+
+      <div onDragOver="{{ permitir }}" onDrop="{{ dropEspera }}" style="background: #FFFFFF; border: 1px solid #E7E1D9; border-radius: 14px; display: flex; flex-direction: column; min-height: 420px; min-width: 0; overflow: hidden">
+        <div style="padding: 14px 12px 12px; border-bottom: 1px solid #F0EBE4; display: flex; align-items: center; gap: 10px">
+          <span style="width: 4px; height: 22px; border-radius: 3px; background: #C9C0B5"></span>
+          <div style="display: flex; flex-direction: column; gap: 1px; min-width: 0">
+            <div style="font-size: 15px; font-weight: 600">En espera de recolección</div>
+            <div style="font-family: 'IBM Plex Mono', monospace; font-size: 11px; color: #9A8F82">Barra de salida</div>
+          </div>
+          <span style="margin-left: auto; font-family: 'IBM Plex Mono', monospace; font-size: 13px; font-weight: 600; color: #4B443D; background: #F6F3EF; border-radius: 20px; padding: 4px 10px">{{ nEspera }}</span>
+        </div>
+        <div style="padding: 9px; display: flex; flex-direction: column; gap: 9px">
+          <sc-for list="{{ espera }}" as="o" hint-placeholder-count="2">
+            <article draggable="true" data-id="{{ o.id }}" onDragStart="{{ empezarArrastre }}" onDragEnd="{{ finArrastre }}" onClick="{{ abrirDetalle }}" style="border: 1px solid #E7E1D9; border-radius: 11px; padding: 10px; background: #FFFFFF; min-width: 0; cursor: grab; display: flex; flex-direction: column; gap: 10px" style-hover="border-color: #E0651B">
+              <div style="display: flex; align-items: baseline; gap: 8px">
+                <span style="font-family: 'IBM Plex Mono', monospace; font-size: 15px; font-weight: 600">{{ o.id }}</span>
+                <span style="font-size: 12px; color: #7D7368">{{ o.canal }}</span>
+                <span style="margin-left: auto; font-family: 'IBM Plex Mono', monospace; font-size: 12px; color: {{ o.tiempoColor }}">{{ o.tiempo }}</span>
+              </div>
+              <div style="display: flex; flex-direction: column; gap: 4px">
+                <sc-for list="{{ o.items }}" as="it" hint-placeholder-count="2">
+                  <div style="display: flex; gap: 8px; font-size: 13px; color: #4B443D">
+                    <span style="font-family: 'IBM Plex Mono', monospace; color: #9A8F82">{{ it.q }}x</span>
+                    <span>{{ it.nombre }}</span>
+                  </div>
+                </sc-for>
+              </div>
+              <div style="display: flex; align-items: center; flex-wrap: wrap; gap: 8px; border-top: 1px solid #F0EBE4; padding-top: 10px">
+                <span style="font-family: 'IBM Plex Mono', monospace; font-size: 14px; font-weight: 600; flex: 1 1 auto; min-width: 0">{{ o.total }}</span>
+                <button data-id="{{ o.id }}" onClick="{{ imprimir }}" style="margin-left: auto; height: 36px; padding: 0 10px; border: 1px solid #E7E1D9; border-radius: 8px; background: #FFFFFF; font-family: Archivo, sans-serif; font-size: 13px; color: #4B443D; white-space: nowrap; cursor: pointer" style-hover="border-color: #C9C0B5">Ticket</button>
+                <button data-id="{{ o.id }}" onClick="{{ avanzar }}" style="height: 36px; padding: 0 10px; border: none; border-radius: 8px; background: #1A1614; color: #FFFFFF; font-family: Archivo, sans-serif; font-size: 13px; font-weight: 600; white-space: nowrap; cursor: pointer" style-hover="background: #E0651B">Recogido</button>
+              </div>
+            </article>
+          </sc-for>
+        </div>
+      </div>
+
+      <div onDragOver="{{ permitir }}" onDrop="{{ dropDelivery }}" style="background: #FFFFFF; border: 1px solid #E7E1D9; border-radius: 14px; display: flex; flex-direction: column; min-height: 420px; min-width: 0; overflow: hidden">
+        <div style="padding: 14px 12px 12px; border-bottom: 1px solid #F0EBE4; display: flex; align-items: center; gap: 10px">
+          <span style="width: 4px; height: 22px; border-radius: 3px; background: #1A1614"></span>
+          <div style="display: flex; flex-direction: column; gap: 1px; min-width: 0">
+            <div style="font-size: 15px; font-weight: 600">En delivery</div>
+            <div style="font-family: 'IBM Plex Mono', monospace; font-size: 11px; color: #9A8F82">En ruta</div>
+          </div>
+          <span style="margin-left: auto; font-family: 'IBM Plex Mono', monospace; font-size: 13px; font-weight: 600; color: #FFFFFF; background: #1A1614; border-radius: 20px; padding: 4px 10px">{{ nDelivery }}</span>
+        </div>
+        <div style="padding: 9px; display: flex; flex-direction: column; gap: 9px">
+          <sc-for list="{{ delivery }}" as="o" hint-placeholder-count="2">
+            <article draggable="true" data-id="{{ o.id }}" onDragStart="{{ empezarArrastre }}" onDragEnd="{{ finArrastre }}" onClick="{{ abrirDetalle }}" style="border: 1px solid #E7E1D9; border-radius: 11px; padding: 10px; background: #FFFFFF; min-width: 0; cursor: grab; display: flex; flex-direction: column; gap: 10px" style-hover="border-color: #E0651B">
+              <div style="display: flex; align-items: baseline; gap: 8px">
+                <span style="font-family: 'IBM Plex Mono', monospace; font-size: 15px; font-weight: 600">{{ o.id }}</span>
+                <span style="font-size: 12px; color: #7D7368">{{ o.canal }}</span>
+                <span style="margin-left: auto; font-family: 'IBM Plex Mono', monospace; font-size: 12px; color: {{ o.tiempoColor }}">{{ o.tiempo }}</span>
+              </div>
+              <div style="display: flex; flex-direction: column; gap: 4px">
+                <sc-for list="{{ o.items }}" as="it" hint-placeholder-count="2">
+                  <div style="display: flex; gap: 8px; font-size: 13px; color: #4B443D">
+                    <span style="font-family: 'IBM Plex Mono', monospace; color: #9A8F82">{{ it.q }}x</span>
+                    <span>{{ it.nombre }}</span>
+                  </div>
+                </sc-for>
+              </div>
+              <div style="display: flex; align-items: center; flex-wrap: wrap; gap: 8px; border-top: 1px solid #F0EBE4; padding-top: 10px">
+                <span style="font-family: 'IBM Plex Mono', monospace; font-size: 14px; font-weight: 600; flex: 1 1 auto; min-width: 0">{{ o.total }}</span>
+                <button data-id="{{ o.id }}" onClick="{{ avanzar }}" style="margin-left: auto; height: 36px; padding: 0 10px; border: none; border-radius: 8px; background: #E0651B; color: #FFFFFF; font-family: Archivo, sans-serif; font-size: 13px; font-weight: 600; white-space: nowrap; cursor: pointer" style-hover="background: #C4530F">Entregado</button>
+              </div>
+            </article>
+          </sc-for>
+        </div>
+      </div>
+
+    </section>
+  </main>
+
+  <sc-if value="{{ detalle }}" hint-placeholder-val="{{ false }}">
+    <div onClick="{{ cerrarDetalle }}" style="position: fixed; inset: 0; background: rgba(26, 22, 20, 0.42); display: flex; align-items: center; justify-content: center; padding: 24px; z-index: 40">
+      <div onClick="{{ noCerrar }}" style="width: 100%; max-width: 460px; background: #FFFFFF; border-radius: 16px; overflow: hidden; display: flex; flex-direction: column">
+        <div style="padding: 20px 22px; border-bottom: 1px solid #F0EBE4; display: flex; align-items: baseline; gap: 10px">
+          <span style="font-family: 'IBM Plex Mono', monospace; font-size: 20px; font-weight: 600">{{ detalle.id }}</span>
+          <span style="font-size: 14px; color: #7D7368">{{ detalle.canal }}</span>
+          <span style="margin-left: auto; font-size: 13px; font-weight: 600; color: #C4530F; background: #FDF1E7; border-radius: 20px; padding: 5px 11px">{{ detalle.estadoTexto }}</span>
+        </div>
+        <div style="padding: 18px 22px; display: flex; flex-direction: column; gap: 14px">
+          <div style="display: flex; flex-direction: column; gap: 8px">
+            <sc-for list="{{ detalle.items }}" as="it" hint-placeholder-count="3">
+              <div style="display: flex; gap: 10px; align-items: baseline; font-size: 15px">
+                <span style="font-family: 'IBM Plex Mono', monospace; color: #9A8F82">{{ it.q }}x</span>
+                <span style="flex: 1 1 auto">{{ it.nombre }}</span>
+                <span style="font-family: 'IBM Plex Mono', monospace; color: #4B443D">{{ it.precio }}</span>
+              </div>
+            </sc-for>
+          </div>
+          <div style="display: flex; justify-content: space-between; align-items: baseline; border-top: 1px solid #F0EBE4; padding-top: 14px">
+            <span style="font-size: 15px; color: #7D7368">Total</span>
+            <span style="font-family: 'IBM Plex Mono', monospace; font-size: 21px; font-weight: 600">{{ detalle.total }}</span>
+          </div>
+          <div style="display: flex; gap: 10px; font-size: 13px; color: #7D7368">
+            <span>Tiempo en tablero {{ detalle.tiempo }}</span>
+            <span>·</span>
+            <span>{{ detalle.pago }}</span>
+          </div>
+        </div>
+        <div style="padding: 16px 22px; background: #F6F3EF; display: flex; gap: 10px; flex-wrap: wrap">
+          <button data-id="{{ detalle.id }}" onClick="{{ cancelar }}" style="height: 46px; padding: 0 16px; border: 1px solid #E3C7C0; border-radius: 10px; background: #FFFFFF; font-family: Archivo, sans-serif; font-size: 14px; color: #A33B2A; cursor: pointer" style-hover="background: #FBEFEC">Cancelar pedido</button>
+          <button data-id="{{ detalle.id }}" onClick="{{ imprimir }}" style="height: 46px; padding: 0 16px; border: 1px solid #E7E1D9; border-radius: 10px; background: #FFFFFF; font-family: Archivo, sans-serif; font-size: 14px; color: #1A1614; cursor: pointer" style-hover="border-color: #C9C0B5">Imprimir ticket</button>
+          <button data-id="{{ detalle.id }}" onClick="{{ avanzarYCerrar }}" style="margin-left: auto; height: 46px; padding: 0 18px; border: none; border-radius: 10px; background: #E0651B; color: #FFFFFF; font-family: Archivo, sans-serif; font-size: 14px; font-weight: 600; cursor: pointer" style-hover="background: #C4530F">{{ detalle.accionTexto }}</button>
+        </div>
+      </div>
+    </div>
+  </sc-if>
+
+  <sc-if value="{{ ticket }}" hint-placeholder-val="{{ false }}">
+    <div onClick="{{ cerrarTicket }}" style="position: fixed; inset: 0; background: rgba(26, 22, 20, 0.42); display: flex; align-items: center; justify-content: center; padding: 24px; z-index: 50">
+      <div onClick="{{ noCerrar }}" style="width: 320px; background: #FFFFFF; border-radius: 12px; padding: 24px 22px; font-family: 'IBM Plex Mono', monospace; display: flex; flex-direction: column; gap: 14px">
+        <div style="text-align: center; display: flex; flex-direction: column; gap: 4px">
+          <div style="font-family: Archivo, sans-serif; font-size: 17px; font-weight: 700">AGUACHILES</div>
+          <div style="font-size: 11px; color: #7D7368">Cocina · solo delivery</div>
+        </div>
+        <div style="border-top: 1px dashed #C9C0B5; border-bottom: 1px dashed #C9C0B5; padding: 12px 0; display: flex; flex-direction: column; gap: 6px; font-size: 12px">
+          <div style="display: flex; justify-content: space-between"><span>Pedido</span><span>{{ ticket.id }}</span></div>
+          <div style="display: flex; justify-content: space-between"><span>Canal</span><span>{{ ticket.canal }}</span></div>
+          <div style="display: flex; justify-content: space-between"><span>Hora</span><span>{{ ticket.hora }}</span></div>
+        </div>
+        <div style="display: flex; flex-direction: column; gap: 6px; font-size: 12px">
+          <sc-for list="{{ ticket.items }}" as="it" hint-placeholder-count="3">
+            <div style="display: flex; justify-content: space-between; gap: 10px">
+              <span>{{ it.q }}x {{ it.nombre }}</span>
+              <span>{{ it.precio }}</span>
+            </div>
+          </sc-for>
+        </div>
+        <div style="border-top: 1px dashed #C9C0B5; padding-top: 12px; display: flex; justify-content: space-between; font-size: 15px; font-weight: 600">
+          <span>TOTAL</span><span>{{ ticket.total }}</span>
+        </div>
+        <button onClick="{{ cerrarTicket }}" style="height: 46px; border: none; border-radius: 10px; background: #1A1614; color: #FFFFFF; font-family: Archivo, sans-serif; font-size: 14px; font-weight: 600; cursor: pointer" style-hover="background: #E0651B">Cerrar</button>
+      </div>
+    </div>
+  </sc-if>
+
+</div>
+
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props="{&quot;limiteAlerta&quot;:{&quot;editor&quot;:&quot;int&quot;,&quot;default&quot;:15,&quot;tsType&quot;:&quot;number&quot;,&quot;min&quot;:5,&quot;max&quot;:40,&quot;unit&quot;:&quot;min&quot;,&quot;section&quot;:&quot;Operación&quot;},&quot;ordenar&quot;:{&quot;editor&quot;:&quot;enum&quot;,&quot;default&quot;:&quot;tiempo&quot;,&quot;tsType&quot;:&quot;string&quot;,&quot;options&quot;:[&quot;tiempo&quot;,&quot;monto&quot;],&quot;section&quot;:&quot;Operación&quot;}}">
+const MENU = {
+  "Aguachile clásico": 180,
+  "Aguachile negro": 195,
+  "Aguachile de mango": 190,
+  "Tostada de atún": 95,
+  "Ceviche verde": 165,
+  "Callo de hacha": 220,
+  "Tosticeviche": 110,
+  "Agua de pepino": 45,
+  "Orden de tostadas": 35,
+};
+const CANALES = ["App propia", "Teléfono", "WhatsApp", "Mostrador digital"];
+const NOMBRES = Object.keys(MENU);
+
+class Component extends DCLogic {
+  constructor(props) {
+    super(props);
+    this.state = {
+      orders: this.semilla(),
+      detalleId: null,
+      ticketId: null,
+      auto: false,
+      next: 1049,
+    };
+    this.dragId = null;
+  }
+
+  semilla() {
+    const mk = (id, canal, estado, mins, items) => ({ id, canal, estado, mins, items });
+    return [
+      mk("#1041", "App propia", "prep", 4, [["Aguachile clásico", 2], ["Agua de pepino", 2]]),
+      mk("#1042", "WhatsApp", "prep", 9, [["Aguachile negro", 1], ["Tosticeviche", 2], ["Orden de tostadas", 1]]),
+      mk("#1043", "App propia", "prep", 16, [["Callo de hacha", 1], ["Ceviche verde", 1]]),
+      mk("#1039", "Teléfono", "espera", 21, [["Aguachile de mango", 2], ["Tostada de atún", 3]]),
+      mk("#1040", "Mostrador digital", "espera", 12, [["Ceviche verde", 2]]),
+      mk("#1036", "App propia", "delivery", 28, [["Aguachile clásico", 3], ["Agua de pepino", 3]]),
+      mk("#1038", "WhatsApp", "delivery", 19, [["Tostada de atún", 4], ["Aguachile negro", 1]]),
+    ].map(o => ({ ...o, items: o.items.map(([nombre, q]) => ({ nombre, q })) }));
+  }
+
+  componentDidMount() {
+    this.timer = setInterval(() => {
+      this.setState(s => {
+        let orders = s.orders.map(o => ({ ...o, mins: o.mins + 1 }));
+        if (s.auto && Math.random() < 0.5) {
+          const id = "#" + s.next;
+          const n = 1 + Math.floor(Math.random() * 3);
+          const items = [];
+          for (let i = 0; i < n; i++) {
+            const nombre = NOMBRES[Math.floor(Math.random() * NOMBRES.length)];
+            if (!items.some(it => it.nombre === nombre)) items.push({ nombre, q: 1 + Math.floor(Math.random() * 2) });
+          }
+          orders = orders.concat([{ id, canal: CANALES[Math.floor(Math.random() * CANALES.length)], estado: "prep", mins: 0, items }]);
+          return { orders, next: s.next + 1 };
+        }
+        return { orders };
+      });
+    }, 12000);
+  }
+  componentWillUnmount() { clearInterval(this.timer); }
+
+  money(n) { return "$" + n.toLocaleString("es-MX"); }
+  totalNum(o) { return o.items.reduce((t, it) => t + (MENU[it.nombre] || 0) * it.q, 0); }
+
+  ver(o) {
+    const lim = this.props.limiteAlerta ?? 15;
+    return {
+      ...o,
+      total: this.money(this.totalNum(o)),
+      tiempo: o.mins + " min",
+      tiempoColor: o.mins >= lim ? "#C0392B" : "#9A8F82",
+      items: o.items.map(it => ({ ...it, precio: this.money((MENU[it.nombre] || 0) * it.q) })),
+    };
+  }
+
+  porEstado(e) {
+    const orden = this.props.ordenar === "monto"
+      ? (a, b) => this.totalNum(b) - this.totalNum(a)
+      : (a, b) => b.mins - a.mins;
+    return this.state.orders.filter(o => o.estado === e).sort(orden).map(o => this.ver(o));
+  }
+
+  mover(id, estado) {
+    if (!id) return;
+    this.setState(s => ({ orders: s.orders.map(o => (o.id === id ? { ...o, estado } : o)) }));
+  }
+
+  siguiente(estado) { return estado === "prep" ? "espera" : estado === "espera" ? "delivery" : "hecho"; }
+
+  renderVals() {
+    const prep = this.porEstado("prep"), espera = this.porEstado("espera"), delivery = this.porEstado("delivery");
+    const activos = this.state.orders.filter(o => o.estado !== "hecho");
+    const prom = activos.length ? Math.round(activos.reduce((t, o) => t + o.mins, 0) / activos.length) : 0;
+    const hechos = this.state.orders.filter(o => o.estado === "hecho");
+    const vendidoBase = 8640;
+
+    const d = this.state.orders.find(o => o.id === this.state.detalleId);
+    const t = this.state.orders.find(o => o.id === this.state.ticketId);
+    const textos = { prep: "En preparación", espera: "En espera de recolección", delivery: "En delivery" };
+    const acciones = { prep: "Marcar listo", espera: "Marcar recogido", delivery: "Marcar entregado" };
+
+    const stop = e => e.stopPropagation();
+    const id = e => e.currentTarget.dataset.id;
+
+    return {
+      prep, espera, delivery,
+      nPrep: prep.length, nEspera: espera.length, nDelivery: delivery.length,
+      promedio: prom + " min",
+      resumenLinea: activos.length + " pedidos activos · " + prep.length + " en cocina · " + delivery.length + " en ruta",
+      ventaHoy: this.money(vendidoBase + hechos.reduce((s, o) => s + this.totalNum(o), 0)),
+      ticketsHoy: String(47 + hechos.length),
+      etiquetaAuto: this.state.auto ? "Entrada automática activa" : "Simular pedidos entrantes",
+      toggleAuto: () => this.setState(s => ({ auto: !s.auto })),
+      nuevoPedido: () => this.setState(s => ({
+        next: s.next + 1,
+        orders: s.orders.concat([{ id: "#" + s.next, canal: "Mostrador digital", estado: "prep", mins: 0, items: [{ nombre: "Aguachile clásico", q: 1 }] }]),
+      })),
+      permitir: e => e.preventDefault(),
+      empezarArrastre: e => { this.dragId = e.currentTarget.dataset.id; if (e.dataTransfer) e.dataTransfer.effectAllowed = "move"; },
+      finArrastre: () => { this.dragId = null; },
+      dropPrep: e => { e.preventDefault(); this.mover(this.dragId, "prep"); },
+      dropEspera: e => { e.preventDefault(); this.mover(this.dragId, "espera"); },
+      dropDelivery: e => { e.preventDefault(); this.mover(this.dragId, "delivery"); },
+      avanzar: e => { stop(e); const i = id(e); const o = this.state.orders.find(x => x.id === i); if (o) this.mover(i, this.siguiente(o.estado)); },
+      abrirDetalle: e => this.setState({ detalleId: e.currentTarget.dataset.id }),
+      cerrarDetalle: () => this.setState({ detalleId: null }),
+      cerrarTicket: () => this.setState({ ticketId: null }),
+      noCerrar: stop,
+      imprimir: e => { stop(e); this.setState({ ticketId: id(e) }); },
+      cancelar: e => { stop(e); const i = id(e); this.setState(s => ({ orders: s.orders.filter(o => o.id !== i), detalleId: null })); },
+      avanzarYCerrar: e => { stop(e); const i = id(e); const o = this.state.orders.find(x => x.id === i); if (o) this.mover(i, this.siguiente(o.estado)); this.setState({ detalleId: null }); },
+      detalle: d ? { ...this.ver(d), estadoTexto: textos[d.estado], accionTexto: acciones[d.estado], pago: "Pagado en línea" } : false,
+      ticket: t ? { ...this.ver(t), hora: new Date().toLocaleTimeString("es-MX", { hour: "2-digit", minute: "2-digit" }) } : false,
+    };
+  }
+}
+
+</script>
+</body>
+</html>
