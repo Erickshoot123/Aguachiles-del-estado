@@ -15,6 +15,7 @@ interface ApiRequestOptions {
   method?: 'GET' | 'POST' | 'PUT' | 'PATCH' | 'DELETE';
   body?: unknown;
   token?: string | null;
+  baseUrl?: string;
 }
 
 interface ApiErrorBody {
@@ -26,7 +27,7 @@ export async function apiRequest<TResponse>(
   path: string,
   options: ApiRequestOptions = {},
 ): Promise<TResponse> {
-  const response = await fetch(`${env.VITE_API_URL}${path}`, {
+  const response = await fetch(`${options.baseUrl ?? env.VITE_API_URL}${path}`, {
     method: options.method ?? 'GET',
     headers: {
       ...(options.body !== undefined ? { 'Content-Type': 'application/json' } : {}),

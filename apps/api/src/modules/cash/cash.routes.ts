@@ -1,9 +1,7 @@
 import { closeCashSessionRequestSchema, openCashSessionRequestSchema } from '@aguachiles/shared';
 import type { FastifyInstance } from 'fastify';
-import { z } from 'zod';
+import { idParamSchema } from '../../lib/paramsSchemas.js';
 import { closeSession, getCurrentSession, openSession } from './cash.service.js';
-
-const sessionParamsSchema = z.object({ id: z.string().uuid() });
 
 export default async function cashRoutes(fastify: FastifyInstance): Promise<void> {
   fastify.get(
@@ -25,7 +23,7 @@ export default async function cashRoutes(fastify: FastifyInstance): Promise<void
     '/api/cash-sessions/:id/close',
     { preHandler: fastify.authenticate },
     async (request, reply) => {
-      const { id } = sessionParamsSchema.parse(request.params);
+      const { id } = idParamSchema.parse(request.params);
       const input = closeCashSessionRequestSchema.parse(request.body);
       const session = await closeSession(
         fastify.prisma,

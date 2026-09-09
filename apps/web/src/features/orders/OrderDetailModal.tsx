@@ -1,5 +1,8 @@
 import type { Order } from '@aguachiles/shared';
 import type { JSX } from 'react';
+import { useState } from 'react';
+import { ModalBackdrop } from '../../components/ModalBackdrop';
+import { TicketModal } from '../receipts/TicketModal';
 import { CHANNEL_LABELS, formatCurrency, formatElapsedMinutes } from './channelLabels';
 import { useAdvanceOrder, useCancelOrder, useChargeOrder } from './hooks';
 
@@ -13,6 +16,7 @@ const UI_TEXT = {
   paid: 'Pagado',
   pending: 'Pendiente de cobro',
   chargeError: 'No se pudo cobrar. ¿Hay una caja abierta?',
+  ticketAction: 'Ticket',
 } as const;
 
 interface OrderDetailModalProps {
@@ -21,20 +25,22 @@ interface OrderDetailModalProps {
   onClose: () => void;
 }
 
-export function OrderDetailModal({ order, advanceLabel, onClose }: OrderDetailModalProps): JSX.Element {
+export function OrderDetailModal({
+  order,
+  advanceLabel,
+  onClose,
+}: OrderDetailModalProps): JSX.Element {
   const advanceOrder = useAdvanceOrder();
   const cancelOrder = useCancelOrder();
   const chargeOrder = useChargeOrder();
+  const [isTicketOpen, setIsTicketOpen] = useState(false);
   const isPaid = order.status !== 'pending';
 
   return (
-    <div
-      onClick={onClose}
-      className="fixed inset-0 z-40 flex items-center justify-center bg-text/40 p-6"
-    >
-      <div
-        onClick={(event) => event.stopPropagation()}
-        className="flex w-full max-w-md flex-col rounded-2xl bg-surface"
+    <>
+      <ModalBackdrop
+        onClose={onClose}
+        contentClassName="flex w-full max-w-md flex-col rounded-2xl bg-surface"
       >
         <div className="flex items-baseline gap-2.5 border-b border-divider px-5 py-4">
           <span className="font-mono text-[20px] font-semibold">{order.ticketNumber}</span>
@@ -93,6 +99,15 @@ export function OrderDetailModal({ order, advanceLabel, onClose }: OrderDetailMo
               {chargeOrder.isPending ? UI_TEXT.charging : UI_TEXT.chargeAction}
             </button>
           ) : null}
+          {isPaid ? (
+            <button
+              type="button"
+              onClick={() => setIsTicketOpen(true)}
+              className="h-11 rounded-lg border border-border px-4 text-[14px] hover:border-border-hover"
+            >
+              {UI_TEXT.ticketAction}
+            </button>
+          ) : null}
           <button
             type="button"
             onClick={() => advanceOrder.mutate(order.id, { onSuccess: onClose })}
@@ -102,7 +117,11 @@ export function OrderDetailModal({ order, advanceLabel, onClose }: OrderDetailMo
             {advanceLabel}
           </button>
         </div>
-      </div>
-    </div>
+      </ModalBackdrop>
+
+      {isTicketOpen ? (
+        <TicketModal orderId={order.id} onClose={() => setIsTicketOpen(false)} />
+      ) : null}
+    </>
   );
 }

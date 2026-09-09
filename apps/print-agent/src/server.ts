@@ -1,16 +1,14 @@
+import cors from '@fastify/cors';
 import Fastify from 'fastify';
-import { z } from 'zod';
+import { loadEnv } from './config/env.js';
 import printRoutes from './print.routes.js';
 
-const envSchema = z.object({
-  PORT: z.coerce.number().int().positive().default(4000),
-});
-
 async function main(): Promise<void> {
-  const env = envSchema.parse(process.env);
+  const env = loadEnv();
   const app = Fastify({ logger: true });
 
-  await app.register(printRoutes);
+  await app.register(cors, { origin: true });
+  await app.register(printRoutes, { env });
   app.get('/health', async () => ({ status: 'ok' }));
 
   // Solo escucha en localhost: el Print Agent nunca debe exponerse a la red.

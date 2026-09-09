@@ -1,6 +1,7 @@
 import { Prisma, type PrismaClient } from '@prisma/client';
 import type { CreateOrderRequest, Order } from '@aguachiles/shared';
 import { NoOpenCashSessionError } from '../cash/cash.errors.js';
+import { createReceiptForSale } from '../receipts/receipts.service.js';
 import {
   CannotCancelPaidOrderError,
   CashPaymentMethodNotConfiguredError,
@@ -289,11 +290,15 @@ export async function chargeOrder(
       },
     });
 
-    return tx.sale.update({
+    const updatedSale = await tx.sale.update({
       where: { id: orderId },
       data: { status: 'completed', cashRegisterSessionId: cashSessionId },
       include: { items: { include: { product: true } } },
     });
+
+    await createReceiptForSale(tx, updatedSale);
+
+    return updatedSale;
   });
 
   return toOrderDto(order);
