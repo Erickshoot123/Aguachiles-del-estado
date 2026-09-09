@@ -12,6 +12,12 @@
       "runtimeExecutable": "npm",
       "runtimeArgs": ["run", "dev", "--workspace=@aguachiles/api"],
       "port": 3000
+    },
+    {
+      "name": "print-agent",
+      "runtimeExecutable": "npm",
+      "runtimeArgs": ["run", "dev", "--workspace=@aguachiles/print-agent"],
+      "port": 4000
     }
   ]
 }

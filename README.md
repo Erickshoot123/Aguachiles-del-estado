@@ -43,15 +43,20 @@ npm run prisma:migrate --workspace=@aguachiles/api -- --name init
 npm run prisma:seed --workspace=@aguachiles/api
 ```
 
-Levanta backend y frontend en terminales separadas:
+Levanta backend, frontend y print-agent en terminales separadas:
 
 ```bash
 npm run dev --workspace=@aguachiles/api
 npm run dev --workspace=@aguachiles/web
+npm run dev --workspace=@aguachiles/print-agent
 ```
 
 La app queda en `http://localhost:5173`. Usuario semilla: `admin@aguachiles.local` /
 `ChangeMe123!` (cámbialo antes de producción).
+
+Sin impresora térmica conectada, el print-agent escribe cada ticket como buffer ESC/POS
+crudo en `apps/print-agent/print-output/` (configurable con `PRINTER_INTERFACE`); para una
+impresora de red real, cambia esa variable a `tcp://<ip>:9100`.
 
 ## Scripts de raíz
 
@@ -60,12 +65,13 @@ La app queda en `http://localhost:5173`. Usuario semilla: `admin@aguachiles.loca
 - `npm run build` — build de producción por workspace.
 - `npm run test` — pruebas por workspace.
 
-## Estado actual (Fase 0)
+## Estado actual (Fase 1 en curso)
 
-Esqueleto técnico: monorepo, tooling, esquema de base de datos completo (`apps/api/prisma/schema.prisma`),
-autenticación (login + JWT) de punta a punta, y la pantalla principal (tablero de pedidos) con su
-diseño visual definitivo pero sin datos reales todavía. La funcionalidad de negocio (crear/avanzar
-pedidos, catálogo, caja, impresión) se construye en la Fase 1 — ver sección 3 de `PLAN_POS.md`.
+Fase 0 completa (monorepo, tooling, esquema de base de datos, auth). De la Fase 1 ya funcionan
+de punta a punta: tablero de pedidos (crear/avanzar/cancelar), caja (abrir/cerrar con cálculo de
+diferencia), cobro de pedidos en efectivo, y tickets con impresión ESC/POS real vía el
+print-agent (reimpresión incluida). Pendiente: CRUD de catálogo desde la UI (hoy el menú solo se
+carga por seed) y sesión persistente (el JWT vive en memoria, se pierde al recargar la página).
 
 La carpeta `referencia/` contiene el mockup de diseño original del negocio; es material de
 referencia visual, no código de producción.
