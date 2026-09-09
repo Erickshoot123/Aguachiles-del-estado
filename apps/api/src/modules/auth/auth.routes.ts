@@ -1,5 +1,6 @@
 import { loginRequestSchema, type LoginResponse } from '@aguachiles/shared';
 import type { FastifyInstance } from 'fastify';
+import { NotFoundError } from '../../lib/errors.js';
 import { authenticateUser } from './auth.service.js';
 
 export default async function authRoutes(fastify: FastifyInstance): Promise<void> {
@@ -23,8 +24,7 @@ export default async function authRoutes(fastify: FastifyInstance): Promise<void
       });
 
       if (!user) {
-        reply.status(404).send({ code: 'NOT_FOUND', message: 'Usuario no encontrado' });
-        return;
+        throw new NotFoundError('Usuario no encontrado');
       }
 
       reply.status(200).send({

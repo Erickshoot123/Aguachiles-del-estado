@@ -1,6 +1,9 @@
 import { Prisma, type PrismaClient } from '@prisma/client';
 import type { CreateOrderRequest, Order } from '@aguachiles/shared';
+import { NoOpenCashSessionError } from '../cash/cash.errors.js';
 import {
+  CannotCancelPaidOrderError,
+  CashPaymentMethodNotConfiguredError,
   InsufficientStockError,
   InvalidFulfillmentTransitionError,
   OrderAlreadyChargedError,
@@ -10,6 +13,16 @@ import {
 
 const ACTIVE_BOARD_STATUSES = ['received', 'in_prep', 'waiting_pickup', 'in_delivery'] as const;
 const FORWARD_SEQUENCE = ['in_prep', 'waiting_pickup', 'in_delivery', 'delivered'] as const;
+const MAX_TICKET_NUMBER_RETRIES = 3;
+
+function isTicketNumberCollision(error: unknown): boolean {
+  return (
+    error instanceof Prisma.PrismaClientKnownRequestError &&
+    error.code === 'P2002' &&
+    Array.isArray(error.meta?.['target']) &&
+    (error.meta?.['target'] as string[]).includes('ticket_number')
+  );
+}
 
 type SaleWithItems = Prisma.SaleGetPayload<{ include: { items: { include: { product: true } } } }>;
 
@@ -51,6 +64,23 @@ export async function listActiveOrders(prisma: PrismaClient): Promise<Order[]> {
 }
 
 export async function createOrder(
+  prisma: PrismaClient,
+  userId: string,
+  input: CreateOrderRequest,
+): Promise<Order> {
+  for (let attempt = 1; attempt <= MAX_TICKET_NUMBER_RETRIES; attempt += 1) {
+    try {
+      return await createOrderAttempt(prisma, userId, input);
+    } catch (error) {
+      if (!isTicketNumberCollision(error) || attempt === MAX_TICKET_NUMBER_RETRIES) {
+        throw error;
+      }
+    }
+  }
+  throw new Error('No se pudo generar un folio de pedido único');
+}
+
+async function createOrderAttempt(
   prisma: PrismaClient,
   userId: string,
   input: CreateOrderRequest,
@@ -145,23 +175,25 @@ export async function createOrder(
 }
 
 export async function advanceOrder(prisma: PrismaClient, orderId: string): Promise<Order> {
-  const sale = await prisma.sale.findUnique({ where: { id: orderId } });
-  if (!sale) {
-    throw new OrderNotFoundError();
-  }
+  const updated = await prisma.$transaction(async (tx) => {
+    const sale = await tx.sale.findUnique({ where: { id: orderId } });
+    if (!sale) {
+      throw new OrderNotFoundError();
+    }
 
-  const currentIndex = FORWARD_SEQUENCE.indexOf(
-    sale.fulfillmentStatus as (typeof FORWARD_SEQUENCE)[number],
-  );
-  if (currentIndex === -1 || currentIndex === FORWARD_SEQUENCE.length - 1) {
-    throw new InvalidFulfillmentTransitionError(sale.fulfillmentStatus);
-  }
+    const currentIndex = FORWARD_SEQUENCE.indexOf(
+      sale.fulfillmentStatus as (typeof FORWARD_SEQUENCE)[number],
+    );
+    if (currentIndex === -1 || currentIndex === FORWARD_SEQUENCE.length - 1) {
+      throw new InvalidFulfillmentTransitionError(sale.fulfillmentStatus);
+    }
 
-  const nextStatus = FORWARD_SEQUENCE[currentIndex + 1] as (typeof FORWARD_SEQUENCE)[number];
-  const updated = await prisma.sale.update({
-    where: { id: orderId },
-    data: { fulfillmentStatus: nextStatus },
-    include: { items: { include: { product: true } } },
+    const nextStatus = FORWARD_SEQUENCE[currentIndex + 1] as (typeof FORWARD_SEQUENCE)[number];
+    return tx.sale.update({
+      where: { id: orderId },
+      data: { fulfillmentStatus: nextStatus },
+      include: { items: { include: { product: true } } },
+    });
   });
 
   return toOrderDto(updated);
@@ -178,6 +210,9 @@ export async function cancelOrder(prisma: PrismaClient, orderId: string): Promis
     }
     if (sale.fulfillmentStatus === 'delivered' || sale.fulfillmentStatus === 'cancelled') {
       throw new InvalidFulfillmentTransitionError(sale.fulfillmentStatus);
+    }
+    if (sale.status !== 'pending') {
+      throw new CannotCancelPaidOrderError();
     }
 
     for (const item of sale.items) {
@@ -229,9 +264,17 @@ export async function chargeOrder(
       throw new OrderAlreadyChargedError();
     }
 
-    const cashPaymentMethod = await tx.paymentMethod.findFirstOrThrow({
+    const cashSession = await tx.cashRegisterSession.findUnique({ where: { id: cashSessionId } });
+    if (!cashSession || cashSession.status !== 'open') {
+      throw new NoOpenCashSessionError();
+    }
+
+    const cashPaymentMethod = await tx.paymentMethod.findFirst({
       where: { type: 'cash', isActive: true },
     });
+    if (!cashPaymentMethod) {
+      throw new CashPaymentMethodNotConfiguredError();
+    }
 
     await tx.salePayment.create({
       data: { saleId: sale.id, paymentMethodId: cashPaymentMethod.id, amount: sale.total },

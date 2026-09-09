@@ -4,6 +4,7 @@ import {
   CashSessionAlreadyClosedError,
   CashSessionAlreadyOpenError,
   CashSessionNotFoundError,
+  NoCashRegisterConfiguredError,
   NoOpenCashSessionError,
 } from './cash.errors.js';
 
@@ -44,6 +45,18 @@ function cashMovementsDelta(movements: MovementWithMethod[]): Prisma.Decimal {
   }, new Prisma.Decimal(0));
 }
 
+async function computeExpectedClosingAmount(
+  prisma: PrismaClient,
+  sessionId: string,
+  openingAmount: Prisma.Decimal,
+): Promise<Prisma.Decimal> {
+  const movements = await prisma.cashMovement.findMany({
+    where: { sessionId },
+    include: { paymentMethod: true },
+  });
+  return openingAmount.add(cashMovementsDelta(movements));
+}
+
 export async function getCurrentSession(prisma: PrismaClient): Promise<CashSession | null> {
   const session = await prisma.cashRegisterSession.findFirst({
     where: { status: 'open' },
@@ -51,11 +64,7 @@ export async function getCurrentSession(prisma: PrismaClient): Promise<CashSessi
   });
   if (!session) return null;
 
-  const movements = await prisma.cashMovement.findMany({
-    where: { sessionId: session.id },
-    include: { paymentMethod: true },
-  });
-  const expected = session.openingAmount.add(cashMovementsDelta(movements));
+  const expected = await computeExpectedClosingAmount(prisma, session.id, session.openingAmount);
 
   return toCashSessionDto({
     ...session,
@@ -73,7 +82,10 @@ export async function openSession(
     throw new CashSessionAlreadyOpenError();
   }
 
-  const cashRegister = await prisma.cashRegister.findFirstOrThrow({ where: { isActive: true } });
+  const cashRegister = await prisma.cashRegister.findFirst({ where: { isActive: true } });
+  if (!cashRegister) {
+    throw new NoCashRegisterConfiguredError();
+  }
   const session = await prisma.cashRegisterSession.create({
     data: {
       cashRegisterId: cashRegister.id,
@@ -100,11 +112,7 @@ export async function closeSession(
     throw new CashSessionAlreadyClosedError();
   }
 
-  const movements = await prisma.cashMovement.findMany({
-    where: { sessionId },
-    include: { paymentMethod: true },
-  });
-  const expected = session.openingAmount.add(cashMovementsDelta(movements));
+  const expected = await computeExpectedClosingAmount(prisma, sessionId, session.openingAmount);
   const actual = new Prisma.Decimal(actualClosingAmount);
 
   const updated = await prisma.cashRegisterSession.update({

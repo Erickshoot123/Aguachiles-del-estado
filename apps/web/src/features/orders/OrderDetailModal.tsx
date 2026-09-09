@@ -73,14 +73,16 @@ export function OrderDetailModal({ order, advanceLabel, onClose }: OrderDetailMo
         </div>
 
         <div className="flex flex-wrap gap-2.5 bg-bg px-5 py-4">
-          <button
-            type="button"
-            onClick={() => cancelOrder.mutate(order.id, { onSuccess: onClose })}
-            disabled={cancelOrder.isPending}
-            className="h-11 rounded-lg border border-red-200 px-4 text-[14px] text-red-700 hover:bg-red-50"
-          >
-            {UI_TEXT.cancelAction}
-          </button>
+          {!isPaid ? (
+            <button
+              type="button"
+              onClick={() => cancelOrder.mutate(order.id, { onSuccess: onClose })}
+              disabled={cancelOrder.isPending}
+              className="h-11 rounded-lg border border-red-200 px-4 text-[14px] text-red-700 hover:bg-red-50"
+            >
+              {UI_TEXT.cancelAction}
+            </button>
+          ) : null}
           {!isPaid ? (
             <button
               type="button"

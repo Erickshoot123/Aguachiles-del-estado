@@ -23,3 +23,9 @@ export class CashSessionAlreadyClosedError extends ConflictError {
     super('Esa sesión de caja ya está cerrada');
   }
 }
+
+export class NoCashRegisterConfiguredError extends ConflictError {
+  constructor() {
+    super('No hay ninguna caja registradora activa configurada');
+  }
+}

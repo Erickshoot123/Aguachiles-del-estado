@@ -2,7 +2,7 @@ import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { useAuthStore } from '../auth/authStore';
 import { closeCashSession, getCurrentCashSession, openCashSession } from './api';
 
-const CASH_SESSION_QUERY_KEY = ['cash-session', 'current'] as const;
+export const CASH_SESSION_QUERY_KEY = ['cash-session', 'current'] as const;
 
 export function useCurrentCashSession() {
   const accessToken = useAuthStore((state) => state.accessToken);

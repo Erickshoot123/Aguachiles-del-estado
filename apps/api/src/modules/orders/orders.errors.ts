@@ -20,12 +20,24 @@ export class InsufficientStockError extends ConflictError {
 
 export class InvalidFulfillmentTransitionError extends ConflictError {
   constructor(currentStatus: string) {
-    super(`No se puede avanzar un pedido en estado "${currentStatus}"`);
+    super(`Esta operación no es válida para un pedido en estado "${currentStatus}"`);
   }
 }
 
 export class OrderAlreadyChargedError extends ConflictError {
   constructor() {
     super('El pedido ya fue cobrado o no está pendiente de pago');
+  }
+}
+
+export class CannotCancelPaidOrderError extends ConflictError {
+  constructor() {
+    super('No se puede cancelar un pedido ya cobrado; usa un reembolso');
+  }
+}
+
+export class CashPaymentMethodNotConfiguredError extends ConflictError {
+  constructor() {
+    super('No hay un método de pago en efectivo activo configurado');
   }
 }
