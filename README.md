@@ -69,9 +69,10 @@ impresora de red real, cambia esa variable a `tcp://<ip>:9100`.
 
 Fase 0 completa (monorepo, tooling, esquema de base de datos, auth). De la Fase 1 ya funcionan
 de punta a punta: tablero de pedidos (crear/avanzar/cancelar), caja (abrir/cerrar con cálculo de
-diferencia), cobro de pedidos en efectivo, y tickets con impresión ESC/POS real vía el
-print-agent (reimpresión incluida). Pendiente: CRUD de catálogo desde la UI (hoy el menú solo se
-carga por seed) y sesión persistente (el JWT vive en memoria, se pierde al recargar la página).
+diferencia), cobro de pedidos en efectivo, tickets con impresión ESC/POS real vía el print-agent
+(reimpresión incluida), CRUD de catálogo (productos/categorías) desde la UI, y sesión persistente
+(refresh token con rotación — la sesión sobrevive a recargar la página, no solo el access token
+en memoria).
 
 La carpeta `referencia/` contiene el mockup de diseño original del negocio; es material de
 referencia visual, no código de producción.
