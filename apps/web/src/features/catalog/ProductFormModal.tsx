@@ -10,6 +10,7 @@ const UI_TEXT = {
   name: 'Nombre',
   sku: 'SKU',
   barcode: 'Código de barras (opcional)',
+  description: 'Descripción (opcional)',
   category: 'Categoría',
   newCategory: 'Nueva categoría',
   addCategory: 'Agregar',
@@ -34,6 +35,7 @@ interface FormState {
   sku: string;
   barcode: string;
   name: string;
+  description: string;
   categoryId: string;
   price: string;
   cost: string;
@@ -49,6 +51,7 @@ function toFormState(product: Product | undefined): FormState {
       sku: '',
       barcode: '',
       name: '',
+      description: '',
       categoryId: '',
       price: '',
       cost: '',
@@ -62,6 +65,7 @@ function toFormState(product: Product | undefined): FormState {
     sku: product.sku,
     barcode: product.barcode ?? '',
     name: product.name,
+    description: product.description ?? '',
     categoryId: product.categoryId,
     price: String(product.price),
     cost: String(product.cost),
@@ -107,6 +111,7 @@ export function ProductFormModal({ product, onClose }: ProductFormModalProps): J
       sku: form.sku,
       barcode: form.barcode.trim() === '' ? null : form.barcode.trim(),
       name: form.name,
+      description: form.description.trim() === '' ? null : form.description.trim(),
       categoryId: form.categoryId,
       price: Number(form.price),
       cost: Number(form.cost),
@@ -172,6 +177,16 @@ export function ProductFormModal({ product, onClose }: ProductFormModalProps): J
           <input
             value={form.barcode}
             onChange={(event) => setField('barcode', event.target.value)}
+            className="rounded-lg border border-border px-3 py-2"
+          />
+        </label>
+
+        <label className="flex flex-col gap-1 text-sm">
+          {UI_TEXT.description}
+          <textarea
+            value={form.description}
+            onChange={(event) => setField('description', event.target.value)}
+            rows={2}
             className="rounded-lg border border-border px-3 py-2"
           />
         </label>

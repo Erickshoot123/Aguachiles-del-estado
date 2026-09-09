@@ -31,3 +31,7 @@ export const useAuthStore = create<AuthState>()(
     },
   ),
 );
+
+export function useIsLoggedIn(): boolean {
+  return useAuthStore((state) => Boolean(state.accessToken));
+}

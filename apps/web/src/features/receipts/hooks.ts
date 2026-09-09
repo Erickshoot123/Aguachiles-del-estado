@@ -1,6 +1,6 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import type { Ticket } from '@aguachiles/shared';
-import { useAuthStore } from '../auth/authStore';
+import { useIsLoggedIn } from '../auth/authStore';
 import { confirmPrinted, getReceipt, printAtAgent } from './api';
 
 function receiptQueryKey(orderId: string) {
@@ -8,7 +8,7 @@ function receiptQueryKey(orderId: string) {
 }
 
 export function useReceipt(orderId: string, enabled: boolean) {
-  const isLoggedIn = useAuthStore((state) => Boolean(state.accessToken));
+  const isLoggedIn = useIsLoggedIn();
 
   return useQuery({
     queryKey: receiptQueryKey(orderId),

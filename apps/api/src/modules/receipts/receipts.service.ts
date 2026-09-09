@@ -65,9 +65,17 @@ export async function recordPrinted(prisma: PrismaClient, saleId: string): Promi
     throw new ReceiptNotFoundError();
   }
 
-  if (!receipt.printedAt) {
-    await prisma.receipt.update({ where: { saleId }, data: { printedAt: new Date() } });
+  // updateMany condicionado a printedAt: null hace de la "primera impresión"
+  // una operación atómica: ante dos confirmaciones casi simultáneas (doble
+  // clic), solo una puede cumplir esa condición; la otra cae al incremento
+  // de reprintCount en vez de que ambas marquen printedAt por separado.
+  const markedFirstPrint = await prisma.receipt.updateMany({
+    where: { saleId, printedAt: null },
+    data: { printedAt: new Date() },
+  });
+  if (markedFirstPrint.count > 0) {
     return;
   }
+
   await prisma.receipt.update({ where: { saleId }, data: { reprintCount: { increment: 1 } } });
 }

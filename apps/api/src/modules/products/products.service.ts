@@ -1,4 +1,4 @@
-import type { Prisma, PrismaClient } from '@prisma/client';
+import { Prisma, type PrismaClient } from '@prisma/client';
 import type {
   CreateProductRequest,
   Product,
@@ -10,6 +10,15 @@ import {
   DuplicateSkuError,
   ProductNotFoundError,
 } from './products.errors.js';
+
+function isUniqueConstraintOn(error: unknown, field: string): boolean {
+  return (
+    error instanceof Prisma.PrismaClientKnownRequestError &&
+    error.code === 'P2002' &&
+    Array.isArray(error.meta?.['target']) &&
+    (error.meta?.['target'] as string[]).includes(field)
+  );
+}
 
 type ProductWithRelations = Prisma.ProductGetPayload<{
   include: { category: true; inventory: true };
@@ -62,17 +71,16 @@ async function assertUniqueSkuAndBarcode(
   barcode: string | null | undefined,
   excludeProductId?: string,
 ): Promise<void> {
-  if (sku) {
-    const existing = await prisma.product.findUnique({ where: { sku } });
-    if (existing && existing.id !== excludeProductId) {
-      throw new DuplicateSkuError();
-    }
+  const [existingSku, existingBarcode] = await Promise.all([
+    sku ? prisma.product.findUnique({ where: { sku } }) : null,
+    barcode ? prisma.product.findUnique({ where: { barcode } }) : null,
+  ]);
+
+  if (existingSku && existingSku.id !== excludeProductId) {
+    throw new DuplicateSkuError();
   }
-  if (barcode) {
-    const existing = await prisma.product.findUnique({ where: { barcode } });
-    if (existing && existing.id !== excludeProductId) {
-      throw new DuplicateBarcodeError();
-    }
+  if (existingBarcode && existingBarcode.id !== excludeProductId) {
+    throw new DuplicateBarcodeError();
   }
 }
 
@@ -82,30 +90,36 @@ export async function createProduct(
 ): Promise<Product> {
   await assertUniqueSkuAndBarcode(prisma, input.sku, input.barcode);
 
-  const created = await prisma.$transaction(async (tx) => {
-    const product = await tx.product.create({
-      data: {
-        sku: input.sku,
-        barcode: input.barcode ?? null,
-        name: input.name,
-        description: input.description ?? null,
-        categoryId: input.categoryId,
-        price: input.price,
-        cost: input.cost,
-        taxRate: input.taxRate,
-        unit: input.unit,
-      },
-      include: { category: true },
+  try {
+    const created = await prisma.$transaction(async (tx) => {
+      const product = await tx.product.create({
+        data: {
+          sku: input.sku,
+          barcode: input.barcode ?? null,
+          name: input.name,
+          description: input.description ?? null,
+          categoryId: input.categoryId,
+          price: input.price,
+          cost: input.cost,
+          taxRate: input.taxRate,
+          unit: input.unit,
+        },
+        include: { category: true },
+      });
+
+      const inventory = await tx.inventory.create({
+        data: { productId: product.id, quantity: input.initialStock },
+      });
+
+      return { ...product, inventory };
     });
 
-    const inventory = await tx.inventory.create({
-      data: { productId: product.id, quantity: input.initialStock },
-    });
-
-    return { ...product, inventory };
-  });
-
-  return toProductDto(created);
+    return toProductDto(created);
+  } catch (error) {
+    if (isUniqueConstraintOn(error, 'sku')) throw new DuplicateSkuError();
+    if (isUniqueConstraintOn(error, 'barcode')) throw new DuplicateBarcodeError();
+    throw error;
+  }
 }
 
 export async function updateProduct(
@@ -120,11 +134,17 @@ export async function updateProduct(
 
   await assertUniqueSkuAndBarcode(prisma, input.sku, input.barcode, productId);
 
-  const updated = await prisma.product.update({
-    where: { id: productId },
-    data: input,
-    include: { category: true, inventory: true },
-  });
+  try {
+    const updated = await prisma.product.update({
+      where: { id: productId },
+      data: input,
+      include: { category: true, inventory: true },
+    });
 
-  return toProductDto(updated);
+    return toProductDto(updated);
+  } catch (error) {
+    if (isUniqueConstraintOn(error, 'sku')) throw new DuplicateSkuError();
+    if (isUniqueConstraintOn(error, 'barcode')) throw new DuplicateBarcodeError();
+    throw error;
+  }
 }

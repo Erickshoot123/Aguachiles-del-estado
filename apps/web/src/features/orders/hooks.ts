@@ -1,6 +1,6 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import type { CreateOrderRequest } from '@aguachiles/shared';
-import { useAuthStore } from '../auth/authStore';
+import { useIsLoggedIn } from '../auth/authStore';
 import { CASH_SESSION_QUERY_KEY } from '../cash/hooks';
 import { advanceOrder, cancelOrder, chargeOrder, createOrder, listOrders, listProducts } from './api';
 
@@ -8,7 +8,7 @@ const ORDERS_QUERY_KEY = ['orders'] as const;
 const PRODUCTS_QUERY_KEY = ['products'] as const;
 
 export function useOrders() {
-  const isLoggedIn = useAuthStore((state) => Boolean(state.accessToken));
+  const isLoggedIn = useIsLoggedIn();
 
   return useQuery({
     queryKey: ORDERS_QUERY_KEY,
@@ -19,7 +19,7 @@ export function useOrders() {
 }
 
 export function useProducts() {
-  const isLoggedIn = useAuthStore((state) => Boolean(state.accessToken));
+  const isLoggedIn = useIsLoggedIn();
 
   return useQuery({
     queryKey: PRODUCTS_QUERY_KEY,

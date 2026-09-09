@@ -1,8 +1,10 @@
 import { createHash, randomBytes } from 'node:crypto';
 import bcrypt from 'bcryptjs';
-import type { PrismaClient } from '@prisma/client';
+import { Prisma, type PrismaClient } from '@prisma/client';
 import type { AuthUser, LoginRequest } from '@aguachiles/shared';
 import { InactiveUserError, InvalidCredentialsError, InvalidRefreshTokenError } from './auth.errors.js';
+
+type PrismaClientOrTx = PrismaClient | Prisma.TransactionClient;
 
 export interface AuthenticatedUser {
   authUser: AuthUser;
@@ -45,7 +47,7 @@ function hashRefreshToken(rawToken: string): string {
 }
 
 export async function issueRefreshToken(
-  prisma: PrismaClient,
+  prisma: PrismaClientOrTx,
   userId: string,
   ttlHours: number,
 ): Promise<string> {
@@ -81,19 +83,25 @@ export async function rotateRefreshToken(
     throw new InactiveUserError();
   }
 
-  // updateMany con `revokedAt: null` en el where hace de la revocación una
-  // operación atómica: si dos solicitudes concurrentes llegan con el mismo
-  // token, solo una afecta una fila (count === 1); la otra ve count === 0
-  // y falla, en vez de que ambas roten el mismo token una vez cada una.
-  const revoked = await prisma.refreshToken.updateMany({
-    where: { id: existing.id, revokedAt: null },
-    data: { revokedAt: new Date() },
-  });
-  if (revoked.count === 0) {
-    throw new InvalidRefreshTokenError();
-  }
+  // Revocar el token viejo y emitir el nuevo en una sola transacción: si la
+  // emisión falla por lo que sea, la revocación se revierte con ella y el
+  // usuario conserva un token válido en vez de quedar con uno revocado y
+  // ninguno nuevo (lo que forzaría un re-login innecesario).
+  const newRawToken = await prisma.$transaction(async (tx) => {
+    // updateMany con `revokedAt: null` en el where hace de la revocación una
+    // operación atómica: si dos solicitudes concurrentes llegan con el mismo
+    // token, solo una afecta una fila (count === 1); la otra ve count === 0
+    // y falla, en vez de que ambas roten el mismo token una vez cada una.
+    const revoked = await tx.refreshToken.updateMany({
+      where: { id: existing.id, revokedAt: null },
+      data: { revokedAt: new Date() },
+    });
+    if (revoked.count === 0) {
+      throw new InvalidRefreshTokenError();
+    }
 
-  const newRawToken = await issueRefreshToken(prisma, existing.userId, ttlHours);
+    return issueRefreshToken(tx, existing.userId, ttlHours);
+  });
 
   return {
     authUser: {
