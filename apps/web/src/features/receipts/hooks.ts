@@ -8,23 +8,22 @@ function receiptQueryKey(orderId: string) {
 }
 
 export function useReceipt(orderId: string, enabled: boolean) {
-  const accessToken = useAuthStore((state) => state.accessToken);
+  const isLoggedIn = useAuthStore((state) => Boolean(state.accessToken));
 
   return useQuery({
     queryKey: receiptQueryKey(orderId),
-    queryFn: () => getReceipt(accessToken as string, orderId),
-    enabled: enabled && Boolean(accessToken),
+    queryFn: () => getReceipt(orderId),
+    enabled: enabled && isLoggedIn,
   });
 }
 
 export function usePrintTicket(orderId: string) {
-  const accessToken = useAuthStore((state) => state.accessToken);
   const queryClient = useQueryClient();
 
   return useMutation({
     mutationFn: async (ticket: Ticket) => {
       await printAtAgent(ticket);
-      await confirmPrinted(accessToken as string, orderId);
+      await confirmPrinted(orderId);
     },
     onSuccess: () => {
       void queryClient.invalidateQueries({ queryKey: receiptQueryKey(orderId) });

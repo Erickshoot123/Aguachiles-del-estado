@@ -1,6 +1,7 @@
 import type { JSX, ReactNode } from 'react';
 import { Link, useLocation } from 'react-router-dom';
 import { useAuthStore } from '../features/auth/authStore';
+import { useLogout } from '../features/auth/useLogout';
 
 interface NavItem {
   label: string;
@@ -49,7 +50,7 @@ function NavRow({ item, isActive }: { item: NavItem; isActive: boolean }): JSX.E
 
 export function AppShell({ children }: AppShellProps): JSX.Element {
   const user = useAuthStore((state) => state.user);
-  const clearSession = useAuthStore((state) => state.clearSession);
+  const logout = useLogout();
   const location = useLocation();
 
   return (
@@ -81,7 +82,7 @@ export function AppShell({ children }: AppShellProps): JSX.Element {
           </div>
           <button
             type="button"
-            onClick={clearSession}
+            onClick={logout}
             className="rounded-lg border border-border px-3 py-2 text-left text-[13px] text-text hover:border-border-hover"
           >
             {UI_TEXT.logout}

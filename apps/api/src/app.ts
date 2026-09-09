@@ -18,7 +18,7 @@ export async function buildApp(env: Env): Promise<FastifyInstance> {
   await app.register(errorHandlerPlugin);
   await app.register(prismaPlugin);
   await app.register(authPlugin, { env });
-  await app.register(authRoutes);
+  await app.register(authRoutes, { env });
   await app.register(categoriesRoutes);
   await app.register(productsRoutes);
   await app.register(ordersRoutes);

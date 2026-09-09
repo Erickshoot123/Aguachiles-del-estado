@@ -9,7 +9,7 @@ export function useLogin() {
   return useMutation<LoginResponse, Error, LoginRequest>({
     mutationFn: login,
     onSuccess: (data) => {
-      setSession(data.accessToken, data.user);
+      setSession(data.accessToken, data.refreshToken, data.user);
     },
   });
 }

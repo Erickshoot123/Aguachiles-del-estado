@@ -1,5 +1,6 @@
 import type { Ticket } from '@aguachiles/shared';
 import { apiRequest } from '../../lib/apiClient';
+import { authFetch } from '../../lib/authFetch';
 import { env } from '../../lib/env';
 
 interface ReceiptResponse {
@@ -7,12 +8,12 @@ interface ReceiptResponse {
   reprintCount: number;
 }
 
-export function getReceipt(token: string, orderId: string): Promise<ReceiptResponse> {
-  return apiRequest<ReceiptResponse>(`/api/orders/${orderId}/receipt`, { token });
+export function getReceipt(orderId: string): Promise<ReceiptResponse> {
+  return authFetch<ReceiptResponse>(`/api/orders/${orderId}/receipt`);
 }
 
-export function confirmPrinted(token: string, orderId: string): Promise<void> {
-  return apiRequest<void>(`/api/orders/${orderId}/receipt/printed`, { method: 'POST', token });
+export function confirmPrinted(orderId: string): Promise<void> {
+  return authFetch<void>(`/api/orders/${orderId}/receipt/printed`, { method: 'POST' });
 }
 
 export function printAtAgent(ticket: Ticket): Promise<void> {

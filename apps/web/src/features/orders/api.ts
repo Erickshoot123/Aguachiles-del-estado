@@ -1,26 +1,26 @@
 import type { CreateOrderRequest, Order, ProductSummary } from '@aguachiles/shared';
-import { apiRequest } from '../../lib/apiClient';
+import { authFetch } from '../../lib/authFetch';
 
-export function listOrders(token: string): Promise<Order[]> {
-  return apiRequest<Order[]>('/api/orders', { token });
+export function listOrders(): Promise<Order[]> {
+  return authFetch<Order[]>('/api/orders');
 }
 
-export function createOrder(token: string, input: CreateOrderRequest): Promise<Order> {
-  return apiRequest<Order>('/api/orders', { method: 'POST', body: input, token });
+export function createOrder(input: CreateOrderRequest): Promise<Order> {
+  return authFetch<Order>('/api/orders', { method: 'POST', body: input });
 }
 
-export function advanceOrder(token: string, orderId: string): Promise<Order> {
-  return apiRequest<Order>(`/api/orders/${orderId}/advance`, { method: 'PATCH', token });
+export function advanceOrder(orderId: string): Promise<Order> {
+  return authFetch<Order>(`/api/orders/${orderId}/advance`, { method: 'PATCH' });
 }
 
-export function cancelOrder(token: string, orderId: string): Promise<Order> {
-  return apiRequest<Order>(`/api/orders/${orderId}/cancel`, { method: 'PATCH', token });
+export function cancelOrder(orderId: string): Promise<Order> {
+  return authFetch<Order>(`/api/orders/${orderId}/cancel`, { method: 'PATCH' });
 }
 
-export function chargeOrder(token: string, orderId: string): Promise<Order> {
-  return apiRequest<Order>(`/api/orders/${orderId}/charge`, { method: 'PATCH', token });
+export function chargeOrder(orderId: string): Promise<Order> {
+  return authFetch<Order>(`/api/orders/${orderId}/charge`, { method: 'PATCH' });
 }
 
-export function listProducts(token: string): Promise<ProductSummary[]> {
-  return apiRequest<ProductSummary[]>('/api/products', { token });
+export function listProducts(): Promise<ProductSummary[]> {
+  return authFetch<ProductSummary[]>('/api/products');
 }

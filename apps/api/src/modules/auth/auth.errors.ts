@@ -11,3 +11,9 @@ export class InactiveUserError extends UnauthorizedError {
     super('El usuario está desactivado');
   }
 }
+
+export class InvalidRefreshTokenError extends UnauthorizedError {
+  constructor() {
+    super('La sesión expiró, vuelve a iniciar sesión');
+  }
+}

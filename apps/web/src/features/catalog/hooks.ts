@@ -17,31 +17,30 @@ const CATEGORIES_QUERY_KEY = ['categories'] as const;
 const CATALOG_PRODUCTS_QUERY_KEY = ['products', 'catalog'] as const;
 
 export function useCategories() {
-  const accessToken = useAuthStore((state) => state.accessToken);
+  const isLoggedIn = useAuthStore((state) => Boolean(state.accessToken));
 
   return useQuery({
     queryKey: CATEGORIES_QUERY_KEY,
-    queryFn: () => listCategories(accessToken as string),
-    enabled: Boolean(accessToken),
+    queryFn: listCategories,
+    enabled: isLoggedIn,
   });
 }
 
 export function useCatalogProducts() {
-  const accessToken = useAuthStore((state) => state.accessToken);
+  const isLoggedIn = useAuthStore((state) => Boolean(state.accessToken));
 
   return useQuery({
     queryKey: CATALOG_PRODUCTS_QUERY_KEY,
-    queryFn: () => listCatalogProducts(accessToken as string),
-    enabled: Boolean(accessToken),
+    queryFn: listCatalogProducts,
+    enabled: isLoggedIn,
   });
 }
 
 export function useCreateCategory() {
-  const accessToken = useAuthStore((state) => state.accessToken);
   const queryClient = useQueryClient();
 
   return useMutation({
-    mutationFn: (input: CreateCategoryRequest) => createCategory(accessToken as string, input),
+    mutationFn: (input: CreateCategoryRequest) => createCategory(input),
     onSuccess: () => {
       void queryClient.invalidateQueries({ queryKey: CATEGORIES_QUERY_KEY });
     },
@@ -49,11 +48,10 @@ export function useCreateCategory() {
 }
 
 export function useCreateProduct() {
-  const accessToken = useAuthStore((state) => state.accessToken);
   const queryClient = useQueryClient();
 
   return useMutation({
-    mutationFn: (input: CreateProductRequest) => createProduct(accessToken as string, input),
+    mutationFn: (input: CreateProductRequest) => createProduct(input),
     onSuccess: () => {
       void queryClient.invalidateQueries({ queryKey: CATALOG_PRODUCTS_QUERY_KEY });
     },
@@ -61,12 +59,11 @@ export function useCreateProduct() {
 }
 
 export function useUpdateProduct() {
-  const accessToken = useAuthStore((state) => state.accessToken);
   const queryClient = useQueryClient();
 
   return useMutation({
     mutationFn: ({ productId, input }: { productId: string; input: UpdateProductRequest }) =>
-      updateProduct(accessToken as string, productId, input),
+      updateProduct(productId, input),
     onSuccess: () => {
       void queryClient.invalidateQueries({ queryKey: CATALOG_PRODUCTS_QUERY_KEY });
     },

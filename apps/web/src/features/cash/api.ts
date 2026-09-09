@@ -1,26 +1,23 @@
 import type { CashSession } from '@aguachiles/shared';
-import { apiRequest } from '../../lib/apiClient';
+import { authFetch } from '../../lib/authFetch';
 
-export function getCurrentCashSession(token: string): Promise<CashSession | null> {
-  return apiRequest<CashSession | null>('/api/cash-sessions/current', { token });
+export function getCurrentCashSession(): Promise<CashSession | null> {
+  return authFetch<CashSession | null>('/api/cash-sessions/current');
 }
 
-export function openCashSession(token: string, openingAmount: number): Promise<CashSession> {
-  return apiRequest<CashSession>('/api/cash-sessions', {
+export function openCashSession(openingAmount: number): Promise<CashSession> {
+  return authFetch<CashSession>('/api/cash-sessions', {
     method: 'POST',
     body: { openingAmount },
-    token,
   });
 }
 
 export function closeCashSession(
-  token: string,
   sessionId: string,
   actualClosingAmount: number,
 ): Promise<CashSession> {
-  return apiRequest<CashSession>(`/api/cash-sessions/${sessionId}/close`, {
+  return authFetch<CashSession>(`/api/cash-sessions/${sessionId}/close`, {
     method: 'PATCH',
     body: { actualClosingAmount },
-    token,
   });
 }

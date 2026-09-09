@@ -5,32 +5,24 @@ import type {
   Product,
   UpdateProductRequest,
 } from '@aguachiles/shared';
-import { apiRequest } from '../../lib/apiClient';
+import { authFetch } from '../../lib/authFetch';
 
-export function listCategories(token: string): Promise<Category[]> {
-  return apiRequest<Category[]>('/api/categories', { token });
+export function listCategories(): Promise<Category[]> {
+  return authFetch<Category[]>('/api/categories');
 }
 
-export function createCategory(token: string, input: CreateCategoryRequest): Promise<Category> {
-  return apiRequest<Category>('/api/categories', { method: 'POST', body: input, token });
+export function createCategory(input: CreateCategoryRequest): Promise<Category> {
+  return authFetch<Category>('/api/categories', { method: 'POST', body: input });
 }
 
-export function listCatalogProducts(token: string): Promise<Product[]> {
-  return apiRequest<Product[]>('/api/products/catalog', { token });
+export function listCatalogProducts(): Promise<Product[]> {
+  return authFetch<Product[]>('/api/products/catalog');
 }
 
-export function createProduct(token: string, input: CreateProductRequest): Promise<Product> {
-  return apiRequest<Product>('/api/products', { method: 'POST', body: input, token });
+export function createProduct(input: CreateProductRequest): Promise<Product> {
+  return authFetch<Product>('/api/products', { method: 'POST', body: input });
 }
 
-export function updateProduct(
-  token: string,
-  productId: string,
-  input: UpdateProductRequest,
-): Promise<Product> {
-  return apiRequest<Product>(`/api/products/${productId}`, {
-    method: 'PATCH',
-    body: input,
-    token,
-  });
+export function updateProduct(productId: string, input: UpdateProductRequest): Promise<Product> {
+  return authFetch<Product>(`/api/products/${productId}`, { method: 'PATCH', body: input });
 }

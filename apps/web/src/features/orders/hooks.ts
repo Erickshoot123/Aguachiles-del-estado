@@ -8,32 +8,31 @@ const ORDERS_QUERY_KEY = ['orders'] as const;
 const PRODUCTS_QUERY_KEY = ['products'] as const;
 
 export function useOrders() {
-  const accessToken = useAuthStore((state) => state.accessToken);
+  const isLoggedIn = useAuthStore((state) => Boolean(state.accessToken));
 
   return useQuery({
     queryKey: ORDERS_QUERY_KEY,
-    queryFn: () => listOrders(accessToken as string),
-    enabled: Boolean(accessToken),
+    queryFn: listOrders,
+    enabled: isLoggedIn,
     refetchInterval: 15000,
   });
 }
 
 export function useProducts() {
-  const accessToken = useAuthStore((state) => state.accessToken);
+  const isLoggedIn = useAuthStore((state) => Boolean(state.accessToken));
 
   return useQuery({
     queryKey: PRODUCTS_QUERY_KEY,
-    queryFn: () => listProducts(accessToken as string),
-    enabled: Boolean(accessToken),
+    queryFn: listProducts,
+    enabled: isLoggedIn,
   });
 }
 
 export function useCreateOrder() {
-  const accessToken = useAuthStore((state) => state.accessToken);
   const queryClient = useQueryClient();
 
   return useMutation({
-    mutationFn: (input: CreateOrderRequest) => createOrder(accessToken as string, input),
+    mutationFn: (input: CreateOrderRequest) => createOrder(input),
     onSuccess: () => {
       void queryClient.invalidateQueries({ queryKey: ORDERS_QUERY_KEY });
     },
@@ -41,11 +40,10 @@ export function useCreateOrder() {
 }
 
 export function useAdvanceOrder() {
-  const accessToken = useAuthStore((state) => state.accessToken);
   const queryClient = useQueryClient();
 
   return useMutation({
-    mutationFn: (orderId: string) => advanceOrder(accessToken as string, orderId),
+    mutationFn: (orderId: string) => advanceOrder(orderId),
     onSuccess: () => {
       void queryClient.invalidateQueries({ queryKey: ORDERS_QUERY_KEY });
     },
@@ -53,11 +51,10 @@ export function useAdvanceOrder() {
 }
 
 export function useCancelOrder() {
-  const accessToken = useAuthStore((state) => state.accessToken);
   const queryClient = useQueryClient();
 
   return useMutation({
-    mutationFn: (orderId: string) => cancelOrder(accessToken as string, orderId),
+    mutationFn: (orderId: string) => cancelOrder(orderId),
     onSuccess: () => {
       void queryClient.invalidateQueries({ queryKey: ORDERS_QUERY_KEY });
     },
@@ -65,11 +62,10 @@ export function useCancelOrder() {
 }
 
 export function useChargeOrder() {
-  const accessToken = useAuthStore((state) => state.accessToken);
   const queryClient = useQueryClient();
 
   return useMutation({
-    mutationFn: (orderId: string) => chargeOrder(accessToken as string, orderId),
+    mutationFn: (orderId: string) => chargeOrder(orderId),
     onSuccess: () => {
       void queryClient.invalidateQueries({ queryKey: ORDERS_QUERY_KEY });
       void queryClient.invalidateQueries({ queryKey: CASH_SESSION_QUERY_KEY });
