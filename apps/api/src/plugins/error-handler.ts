@@ -23,6 +23,14 @@ function handleZodError(error: ZodError, reply: FastifyReply): void {
   reply.status(400).send(body);
 }
 
+function handleFastifyClientError(error: FastifyError, reply: FastifyReply): void {
+  const body: ErrorResponseBody = {
+    code: error.code ?? 'BAD_REQUEST',
+    message: error.message,
+  };
+  reply.status(error.statusCode as number).send(body);
+}
+
 function handleUnexpectedError(
   error: Error,
   request: FastifyRequest,
@@ -41,6 +49,10 @@ export default fp(async function errorHandlerPlugin(fastify: FastifyInstance): P
     }
     if (error instanceof ZodError) {
       handleZodError(error, reply);
+      return;
+    }
+    if (typeof error.statusCode === 'number' && error.statusCode >= 400 && error.statusCode < 500) {
+      handleFastifyClientError(error, reply);
       return;
     }
     handleUnexpectedError(error, request, reply);

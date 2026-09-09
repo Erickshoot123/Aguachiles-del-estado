@@ -29,10 +29,10 @@ export async function apiRequest<TResponse>(
   const response = await fetch(`${env.VITE_API_URL}${path}`, {
     method: options.method ?? 'GET',
     headers: {
-      'Content-Type': 'application/json',
+      ...(options.body !== undefined ? { 'Content-Type': 'application/json' } : {}),
       ...(options.token ? { Authorization: `Bearer ${options.token}` } : {}),
     },
-    body: options.body ? JSON.stringify(options.body) : undefined,
+    body: options.body !== undefined ? JSON.stringify(options.body) : undefined,
   });
 
   if (!response.ok) {
