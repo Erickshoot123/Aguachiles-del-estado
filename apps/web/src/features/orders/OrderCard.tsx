@@ -33,9 +33,12 @@ export function OrderCard({ order, advanceLabel, onOpenDetail, onAdvance }: Orde
       </div>
 
       <div className="flex flex-wrap items-center gap-2 border-t border-divider pt-2.5">
-        <span className="min-w-0 flex-1 font-mono text-[14px] font-semibold">
-          {formatCurrency(order.total)}
-        </span>
+        <span className="font-mono text-[14px] font-semibold">{formatCurrency(order.total)}</span>
+        {order.status === 'pending' ? (
+          <span className="rounded-full bg-accent-soft px-2 py-0.5 text-[11px] font-semibold text-accent-hover">
+            Sin cobrar
+          </span>
+        ) : null}
         <button
           type="button"
           onClick={(event) => {

@@ -1,7 +1,8 @@
 import { createOrderRequestSchema } from '@aguachiles/shared';
 import type { FastifyInstance } from 'fastify';
 import { z } from 'zod';
-import { advanceOrder, cancelOrder, createOrder, listActiveOrders } from './orders.service.js';
+import { requireOpenSession } from '../cash/cash.service.js';
+import { advanceOrder, cancelOrder, chargeOrder, createOrder, listActiveOrders } from './orders.service.js';
 
 const orderParamsSchema = z.object({ id: z.string().uuid() });
 
@@ -33,6 +34,17 @@ export default async function ordersRoutes(fastify: FastifyInstance): Promise<vo
     async (request, reply) => {
       const { id } = orderParamsSchema.parse(request.params);
       const order = await cancelOrder(fastify.prisma, id);
+      reply.status(200).send(order);
+    },
+  );
+
+  fastify.patch(
+    '/api/orders/:id/charge',
+    { preHandler: fastify.authenticate },
+    async (request, reply) => {
+      const { id } = orderParamsSchema.parse(request.params);
+      const { id: cashSessionId } = await requireOpenSession(fastify.prisma);
+      const order = await chargeOrder(fastify.prisma, id, request.user.sub, cashSessionId);
       reply.status(200).send(order);
     },
   );

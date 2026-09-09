@@ -91,11 +91,19 @@ async function seedMenu(): Promise<void> {
   }
 }
 
+async function seedCashRegister(): Promise<void> {
+  const existing = await prisma.cashRegister.findFirst({ where: { name: 'Caja principal' } });
+  if (!existing) {
+    await prisma.cashRegister.create({ data: { name: 'Caja principal' } });
+  }
+}
+
 async function main(): Promise<void> {
   const roleIds = await seedRoles();
   await seedAdminUser(roleIds['admin'] as string);
   await seedPaymentMethods();
   await seedMenu();
+  await seedCashRegister();
 
   console.warn(`Seed completado. Usuario admin: ${SEED_ADMIN_EMAIL} / ${SEED_ADMIN_PASSWORD}`);
 }

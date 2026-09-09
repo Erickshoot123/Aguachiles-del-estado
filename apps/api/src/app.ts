@@ -5,6 +5,7 @@ import authPlugin from './plugins/auth.js';
 import errorHandlerPlugin from './plugins/error-handler.js';
 import prismaPlugin from './plugins/prisma.js';
 import authRoutes from './modules/auth/auth.routes.js';
+import cashRoutes from './modules/cash/cash.routes.js';
 import ordersRoutes from './modules/orders/orders.routes.js';
 import productsRoutes from './modules/products/products.routes.js';
 
@@ -18,6 +19,7 @@ export async function buildApp(env: Env): Promise<FastifyInstance> {
   await app.register(authRoutes);
   await app.register(productsRoutes);
   await app.register(ordersRoutes);
+  await app.register(cashRoutes);
 
   app.get('/health', async () => ({ status: 'ok' }));
 

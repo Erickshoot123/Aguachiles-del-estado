@@ -23,3 +23,9 @@ export class InvalidFulfillmentTransitionError extends ConflictError {
     super(`No se puede avanzar un pedido en estado "${currentStatus}"`);
   }
 }
+
+export class OrderAlreadyChargedError extends ConflictError {
+  constructor() {
+    super('El pedido ya fue cobrado o no está pendiente de pago');
+  }
+}

@@ -13,6 +13,15 @@ export const fulfillmentStatusSchema = z.enum([
 ]);
 export type FulfillmentStatus = z.infer<typeof fulfillmentStatusSchema>;
 
+export const saleStatusSchema = z.enum([
+  'pending',
+  'completed',
+  'cancelled',
+  'refunded',
+  'partially_refunded',
+]);
+export type SaleStatus = z.infer<typeof saleStatusSchema>;
+
 export const createOrderItemSchema = z.object({
   productId: z.string().uuid(),
   quantity: z.number().positive(),
@@ -40,6 +49,7 @@ export const orderSchema = z.object({
   ticketNumber: z.string(),
   channel: saleChannelSchema,
   fulfillmentStatus: fulfillmentStatusSchema,
+  status: saleStatusSchema,
   createdAt: z.string().datetime(),
   items: z.array(orderItemSchema),
   subtotal: z.number().nonnegative(),

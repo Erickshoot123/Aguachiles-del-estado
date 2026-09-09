@@ -1,13 +1,18 @@
 import type { Order } from '@aguachiles/shared';
 import type { JSX } from 'react';
 import { CHANNEL_LABELS, formatCurrency, formatElapsedMinutes } from './channelLabels';
-import { useAdvanceOrder, useCancelOrder } from './hooks';
+import { useAdvanceOrder, useCancelOrder, useChargeOrder } from './hooks';
 
 const UI_TEXT = {
   total: 'Total',
   onBoardSince: 'Tiempo en tablero',
   cancelAction: 'Cancelar pedido',
   advanceAction: 'Avanzar',
+  chargeAction: 'Cobrar (efectivo)',
+  charging: 'Cobrando…',
+  paid: 'Pagado',
+  pending: 'Pendiente de cobro',
+  chargeError: 'No se pudo cobrar. ¿Hay una caja abierta?',
 } as const;
 
 interface OrderDetailModalProps {
@@ -19,6 +24,8 @@ interface OrderDetailModalProps {
 export function OrderDetailModal({ order, advanceLabel, onClose }: OrderDetailModalProps): JSX.Element {
   const advanceOrder = useAdvanceOrder();
   const cancelOrder = useCancelOrder();
+  const chargeOrder = useChargeOrder();
+  const isPaid = order.status !== 'pending';
 
   return (
     <div
@@ -32,6 +39,15 @@ export function OrderDetailModal({ order, advanceLabel, onClose }: OrderDetailMo
         <div className="flex items-baseline gap-2.5 border-b border-divider px-5 py-4">
           <span className="font-mono text-[20px] font-semibold">{order.ticketNumber}</span>
           <span className="text-[14px] text-muted">{CHANNEL_LABELS[order.channel]}</span>
+          <span
+            className={
+              isPaid
+                ? 'ml-auto rounded-full bg-green-100 px-2.5 py-1 text-[12px] font-semibold text-green-700'
+                : 'ml-auto rounded-full bg-accent-soft px-2.5 py-1 text-[12px] font-semibold text-accent-hover'
+            }
+          >
+            {isPaid ? UI_TEXT.paid : UI_TEXT.pending}
+          </span>
         </div>
 
         <div className="flex flex-col gap-3.5 px-5 py-4">
@@ -51,6 +67,9 @@ export function OrderDetailModal({ order, advanceLabel, onClose }: OrderDetailMo
           <span className="text-[13px] text-muted">
             {UI_TEXT.onBoardSince} {formatElapsedMinutes(order.createdAt)}
           </span>
+          {chargeOrder.isError ? (
+            <p className="text-sm text-red-600">{UI_TEXT.chargeError}</p>
+          ) : null}
         </div>
 
         <div className="flex flex-wrap gap-2.5 bg-bg px-5 py-4">
@@ -62,6 +81,16 @@ export function OrderDetailModal({ order, advanceLabel, onClose }: OrderDetailMo
           >
             {UI_TEXT.cancelAction}
           </button>
+          {!isPaid ? (
+            <button
+              type="button"
+              onClick={() => chargeOrder.mutate(order.id)}
+              disabled={chargeOrder.isPending}
+              className="h-11 rounded-lg bg-text px-4 text-[14px] font-semibold text-white hover:bg-accent disabled:opacity-60"
+            >
+              {chargeOrder.isPending ? UI_TEXT.charging : UI_TEXT.chargeAction}
+            </button>
+          ) : null}
           <button
             type="button"
             onClick={() => advanceOrder.mutate(order.id, { onSuccess: onClose })}

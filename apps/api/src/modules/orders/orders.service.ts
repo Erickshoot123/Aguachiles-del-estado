@@ -3,6 +3,7 @@ import type { CreateOrderRequest, Order } from '@aguachiles/shared';
 import {
   InsufficientStockError,
   InvalidFulfillmentTransitionError,
+  OrderAlreadyChargedError,
   OrderNotFoundError,
   ProductNotAvailableError,
 } from './orders.errors.js';
@@ -18,6 +19,7 @@ function toOrderDto(sale: SaleWithItems): Order {
     ticketNumber: sale.ticketNumber,
     channel: sale.channel,
     fulfillmentStatus: sale.fulfillmentStatus,
+    status: sale.status,
     createdAt: sale.createdAt.toISOString(),
     subtotal: sale.subtotal.toNumber(),
     taxTotal: sale.taxTotal.toNumber(),
@@ -205,6 +207,48 @@ export async function cancelOrder(prisma: PrismaClient, orderId: string): Promis
     return tx.sale.update({
       where: { id: orderId },
       data: { fulfillmentStatus: 'cancelled', status: 'cancelled' },
+      include: { items: { include: { product: true } } },
+    });
+  });
+
+  return toOrderDto(order);
+}
+
+export async function chargeOrder(
+  prisma: PrismaClient,
+  orderId: string,
+  userId: string,
+  cashSessionId: string,
+): Promise<Order> {
+  const order = await prisma.$transaction(async (tx) => {
+    const sale = await tx.sale.findUnique({ where: { id: orderId } });
+    if (!sale) {
+      throw new OrderNotFoundError();
+    }
+    if (sale.status !== 'pending') {
+      throw new OrderAlreadyChargedError();
+    }
+
+    const cashPaymentMethod = await tx.paymentMethod.findFirstOrThrow({
+      where: { type: 'cash', isActive: true },
+    });
+
+    await tx.salePayment.create({
+      data: { saleId: sale.id, paymentMethodId: cashPaymentMethod.id, amount: sale.total },
+    });
+    await tx.cashMovement.create({
+      data: {
+        sessionId: cashSessionId,
+        type: 'sale_income',
+        paymentMethodId: cashPaymentMethod.id,
+        amount: sale.total,
+        userId,
+      },
+    });
+
+    return tx.sale.update({
+      where: { id: orderId },
+      data: { status: 'completed', cashRegisterSessionId: cashSessionId },
       include: { items: { include: { product: true } } },
     });
   });

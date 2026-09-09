@@ -1,23 +1,29 @@
 import type { JSX, ReactNode } from 'react';
+import { Link, useLocation } from 'react-router-dom';
 import { useAuthStore } from '../features/auth/authStore';
 
-const NAV_SECTIONS = [
+interface NavItem {
+  label: string;
+  path?: string;
+}
+
+const NAV_SECTIONS: readonly { title: string; items: readonly NavItem[] }[] = [
   {
     title: 'Operación',
     items: [
-      { label: 'Pedidos', active: true },
-      { label: 'Menú y productos', active: false },
-      { label: 'Inventario', active: false },
+      { label: 'Pedidos', path: '/' },
+      { label: 'Menú y productos' },
+      { label: 'Inventario' },
     ],
   },
   {
     title: 'Administración',
     items: [
-      { label: 'Caja y cierre', active: false },
-      { label: 'Reportes', active: false },
+      { label: 'Caja y cierre', path: '/caja' },
+      { label: 'Reportes' },
     ],
   },
-] as const;
+];
 
 const UI_TEXT = {
   brand: 'Aguachiles',
@@ -29,9 +35,25 @@ interface AppShellProps {
   children: ReactNode;
 }
 
+function NavRow({ item, isActive }: { item: NavItem; isActive: boolean }): JSX.Element {
+  const className = isActive
+    ? 'flex min-h-[44px] items-center rounded-[9px] bg-accent-soft px-3 text-[15px] font-semibold text-accent-hover'
+    : 'flex min-h-[44px] items-center rounded-[9px] px-3 text-[15px] text-muted-2 hover:bg-bg';
+
+  if (!item.path) {
+    return <div className={className}>{item.label}</div>;
+  }
+  return (
+    <Link to={item.path} className={className}>
+      {item.label}
+    </Link>
+  );
+}
+
 export function AppShell({ children }: AppShellProps): JSX.Element {
   const user = useAuthStore((state) => state.user);
   const clearSession = useAuthStore((state) => state.clearSession);
+  const location = useLocation();
 
   return (
     <div className="flex min-h-screen w-full bg-bg">
@@ -50,16 +72,7 @@ export function AppShell({ children }: AppShellProps): JSX.Element {
                 {section.title}
               </div>
               {section.items.map((item) => (
-                <div
-                  key={item.label}
-                  className={
-                    item.active
-                      ? 'flex min-h-[44px] items-center rounded-[9px] bg-accent-soft px-3 text-[15px] font-semibold text-accent-hover'
-                      : 'flex min-h-[44px] items-center rounded-[9px] px-3 text-[15px] text-muted-2'
-                  }
-                >
-                  {item.label}
-                </div>
+                <NavRow key={item.label} item={item} isActive={item.path === location.pathname} />
               ))}
             </div>
           ))}

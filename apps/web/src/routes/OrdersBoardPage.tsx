@@ -27,9 +27,10 @@ export function OrdersBoardPage(): JSX.Element {
   const ordersQuery = useOrders();
   const advanceOrder = useAdvanceOrder();
   const [isCreating, setIsCreating] = useState(false);
-  const [detailOrder, setDetailOrder] = useState<Order | null>(null);
+  const [detailOrderId, setDetailOrderId] = useState<string | null>(null);
 
   const orders = ordersQuery.data ?? [];
+  const detailOrder = orders.find((order) => order.id === detailOrderId) ?? null;
 
   const subtitle = ordersQuery.isLoading
     ? UI_TEXT.subtitleLoading
@@ -82,7 +83,7 @@ export function OrdersBoardPage(): JSX.Element {
                       key={order.id}
                       order={order}
                       advanceLabel={column.advanceActionLabel}
-                      onOpenDetail={setDetailOrder}
+                      onOpenDetail={(order) => setDetailOrderId(order.id)}
                       onAdvance={(orderId) => advanceOrder.mutate(orderId)}
                     />
                   ))
@@ -101,7 +102,7 @@ export function OrdersBoardPage(): JSX.Element {
             BOARD_COLUMNS.find((column) => column.key === detailOrder.fulfillmentStatus)
               ?.advanceActionLabel ?? UI_TEXT.newOrder
           }
-          onClose={() => setDetailOrder(null)}
+          onClose={() => setDetailOrderId(null)}
         />
       ) : null}
     </AppShell>

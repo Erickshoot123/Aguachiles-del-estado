@@ -1,7 +1,7 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import type { CreateOrderRequest } from '@aguachiles/shared';
 import { useAuthStore } from '../auth/authStore';
-import { advanceOrder, cancelOrder, createOrder, listOrders, listProducts } from './api';
+import { advanceOrder, cancelOrder, chargeOrder, createOrder, listOrders, listProducts } from './api';
 
 const ORDERS_QUERY_KEY = ['orders'] as const;
 const PRODUCTS_QUERY_KEY = ['products'] as const;
@@ -57,6 +57,18 @@ export function useCancelOrder() {
 
   return useMutation({
     mutationFn: (orderId: string) => cancelOrder(accessToken as string, orderId),
+    onSuccess: () => {
+      void queryClient.invalidateQueries({ queryKey: ORDERS_QUERY_KEY });
+    },
+  });
+}
+
+export function useChargeOrder() {
+  const accessToken = useAuthStore((state) => state.accessToken);
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: (orderId: string) => chargeOrder(accessToken as string, orderId),
     onSuccess: () => {
       void queryClient.invalidateQueries({ queryKey: ORDERS_QUERY_KEY });
     },
