@@ -12,16 +12,13 @@ const NAV_SECTIONS: readonly { title: string; items: readonly NavItem[] }[] = [
     title: 'Operación',
     items: [
       { label: 'Pedidos', path: '/' },
-      { label: 'Menú y productos' },
+      { label: 'Menú y productos', path: '/menu' },
       { label: 'Inventario' },
     ],
   },
   {
     title: 'Administración',
-    items: [
-      { label: 'Caja y cierre', path: '/caja' },
-      { label: 'Reportes' },
-    ],
+    items: [{ label: 'Caja y cierre', path: '/caja' }, { label: 'Reportes' }],
   },
 ];
 

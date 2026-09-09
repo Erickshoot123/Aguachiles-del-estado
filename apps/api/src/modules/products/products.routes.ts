@@ -1,20 +1,40 @@
-import type { ProductSummary } from '@aguachiles/shared';
+import { createProductRequestSchema, updateProductRequestSchema } from '@aguachiles/shared';
 import type { FastifyInstance } from 'fastify';
+import { idParamSchema } from '../../lib/paramsSchemas.js';
+import {
+  createProduct,
+  listActiveProductSummaries,
+  listCatalogProducts,
+  updateProduct,
+} from './products.service.js';
 
 export default async function productsRoutes(fastify: FastifyInstance): Promise<void> {
   fastify.get('/api/products', { preHandler: fastify.authenticate }, async (_request, reply) => {
-    const products = await fastify.prisma.product.findMany({
-      where: { isActive: true },
-      orderBy: { name: 'asc' },
-    });
-
-    const body: ProductSummary[] = products.map((product) => ({
-      id: product.id,
-      name: product.name,
-      price: product.price.toNumber(),
-      unit: product.unit,
-    }));
-
-    reply.status(200).send(body);
+    reply.status(200).send(await listActiveProductSummaries(fastify.prisma));
   });
+
+  fastify.get(
+    '/api/products/catalog',
+    { preHandler: fastify.authenticate },
+    async (_request, reply) => {
+      reply.status(200).send(await listCatalogProducts(fastify.prisma));
+    },
+  );
+
+  fastify.post('/api/products', { preHandler: fastify.authenticate }, async (request, reply) => {
+    const input = createProductRequestSchema.parse(request.body);
+    const product = await createProduct(fastify.prisma, input);
+    reply.status(201).send(product);
+  });
+
+  fastify.patch(
+    '/api/products/:id',
+    { preHandler: fastify.authenticate },
+    async (request, reply) => {
+      const { id } = idParamSchema.parse(request.params);
+      const input = updateProductRequestSchema.parse(request.body);
+      const product = await updateProduct(fastify.prisma, id, input);
+      reply.status(200).send(product);
+    },
+  );
 }
