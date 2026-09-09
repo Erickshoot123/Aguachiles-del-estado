@@ -6,6 +6,7 @@ import { CashPage } from './routes/CashPage';
 import { CatalogPage } from './routes/CatalogPage';
 import { LoginPage } from './routes/LoginPage';
 import { OrdersBoardPage } from './routes/OrdersBoardPage';
+import { ReportsPage } from './routes/ReportsPage';
 
 export function App(): JSX.Element {
   return (
@@ -34,6 +35,14 @@ export function App(): JSX.Element {
             element={
               <ProtectedRoute>
                 <CatalogPage />
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="/reportes"
+            element={
+              <ProtectedRoute>
+                <ReportsPage />
               </ProtectedRoute>
             }
           />

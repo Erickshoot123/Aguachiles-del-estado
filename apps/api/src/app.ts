@@ -10,6 +10,7 @@ import categoriesRoutes from './modules/categories/categories.routes.js';
 import ordersRoutes from './modules/orders/orders.routes.js';
 import productsRoutes from './modules/products/products.routes.js';
 import receiptsRoutes from './modules/receipts/receipts.routes.js';
+import reportsRoutes from './modules/reports/reports.routes.js';
 
 export async function buildApp(env: Env): Promise<FastifyInstance> {
   const app = Fastify({ logger: true });
@@ -24,6 +25,7 @@ export async function buildApp(env: Env): Promise<FastifyInstance> {
   await app.register(ordersRoutes);
   await app.register(cashRoutes);
   await app.register(receiptsRoutes);
+  await app.register(reportsRoutes);
 
   app.get('/health', async () => ({ status: 'ok' }));
 

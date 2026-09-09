@@ -19,7 +19,10 @@ const NAV_SECTIONS: readonly { title: string; items: readonly NavItem[] }[] = [
   },
   {
     title: 'Administración',
-    items: [{ label: 'Caja y cierre', path: '/caja' }, { label: 'Reportes' }],
+    items: [
+      { label: 'Caja y cierre', path: '/caja' },
+      { label: 'Reportes', path: '/reportes' },
+    ],
   },
 ];
 
