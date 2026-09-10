@@ -33,7 +33,7 @@ export default async function productsRoutes(fastify: FastifyInstance): Promise<
     async (request, reply) => {
       const { id } = idParamSchema.parse(request.params);
       const input = updateProductRequestSchema.parse(request.body);
-      const product = await updateProduct(fastify.prisma, id, input);
+      const product = await updateProduct(fastify.prisma, id, request.user.sub, input);
       reply.status(200).send(product);
     },
   );

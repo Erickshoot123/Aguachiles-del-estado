@@ -4,6 +4,7 @@ import type { Env } from './config/env.js';
 import authPlugin from './plugins/auth.js';
 import errorHandlerPlugin from './plugins/error-handler.js';
 import prismaPlugin from './plugins/prisma.js';
+import auditRoutes from './modules/audit/audit.routes.js';
 import authRoutes from './modules/auth/auth.routes.js';
 import cashRoutes from './modules/cash/cash.routes.js';
 import categoriesRoutes from './modules/categories/categories.routes.js';
@@ -34,6 +35,7 @@ export async function buildApp(env: Env): Promise<FastifyInstance> {
   await app.register(reportsRoutes);
   await app.register(suppliersRoutes);
   await app.register(purchasesRoutes);
+  await app.register(auditRoutes);
 
   app.get('/health', async () => ({ status: 'ok' }));
 

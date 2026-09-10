@@ -1,10 +1,11 @@
-import { Prisma, type PrismaClient } from '@prisma/client';
+import { Prisma, type Product as PrismaProduct, type PrismaClient } from '@prisma/client';
 import type {
   CreateProductRequest,
   Product,
   ProductSummary,
   UpdateProductRequest,
 } from '@aguachiles/shared';
+import { recordAuditLog } from '../audit/audit.service.js';
 import {
   DuplicateBarcodeError,
   DuplicateSkuError,
@@ -122,9 +123,29 @@ export async function createProduct(
   }
 }
 
+async function recordPriceChangeAudit(
+  prisma: PrismaClient,
+  userId: string,
+  existing: PrismaProduct,
+  updated: PrismaProduct,
+): Promise<void> {
+  if (existing.price.equals(updated.price) && existing.cost.equals(updated.cost)) {
+    return;
+  }
+  await recordAuditLog(prisma, {
+    userId,
+    action: 'price_change',
+    entity: 'product',
+    entityId: updated.id,
+    oldValue: { name: existing.name, price: existing.price.toNumber(), cost: existing.cost.toNumber() },
+    newValue: { name: updated.name, price: updated.price.toNumber(), cost: updated.cost.toNumber() },
+  });
+}
+
 export async function updateProduct(
   prisma: PrismaClient,
   productId: string,
+  userId: string,
   input: UpdateProductRequest,
 ): Promise<Product> {
   const existing = await prisma.product.findUnique({ where: { id: productId } });
@@ -140,6 +161,8 @@ export async function updateProduct(
       data: input,
       include: { category: true, inventory: true },
     });
+
+    await recordPriceChangeAudit(prisma, userId, existing, updated);
 
     return toProductDto(updated);
   } catch (error) {

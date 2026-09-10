@@ -1,5 +1,6 @@
 import { Prisma, type CashRegister as PrismaCashRegister, type PrismaClient } from '@prisma/client';
 import type { CashMovement, CashRegister, CashSession, CreateCashMovementRequest } from '@aguachiles/shared';
+import { recordAuditLog } from '../audit/audit.service.js';
 import {
   CashSessionAlreadyClosedError,
   CashSessionAlreadyOpenError,
@@ -138,6 +139,14 @@ export async function openSession(
     include: { cashRegister: true },
   });
 
+  await recordAuditLog(prisma, {
+    userId,
+    action: 'cash_session_opened',
+    entity: 'cash_session',
+    entityId: session.id,
+    newValue: { cashRegisterName: cashRegister.name, openingAmount },
+  });
+
   return toCashSessionDto(session);
 }
 
@@ -158,6 +167,7 @@ export async function closeSession(
   const expected = await computeExpectedClosingAmount(prisma, sessionId, session.openingAmount);
   const actual = new Prisma.Decimal(actualClosingAmount);
 
+  const difference = actual.sub(expected);
   const updated = await prisma.cashRegisterSession.update({
     where: { id: sessionId },
     data: {
@@ -166,9 +176,18 @@ export async function closeSession(
       closedAt: new Date(),
       expectedClosingAmount: expected,
       actualClosingAmount: actual,
-      difference: actual.sub(expected),
+      difference,
     },
     include: { cashRegister: true },
+  });
+
+  await recordAuditLog(prisma, {
+    userId,
+    action: 'cash_session_closed',
+    entity: 'cash_session',
+    entityId: sessionId,
+    oldValue: { expectedClosingAmount: expected.toNumber() },
+    newValue: { actualClosingAmount: actual.toNumber(), difference: difference.toNumber() },
   });
 
   return toCashSessionDto(updated);

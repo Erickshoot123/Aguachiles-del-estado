@@ -2,6 +2,7 @@ import type { JSX } from 'react';
 import { BrowserRouter, Route, Routes } from 'react-router-dom';
 import { AuthBootstrap } from './features/auth/AuthBootstrap';
 import { ProtectedRoute } from './features/auth/ProtectedRoute';
+import { AuditPage } from './routes/AuditPage';
 import { CashPage } from './routes/CashPage';
 import { CatalogPage } from './routes/CatalogPage';
 import { LoginPage } from './routes/LoginPage';
@@ -52,6 +53,14 @@ export function App(): JSX.Element {
             element={
               <ProtectedRoute>
                 <SuppliersPage />
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="/auditoria"
+            element={
+              <ProtectedRoute>
+                <AuditPage />
               </ProtectedRoute>
             }
           />

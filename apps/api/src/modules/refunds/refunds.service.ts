@@ -1,5 +1,6 @@
 import { Prisma, type PrismaClient } from '@prisma/client';
 import type { CreateRefundRequest, RefundableSale, RefundResult } from '@aguachiles/shared';
+import { recordAuditLog } from '../audit/audit.service.js';
 import {
   EmptyRefundRequestError,
   RefundQuantityExceedsAvailableError,
@@ -179,6 +180,18 @@ export async function createRefund(
     await tx.sale.update({
       where: { id: saleId },
       data: { status: nextSaleStatus(sale, lines) },
+    });
+
+    await recordAuditLog(tx, {
+      userId,
+      action: 'refund_created',
+      entity: 'refund',
+      entityId: created.id,
+      newValue: {
+        ticketNumber: sale.ticketNumber,
+        reason: input.reason,
+        totalRefunded: totalRefunded.toNumber(),
+      },
     });
 
     return created;
