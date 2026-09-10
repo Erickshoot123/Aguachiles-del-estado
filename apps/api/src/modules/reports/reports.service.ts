@@ -1,31 +1,6 @@
 import { Prisma, type CashRegisterSession, type PrismaClient, type User } from '@prisma/client';
 import type { CashSessionHistoryItem, SalesReport } from '@aguachiles/shared';
-
-type SaleWithRelations = Prisma.SaleGetPayload<{
-  include: {
-    items: { include: { product: true } };
-    payments: { include: { paymentMethod: true } };
-    user: true;
-    refunds: { include: { items: true } };
-  };
-}>;
-
-const REPORTABLE_STATUSES = ['completed', 'partially_refunded', 'refunded'] as const;
-
-function refundedTotalOf(sale: SaleWithRelations): Prisma.Decimal {
-  return sale.refunds.reduce((sum, refund) => sum.add(refund.totalRefunded), new Prisma.Decimal(0));
-}
-
-function refundedItemsOf(
-  sale: SaleWithRelations,
-  saleItemId: string,
-): { amount: Prisma.Decimal; quantity: Prisma.Decimal } {
-  const items = sale.refunds.flatMap((refund) => refund.items).filter((item) => item.saleItemId === saleItemId);
-  return {
-    amount: items.reduce((sum, item) => sum.add(item.amount), new Prisma.Decimal(0)),
-    quantity: items.reduce((sum, item) => sum.add(item.quantity), new Prisma.Decimal(0)),
-  };
-}
+import { fetchSalesForPeriod, refundedItemsOf, refundedTotalOf, type SaleWithRelations } from './salesPeriod.js';
 
 interface Accumulator {
   totalSales: Prisma.Decimal;
@@ -142,15 +117,7 @@ export async function getSalesReport(
   from: Date,
   to: Date,
 ): Promise<SalesReport> {
-  const sales = await prisma.sale.findMany({
-    where: { status: { in: [...REPORTABLE_STATUSES] }, createdAt: { gte: from, lte: to } },
-    include: {
-      items: { include: { product: true } },
-      payments: { include: { paymentMethod: true } },
-      user: true,
-      refunds: { include: { items: true } },
-    },
-  });
+  const sales = await fetchSalesForPeriod(prisma, from, to);
 
   const acc = createAccumulator();
   for (const sale of sales) {
