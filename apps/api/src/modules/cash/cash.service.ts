@@ -1,5 +1,5 @@
 import { Prisma, type PrismaClient } from '@prisma/client';
-import type { CashSession } from '@aguachiles/shared';
+import type { CashMovement, CashSession, CreateCashMovementRequest } from '@aguachiles/shared';
 import {
   CashSessionAlreadyClosedError,
   CashSessionAlreadyOpenError,
@@ -13,6 +13,19 @@ type SessionWithRegister = Prisma.CashRegisterSessionGetPayload<{
 }>;
 
 type MovementWithMethod = Prisma.CashMovementGetPayload<{ include: { paymentMethod: true } }>;
+
+type MovementWithUser = Prisma.CashMovementGetPayload<{ include: { user: true } }>;
+
+function toCashMovementDto(movement: MovementWithUser): CashMovement {
+  return {
+    id: movement.id,
+    type: movement.type,
+    amount: movement.amount.toNumber(),
+    description: movement.description,
+    userName: movement.user.name,
+    createdAt: movement.createdAt.toISOString(),
+  };
+}
 
 function toCashSessionDto(session: SessionWithRegister): CashSession {
   return {
@@ -142,4 +155,46 @@ export async function requireOpenSession(
     throw new NoOpenCashSessionError();
   }
   return { id: session.id };
+}
+
+export async function createCashMovement(
+  prisma: PrismaClient,
+  sessionId: string,
+  userId: string,
+  input: CreateCashMovementRequest,
+): Promise<CashMovement> {
+  const session = await prisma.cashRegisterSession.findUnique({ where: { id: sessionId } });
+  if (!session) {
+    throw new CashSessionNotFoundError();
+  }
+  if (session.status !== 'open') {
+    throw new CashSessionAlreadyClosedError();
+  }
+  const movement = await prisma.cashMovement.create({
+    data: {
+      sessionId,
+      type: input.type,
+      amount: new Prisma.Decimal(input.amount),
+      description: input.description,
+      userId,
+    },
+    include: { user: true },
+  });
+  return toCashMovementDto(movement);
+}
+
+export async function listCashMovements(
+  prisma: PrismaClient,
+  sessionId: string,
+): Promise<CashMovement[]> {
+  const session = await prisma.cashRegisterSession.findUnique({ where: { id: sessionId } });
+  if (!session) {
+    throw new CashSessionNotFoundError();
+  }
+  const movements = await prisma.cashMovement.findMany({
+    where: { sessionId },
+    include: { user: true },
+    orderBy: { createdAt: 'desc' },
+  });
+  return movements.map(toCashMovementDto);
 }

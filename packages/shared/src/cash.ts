@@ -25,3 +25,29 @@ export const cashSessionSchema = z.object({
   difference: z.number().nullable(),
 });
 export type CashSession = z.infer<typeof cashSessionSchema>;
+
+export const cashMovementTypeSchema = z.enum([
+  'sale_income',
+  'withdrawal',
+  'deposit',
+  'expense',
+  'refund',
+]);
+export type CashMovementType = z.infer<typeof cashMovementTypeSchema>;
+
+export const createCashMovementRequestSchema = z.object({
+  type: z.enum(['withdrawal', 'deposit']),
+  amount: z.number().positive(),
+  description: z.string().min(1),
+});
+export type CreateCashMovementRequest = z.infer<typeof createCashMovementRequestSchema>;
+
+export const cashMovementSchema = z.object({
+  id: z.string().uuid(),
+  type: cashMovementTypeSchema,
+  amount: z.number(),
+  description: z.string().nullable(),
+  userName: z.string(),
+  createdAt: z.string().datetime(),
+});
+export type CashMovement = z.infer<typeof cashMovementSchema>;

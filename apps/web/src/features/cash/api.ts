@@ -1,4 +1,4 @@
-import type { CashSession } from '@aguachiles/shared';
+import type { CashMovement, CashSession, CreateCashMovementRequest } from '@aguachiles/shared';
 import { authFetch } from '../../lib/authFetch';
 
 export function getCurrentCashSession(): Promise<CashSession | null> {
@@ -19,5 +19,19 @@ export function closeCashSession(
   return authFetch<CashSession>(`/api/cash-sessions/${sessionId}/close`, {
     method: 'PATCH',
     body: { actualClosingAmount },
+  });
+}
+
+export function listCashMovements(sessionId: string): Promise<CashMovement[]> {
+  return authFetch<CashMovement[]>(`/api/cash-sessions/${sessionId}/movements`);
+}
+
+export function createCashMovement(
+  sessionId: string,
+  input: CreateCashMovementRequest,
+): Promise<CashMovement> {
+  return authFetch<CashMovement>(`/api/cash-sessions/${sessionId}/movements`, {
+    method: 'POST',
+    body: input,
   });
 }

@@ -2,6 +2,7 @@ import type { CashSession } from '@aguachiles/shared';
 import type { JSX } from 'react';
 import { useState } from 'react';
 import { AppShell } from '../components/AppShell';
+import { CashMovementsPanel } from '../features/cash/CashMovementsPanel';
 import { formatCurrency } from '../features/orders/channelLabels';
 import { useCloseCashSession, useCurrentCashSession, useOpenCashSession } from '../features/cash/hooks';
 
@@ -113,6 +114,8 @@ function OpenSessionPanel({
           {closeSession.isPending ? UI_TEXT.closingAction : UI_TEXT.closeAction}
         </button>
       </div>
+
+      <CashMovementsPanel sessionId={session.id} />
     </div>
   );
 }
