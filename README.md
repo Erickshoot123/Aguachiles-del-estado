@@ -67,6 +67,32 @@ en el frontend y se recuerdan en `localStorage`.
 - `npm run build` — build de producción por workspace.
 - `npm run test` — pruebas por workspace.
 
+## Pruebas (`apps/api`)
+
+Las pruebas de integración/API/concurrencia corren contra una base de datos Postgres real
+dedicada (no mocks de infraestructura), separada de la de desarrollo. Con el contenedor de
+Postgres ya corriendo, créala una sola vez y aplícale las migraciones:
+
+```bash
+docker exec -it aguachiles-postgres psql -U postgres -c "CREATE DATABASE aguachiles_pos_test;"
+DATABASE_URL="postgresql://postgres:postgres@localhost:5432/aguachiles_pos_test" npx --workspace=@aguachiles/api prisma migrate deploy
+```
+
+(ajusta usuario/contraseña/puerto según tu `apps/api/.env`). Luego, desde la raíz:
+
+```bash
+npm run test --workspace=@aguachiles/api
+```
+
+Esto corre suites unitarias, de integración (vía `app.inject()` de Fastify contra la DB de
+prueba real), de contrato de API, de constraints de base de datos, y de concurrencia
+(condiciones de carrera explícitas: sobreventa de stock y doble apertura de la misma caja).
+Las pruebas truncan y re-siembran la DB de prueba entre archivos, así que nunca tocan
+`aguachiles_pos` (la de desarrollo).
+
+Pendiente (fuera del alcance actual): pruebas E2E con Playwright contra la UI real, y cobertura
+exhaustiva endpoint-por-endpoint de módulos secundarios (proveedores, compras, analítica).
+
 ## Estado actual (Fase 1 en curso)
 
 Fase 0 completa (monorepo, tooling, esquema de base de datos, auth). De la Fase 1 ya funcionan

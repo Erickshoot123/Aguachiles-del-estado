@@ -257,6 +257,11 @@ model CashRegisterSession {
   cashMovements CashMovement[]
   sales         Sale[]
 
+  // Además de este modelo, una migración agrega un índice único parcial
+  // sobre (cash_register_id) WHERE status = 'open': Prisma no puede
+  // expresar índices únicos parciales en el schema, pero sin él, dos
+  // aperturas de caja simultáneas en la misma caja registradora pueden
+  // tener éxito ambas (comprobado con una prueba de concurrencia).
   @@map("cash_register_sessions")
 }
 

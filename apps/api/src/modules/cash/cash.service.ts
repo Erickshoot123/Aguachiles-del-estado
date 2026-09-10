@@ -13,7 +13,7 @@ type SessionWithRegister = Prisma.CashRegisterSessionGetPayload<{
   include: { cashRegister: true };
 }>;
 
-type MovementWithMethod = Prisma.CashMovementGetPayload<{ include: { paymentMethod: true } }>;
+export type MovementWithMethod = Prisma.CashMovementGetPayload<{ include: { paymentMethod: true } }>;
 
 type MovementWithUser = Prisma.CashMovementGetPayload<{ include: { user: true } }>;
 
@@ -54,7 +54,7 @@ function toCashSessionDto(session: SessionWithRegister): CashSession {
   };
 }
 
-function cashMovementsDelta(movements: MovementWithMethod[]): Prisma.Decimal {
+export function cashMovementsDelta(movements: MovementWithMethod[]): Prisma.Decimal {
   return movements.reduce((total, movement) => {
     if (movement.type === 'withdrawal' || movement.type === 'expense') {
       return total.sub(movement.amount);
@@ -130,14 +130,28 @@ export async function openSession(
     throw new CashSessionAlreadyOpenError();
   }
 
-  const session = await prisma.cashRegisterSession.create({
-    data: {
-      cashRegisterId: cashRegister.id,
-      openedByUserId: userId,
-      openingAmount: new Prisma.Decimal(openingAmount),
-    },
-    include: { cashRegister: true },
-  });
+  // El SELECT de arriba es solo un atajo para el caso común (devuelve un
+  // error claro sin ir hasta el INSERT); la garantía real contra dos
+  // aperturas concurrentes en la misma caja es el índice único parcial de
+  // la migración (cash_register_id) WHERE status = 'open' -- sin él, dos
+  // solicitudes simultáneas pueden pasar ambas el SELECT antes de que
+  // ninguna haya insertado su fila.
+  let session;
+  try {
+    session = await prisma.cashRegisterSession.create({
+      data: {
+        cashRegisterId: cashRegister.id,
+        openedByUserId: userId,
+        openingAmount: new Prisma.Decimal(openingAmount),
+      },
+      include: { cashRegister: true },
+    });
+  } catch (error) {
+    if (error instanceof Prisma.PrismaClientKnownRequestError && error.code === 'P2002') {
+      throw new CashSessionAlreadyOpenError();
+    }
+    throw error;
+  }
 
   await recordAuditLog(prisma, {
     userId,

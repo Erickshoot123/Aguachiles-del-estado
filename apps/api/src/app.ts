@@ -19,7 +19,7 @@ import reportsRoutes from './modules/reports/reports.routes.js';
 import suppliersRoutes from './modules/suppliers/suppliers.routes.js';
 
 export async function buildApp(env: Env): Promise<FastifyInstance> {
-  const app = Fastify({ logger: true });
+  const app = Fastify({ logger: env.NODE_ENV !== 'test' });
 
   await app.register(cors, { origin: env.CORS_ORIGIN });
   await app.register(errorHandlerPlugin);

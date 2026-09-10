@@ -135,7 +135,6 @@ async function createOrderAttempt(
         unitPrice: product.price,
         taxAmount: lineTax,
         subtotal: lineSubtotal,
-        previousStock: product.inventory.quantity,
       };
     });
 
@@ -171,18 +170,33 @@ async function createOrderAttempt(
       include: { items: { include: { product: true } } },
     });
 
+    // La comprobación de arriba usa una lectura hecha antes de este punto,
+    // así que por sí sola no evita que dos pedidos concurrentes por la
+    // última unidad pasen ambos la validación. La garantía real es este
+    // updateMany: la condición `quantity >= item.quantity` y el decremento
+    // ocurren en una sola sentencia atómica, así que si dos transacciones
+    // compiten por el mismo stock, como mucho una tiene `count > 0`.
     for (const item of itemsToCreate) {
-      const newStock = item.previousStock.sub(item.quantity);
-      await tx.inventory.update({
-        where: { productId: item.productId },
-        data: { quantity: newStock },
+      const claimed = await tx.inventory.updateMany({
+        where: { productId: item.productId, quantity: { gte: item.quantity } },
+        data: { quantity: { decrement: item.quantity } },
       });
+      if (claimed.count === 0) {
+        throw new InsufficientStockError(item.productName);
+      }
+
+      const inventory = await tx.inventory.findUniqueOrThrow({
+        where: { productId: item.productId },
+      });
+      const newStock = inventory.quantity;
+      const previousStock = newStock.add(item.quantity);
+
       await tx.inventoryMovement.create({
         data: {
           productId: item.productId,
           type: 'sale',
           quantity: item.quantity.neg(),
-          previousStock: item.previousStock,
+          previousStock,
           newStock,
           referenceType: 'sale',
           referenceId: created.id,
