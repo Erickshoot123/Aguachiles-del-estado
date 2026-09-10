@@ -3,12 +3,15 @@ import type { JSX } from 'react';
 import { useState } from 'react';
 import { AppShell } from '../components/AppShell';
 import { CashMovementsPanel } from '../features/cash/CashMovementsPanel';
+import { useCashRegisters, useCloseCashSession, useCurrentCashSession, useOpenCashSession } from '../features/cash/hooks';
+import { useTerminalCashRegisterId, useTerminalStore } from '../features/cash/terminalStore';
 import { formatCurrency } from '../features/orders/channelLabels';
-import { useCloseCashSession, useCurrentCashSession, useOpenCashSession } from '../features/cash/hooks';
 
 const UI_TEXT = {
   title: 'Caja y cierre',
   loading: 'Cargando…',
+  registerLabel: 'Caja de esta terminal',
+  registerPrompt: 'Elige qué caja registradora opera esta terminal.',
   openTitle: 'Abrir caja',
   openingAmountLabel: 'Fondo inicial',
   openAction: 'Abrir caja',
@@ -30,7 +33,42 @@ function formatDateTime(iso: string): string {
   return new Date(iso).toLocaleString('es-MX', { dateStyle: 'medium', timeStyle: 'short' });
 }
 
-function OpenSessionForm({ onOpened }: { onOpened: () => void }): JSX.Element {
+function RegisterSelector({ cashRegisterId }: { cashRegisterId: string | null }): JSX.Element {
+  const registersQuery = useCashRegisters();
+  const setCashRegisterId = useTerminalStore((state) => state.setCashRegisterId);
+
+  return (
+    <div className="mb-6 max-w-sm">
+      <label className="mb-1 block text-sm font-medium text-text" htmlFor="cash-register">
+        {UI_TEXT.registerLabel}
+      </label>
+      <select
+        id="cash-register"
+        value={cashRegisterId ?? ''}
+        onChange={(event) => setCashRegisterId(event.target.value)}
+        className="w-full rounded-lg border border-border px-3 py-2"
+      >
+        <option value="" disabled>
+          —
+        </option>
+        {(registersQuery.data ?? []).map((register) => (
+          <option key={register.id} value={register.id}>
+            {register.name}
+          </option>
+        ))}
+      </select>
+      {!cashRegisterId ? <p className="mt-2 text-sm text-muted">{UI_TEXT.registerPrompt}</p> : null}
+    </div>
+  );
+}
+
+function OpenSessionForm({
+  cashRegisterId,
+  onOpened,
+}: {
+  cashRegisterId: string;
+  onOpened: () => void;
+}): JSX.Element {
   const [openingAmount, setOpeningAmount] = useState(0);
   const openSession = useOpenCashSession();
 
@@ -51,7 +89,9 @@ function OpenSessionForm({ onOpened }: { onOpened: () => void }): JSX.Element {
       <button
         type="button"
         disabled={openSession.isPending}
-        onClick={() => openSession.mutate(openingAmount, { onSuccess: onOpened })}
+        onClick={() =>
+          openSession.mutate({ cashRegisterId, openingAmount }, { onSuccess: onOpened })
+        }
         className="w-full rounded-lg bg-accent px-3 py-2 font-semibold text-white hover:bg-accent-hover disabled:opacity-60"
       >
         {openSession.isPending ? UI_TEXT.openingAction : UI_TEXT.openAction}
@@ -140,7 +180,8 @@ function LastCloseSummary({ session }: { session: CashSession }): JSX.Element {
 }
 
 export function CashPage(): JSX.Element {
-  const currentSessionQuery = useCurrentCashSession();
+  const cashRegisterId = useTerminalCashRegisterId();
+  const currentSessionQuery = useCurrentCashSession(cashRegisterId ?? '');
   const [lastClosed, setLastClosed] = useState<CashSession | null>(null);
 
   return (
@@ -150,9 +191,13 @@ export function CashPage(): JSX.Element {
       </header>
 
       <section className="flex-1 p-6">
-        {currentSessionQuery.isLoading ? (
+        <RegisterSelector cashRegisterId={cashRegisterId} />
+
+        {cashRegisterId && currentSessionQuery.isLoading ? (
           <p className="text-sm text-muted">{UI_TEXT.loading}</p>
-        ) : (
+        ) : null}
+
+        {cashRegisterId && !currentSessionQuery.isLoading ? (
           <>
             {lastClosed && !currentSessionQuery.data ? <LastCloseSummary session={lastClosed} /> : null}
             {currentSessionQuery.data ? (
@@ -161,10 +206,10 @@ export function CashPage(): JSX.Element {
                 onClosed={(closed) => setLastClosed(closed)}
               />
             ) : (
-              <OpenSessionForm onOpened={() => setLastClosed(null)} />
+              <OpenSessionForm cashRegisterId={cashRegisterId} onOpened={() => setLastClosed(null)} />
             )}
           </>
-        )}
+        ) : null}
       </section>
     </AppShell>
   );

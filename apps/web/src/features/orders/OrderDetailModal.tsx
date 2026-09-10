@@ -2,6 +2,7 @@ import type { Order } from '@aguachiles/shared';
 import type { JSX } from 'react';
 import { useState } from 'react';
 import { ModalBackdrop } from '../../components/ModalBackdrop';
+import { useTerminalCashRegisterId } from '../cash/terminalStore';
 import { RefundModal } from '../refunds/RefundModal';
 import { TicketModal } from '../receipts/TicketModal';
 import { CHANNEL_LABELS, formatCurrency, formatElapsedMinutes } from './channelLabels';
@@ -14,6 +15,7 @@ const UI_TEXT = {
   chargeAction: 'Cobrar (efectivo)',
   charging: 'Cobrando…',
   chargeError: 'No se pudo cobrar. ¿Hay una caja abierta?',
+  noRegisterSelected: 'Selecciona la caja de esta terminal en "Caja y cierre"',
   ticketAction: 'Ticket',
   refundAction: 'Reembolsar',
   statusPending: 'Pendiente de cobro',
@@ -45,6 +47,7 @@ export function OrderDetailModal({
   const advanceOrder = useAdvanceOrder();
   const cancelOrder = useCancelOrder();
   const chargeOrder = useChargeOrder();
+  const cashRegisterId = useTerminalCashRegisterId();
   const [isTicketOpen, setIsTicketOpen] = useState(false);
   const [isRefundOpen, setIsRefundOpen] = useState(false);
 
@@ -103,8 +106,11 @@ export function OrderDetailModal({
           {canCancelOrCharge ? (
             <button
               type="button"
-              onClick={() => chargeOrder.mutate(order.id)}
-              disabled={chargeOrder.isPending}
+              onClick={() =>
+                cashRegisterId && chargeOrder.mutate({ orderId: order.id, cashRegisterId })
+              }
+              disabled={chargeOrder.isPending || !cashRegisterId}
+              title={!cashRegisterId ? UI_TEXT.noRegisterSelected : undefined}
               className="h-11 rounded-lg bg-text px-4 text-[14px] font-semibold text-white hover:bg-accent disabled:opacity-60"
             >
               {chargeOrder.isPending ? UI_TEXT.charging : UI_TEXT.chargeAction}

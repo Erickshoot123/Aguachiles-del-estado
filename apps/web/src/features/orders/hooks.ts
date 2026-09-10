@@ -73,7 +73,8 @@ export function useChargeOrder() {
   const queryClient = useQueryClient();
 
   return useMutation({
-    mutationFn: (orderId: string) => chargeOrder(orderId),
+    mutationFn: ({ orderId, cashRegisterId }: { orderId: string; cashRegisterId: string }) =>
+      chargeOrder(orderId, cashRegisterId),
     onSuccess: () => {
       void queryClient.invalidateQueries({ queryKey: ORDERS_QUERY_KEY });
       void queryClient.invalidateQueries({ queryKey: CASH_SESSION_QUERY_KEY });

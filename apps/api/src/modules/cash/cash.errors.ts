@@ -2,13 +2,13 @@ import { ConflictError, NotFoundError } from '../../lib/errors.js';
 
 export class CashSessionAlreadyOpenError extends ConflictError {
   constructor() {
-    super('Ya hay una sesión de caja abierta');
+    super('Ya hay una sesión abierta en esa caja registradora');
   }
 }
 
 export class NoOpenCashSessionError extends ConflictError {
   constructor() {
-    super('No hay una sesión de caja abierta');
+    super('No hay una sesión abierta en esa caja registradora');
   }
 }
 

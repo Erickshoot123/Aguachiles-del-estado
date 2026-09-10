@@ -1,6 +1,7 @@
 import type { JSX } from 'react';
 import { useState } from 'react';
 import { ModalBackdrop } from '../../components/ModalBackdrop';
+import { useTerminalCashRegisterId } from '../cash/terminalStore';
 import { formatCurrency } from '../orders/channelLabels';
 import { useCreateRefund, useRefundableSale } from './hooks';
 
@@ -19,6 +20,7 @@ const UI_TEXT = {
   submitError: 'No se pudo procesar el reembolso. ¿Hay una caja abierta?',
   nothingToRefund: 'Este pedido ya fue reembolsado por completo.',
   totalLabel: 'Total a reembolsar',
+  noRegisterSelected: 'Selecciona la caja de esta terminal en "Caja y cierre"',
 } as const;
 
 interface RefundModalProps {
@@ -29,6 +31,7 @@ interface RefundModalProps {
 export function RefundModal({ orderId, onClose }: RefundModalProps): JSX.Element {
   const refundableQuery = useRefundableSale(orderId, true);
   const createRefund = useCreateRefund(orderId);
+  const cashRegisterId = useTerminalCashRegisterId();
   const [quantities, setQuantities] = useState<Record<string, number>>({});
   const [reason, setReason] = useState('');
 
@@ -49,11 +52,12 @@ export function RefundModal({ orderId, onClose }: RefundModalProps): JSX.Element
     return sum + (saleItem ? saleItem.unitPrice * item.quantity : 0);
   }, 0);
 
-  const canSubmit = items.length > 0 && reason.trim() !== '' && !createRefund.isPending;
+  const canSubmit =
+    items.length > 0 && reason.trim() !== '' && cashRegisterId !== null && !createRefund.isPending;
 
   const handleSubmit = (): void => {
-    if (!canSubmit) return;
-    createRefund.mutate({ reason: reason.trim(), items }, { onSuccess: onClose });
+    if (!canSubmit || !cashRegisterId) return;
+    createRefund.mutate({ cashRegisterId, reason: reason.trim(), items }, { onSuccess: onClose });
   };
 
   return (
@@ -135,6 +139,7 @@ export function RefundModal({ orderId, onClose }: RefundModalProps): JSX.Element
             type="button"
             disabled={!canSubmit}
             onClick={handleSubmit}
+            title={!cashRegisterId ? UI_TEXT.noRegisterSelected : undefined}
             className="ml-auto h-11 rounded-lg bg-accent px-4 text-[14px] font-semibold text-white hover:bg-accent-hover disabled:opacity-60"
           >
             {createRefund.isPending ? UI_TEXT.submitting : UI_TEXT.submit}

@@ -1,5 +1,5 @@
-import { Prisma, type PrismaClient } from '@prisma/client';
-import type { CashMovement, CashSession, CreateCashMovementRequest } from '@aguachiles/shared';
+import { Prisma, type CashRegister as PrismaCashRegister, type PrismaClient } from '@prisma/client';
+import type { CashMovement, CashRegister, CashSession, CreateCashMovementRequest } from '@aguachiles/shared';
 import {
   CashSessionAlreadyClosedError,
   CashSessionAlreadyOpenError,
@@ -27,9 +27,19 @@ function toCashMovementDto(movement: MovementWithUser): CashMovement {
   };
 }
 
+function toCashRegisterDto(cashRegister: PrismaCashRegister): CashRegister {
+  return {
+    id: cashRegister.id,
+    name: cashRegister.name,
+    location: cashRegister.location,
+    isActive: cashRegister.isActive,
+  };
+}
+
 function toCashSessionDto(session: SessionWithRegister): CashSession {
   return {
     id: session.id,
+    cashRegisterId: session.cashRegisterId,
     cashRegisterName: session.cashRegister.name,
     status: session.status,
     openedAt: session.openedAt.toISOString(),
@@ -73,9 +83,20 @@ async function computeExpectedClosingAmount(
   return openingAmount.add(cashMovementsDelta(movements));
 }
 
-export async function getCurrentSession(prisma: PrismaClient): Promise<CashSession | null> {
+export async function listCashRegisters(prisma: PrismaClient): Promise<CashRegister[]> {
+  const cashRegisters = await prisma.cashRegister.findMany({
+    where: { isActive: true },
+    orderBy: { name: 'asc' },
+  });
+  return cashRegisters.map(toCashRegisterDto);
+}
+
+export async function getCurrentSession(
+  prisma: PrismaClient,
+  cashRegisterId: string,
+): Promise<CashSession | null> {
   const session = await prisma.cashRegisterSession.findFirst({
-    where: { status: 'open' },
+    where: { status: 'open', cashRegisterId },
     include: { cashRegister: true },
   });
   if (!session) return null;
@@ -91,17 +112,23 @@ export async function getCurrentSession(prisma: PrismaClient): Promise<CashSessi
 export async function openSession(
   prisma: PrismaClient,
   userId: string,
+  cashRegisterId: string,
   openingAmount: number,
 ): Promise<CashSession> {
-  const existingOpen = await prisma.cashRegisterSession.findFirst({ where: { status: 'open' } });
+  const cashRegister = await prisma.cashRegister.findFirst({
+    where: { id: cashRegisterId, isActive: true },
+  });
+  if (!cashRegister) {
+    throw new NoCashRegisterConfiguredError();
+  }
+
+  const existingOpen = await prisma.cashRegisterSession.findFirst({
+    where: { status: 'open', cashRegisterId },
+  });
   if (existingOpen) {
     throw new CashSessionAlreadyOpenError();
   }
 
-  const cashRegister = await prisma.cashRegister.findFirst({ where: { isActive: true } });
-  if (!cashRegister) {
-    throw new NoCashRegisterConfiguredError();
-  }
   const session = await prisma.cashRegisterSession.create({
     data: {
       cashRegisterId: cashRegister.id,
@@ -149,8 +176,11 @@ export async function closeSession(
 
 export async function requireOpenSession(
   prisma: PrismaClient,
+  cashRegisterId: string,
 ): Promise<{ id: string }> {
-  const session = await prisma.cashRegisterSession.findFirst({ where: { status: 'open' } });
+  const session = await prisma.cashRegisterSession.findFirst({
+    where: { status: 'open', cashRegisterId },
+  });
   if (!session) {
     throw new NoOpenCashSessionError();
   }

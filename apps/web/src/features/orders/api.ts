@@ -17,8 +17,11 @@ export function cancelOrder(orderId: string): Promise<Order> {
   return authFetch<Order>(`/api/orders/${orderId}/cancel`, { method: 'PATCH' });
 }
 
-export function chargeOrder(orderId: string): Promise<Order> {
-  return authFetch<Order>(`/api/orders/${orderId}/charge`, { method: 'PATCH' });
+export function chargeOrder(orderId: string, cashRegisterId: string): Promise<Order> {
+  return authFetch<Order>(`/api/orders/${orderId}/charge`, {
+    method: 'PATCH',
+    body: { cashRegisterId },
+  });
 }
 
 export function listProducts(): Promise<ProductSummary[]> {

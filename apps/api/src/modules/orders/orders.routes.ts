@@ -1,4 +1,4 @@
-import { createOrderRequestSchema } from '@aguachiles/shared';
+import { chargeOrderRequestSchema, createOrderRequestSchema } from '@aguachiles/shared';
 import type { FastifyInstance } from 'fastify';
 import { z } from 'zod';
 import { idParamSchema } from '../../lib/paramsSchemas.js';
@@ -61,7 +61,8 @@ export default async function ordersRoutes(fastify: FastifyInstance): Promise<vo
     { preHandler: fastify.authenticate },
     async (request, reply) => {
       const { id } = idParamSchema.parse(request.params);
-      const { id: cashSessionId } = await requireOpenSession(fastify.prisma);
+      const input = chargeOrderRequestSchema.parse(request.body);
+      const { id: cashSessionId } = await requireOpenSession(fastify.prisma, input.cashRegisterId);
       const order = await chargeOrder(fastify.prisma, id, request.user.sub, cashSessionId);
       reply.status(200).send(order);
     },

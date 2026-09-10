@@ -4,6 +4,7 @@ export const cashSessionStatusSchema = z.enum(['open', 'closed']);
 export type CashSessionStatus = z.infer<typeof cashSessionStatusSchema>;
 
 export const openCashSessionRequestSchema = z.object({
+  cashRegisterId: z.string().uuid(),
   openingAmount: z.number().nonnegative(),
 });
 export type OpenCashSessionRequest = z.infer<typeof openCashSessionRequestSchema>;
@@ -13,8 +14,17 @@ export const closeCashSessionRequestSchema = z.object({
 });
 export type CloseCashSessionRequest = z.infer<typeof closeCashSessionRequestSchema>;
 
+export const cashRegisterSchema = z.object({
+  id: z.string().uuid(),
+  name: z.string(),
+  location: z.string().nullable(),
+  isActive: z.boolean(),
+});
+export type CashRegister = z.infer<typeof cashRegisterSchema>;
+
 export const cashSessionSchema = z.object({
   id: z.string().uuid(),
+  cashRegisterId: z.string().uuid(),
   cashRegisterName: z.string(),
   status: cashSessionStatusSchema,
   openedAt: z.string().datetime(),

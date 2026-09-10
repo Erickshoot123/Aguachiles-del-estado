@@ -34,6 +34,11 @@ export const createOrderRequestSchema = z.object({
 });
 export type CreateOrderRequest = z.infer<typeof createOrderRequestSchema>;
 
+export const chargeOrderRequestSchema = z.object({
+  cashRegisterId: z.string().uuid(),
+});
+export type ChargeOrderRequest = z.infer<typeof chargeOrderRequestSchema>;
+
 export const orderItemSchema = z.object({
   id: z.string().uuid(),
   productId: z.string().uuid(),

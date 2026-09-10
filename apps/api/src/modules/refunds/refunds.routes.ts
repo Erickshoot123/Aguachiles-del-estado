@@ -21,7 +21,7 @@ export default async function refundsRoutes(fastify: FastifyInstance): Promise<v
     async (request, reply) => {
       const { id } = idParamSchema.parse(request.params);
       const input = createRefundRequestSchema.parse(request.body);
-      const { id: cashSessionId } = await requireOpenSession(fastify.prisma);
+      const { id: cashSessionId } = await requireOpenSession(fastify.prisma, input.cashRegisterId);
 
       const refund = await createRefund(fastify.prisma, id, request.user.sub, cashSessionId, input);
       reply.status(201).send(refund);

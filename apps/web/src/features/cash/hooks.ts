@@ -6,6 +6,7 @@ import {
   createCashMovement,
   getCurrentCashSession,
   listCashMovements,
+  listCashRegisters,
   openCashSession,
 } from './api';
 
@@ -15,13 +16,23 @@ function cashMovementsQueryKey(sessionId: string) {
   return ['cash-movements', sessionId] as const;
 }
 
-export function useCurrentCashSession() {
+export function useCashRegisters() {
   const isLoggedIn = useIsLoggedIn();
 
   return useQuery({
-    queryKey: CASH_SESSION_QUERY_KEY,
-    queryFn: getCurrentCashSession,
+    queryKey: ['cash-registers'] as const,
+    queryFn: listCashRegisters,
     enabled: isLoggedIn,
+  });
+}
+
+export function useCurrentCashSession(cashRegisterId: string) {
+  const isLoggedIn = useIsLoggedIn();
+
+  return useQuery({
+    queryKey: [...CASH_SESSION_QUERY_KEY, cashRegisterId] as const,
+    queryFn: () => getCurrentCashSession(cashRegisterId),
+    enabled: isLoggedIn && cashRegisterId !== '',
   });
 }
 
@@ -29,7 +40,13 @@ export function useOpenCashSession() {
   const queryClient = useQueryClient();
 
   return useMutation({
-    mutationFn: (openingAmount: number) => openCashSession(openingAmount),
+    mutationFn: ({
+      cashRegisterId,
+      openingAmount,
+    }: {
+      cashRegisterId: string;
+      openingAmount: number;
+    }) => openCashSession(cashRegisterId, openingAmount),
     onSuccess: () => {
       void queryClient.invalidateQueries({ queryKey: CASH_SESSION_QUERY_KEY });
     },

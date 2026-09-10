@@ -25,6 +25,7 @@ const createRefundItemSchema = z.object({
 });
 
 export const createRefundRequestSchema = z.object({
+  cashRegisterId: z.string().uuid(),
   reason: z.string().min(1),
   items: z.array(createRefundItemSchema).min(1),
 });
