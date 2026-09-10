@@ -1,9 +1,9 @@
 import type { Order } from '@aguachiles/shared';
-import type { JSX } from 'react';
+import type { FormEvent, JSX } from 'react';
 import { useState } from 'react';
 import { AppShell } from '../components/AppShell';
 import { BOARD_COLUMNS } from '../features/orders/boardColumns';
-import { useAdvanceOrder, useOrders } from '../features/orders/hooks';
+import { useAdvanceOrder, useOrderLookup, useOrders } from '../features/orders/hooks';
 import { NewOrderModal } from '../features/orders/NewOrderModal';
 import { OrderCard } from '../features/orders/OrderCard';
 import { OrderDetailModal } from '../features/orders/OrderDetailModal';
@@ -14,6 +14,9 @@ const UI_TEXT = {
   subtitleError: 'No se pudieron cargar los pedidos.',
   newOrder: 'Nuevo pedido',
   emptyColumn: 'Sin pedidos',
+  searchPlaceholder: 'Buscar pedido por folio…',
+  searchAction: 'Buscar',
+  searchNotFound: 'No se encontró ningún pedido con ese folio.',
 } as const;
 
 function summarize(orders: Order[]): string {
@@ -28,9 +31,31 @@ export function OrdersBoardPage(): JSX.Element {
   const advanceOrder = useAdvanceOrder();
   const [isCreating, setIsCreating] = useState(false);
   const [detailOrderId, setDetailOrderId] = useState<string | null>(null);
+  const [searchTerm, setSearchTerm] = useState('');
+  const [submittedTicketNumber, setSubmittedTicketNumber] = useState('');
+  const orderLookup = useOrderLookup(submittedTicketNumber, submittedTicketNumber !== '');
 
   const orders = ordersQuery.data ?? [];
-  const detailOrder = orders.find((order) => order.id === detailOrderId) ?? null;
+  const boardDetailOrder = orders.find((order) => order.id === detailOrderId) ?? null;
+  const searchedOrder = submittedTicketNumber !== '' ? (orderLookup.data ?? null) : null;
+  const detailOrder = boardDetailOrder ?? searchedOrder;
+  const detailAdvanceLabel = boardDetailOrder
+    ? (BOARD_COLUMNS.find((column) => column.key === boardDetailOrder.fulfillmentStatus)
+        ?.advanceActionLabel ?? null)
+    : null;
+
+  const closeDetail = (): void => {
+    setDetailOrderId(null);
+    setSubmittedTicketNumber('');
+  };
+
+  const handleSearch = (event: FormEvent): void => {
+    event.preventDefault();
+    const ticketNumber = searchTerm.trim();
+    if (!ticketNumber) return;
+    setDetailOrderId(null);
+    setSubmittedTicketNumber(ticketNumber);
+  };
 
   const subtitle = ordersQuery.isLoading
     ? UI_TEXT.subtitleLoading
@@ -45,14 +70,33 @@ export function OrdersBoardPage(): JSX.Element {
           <h1 className="m-0 text-[23px] font-bold tracking-tight">{UI_TEXT.title}</h1>
           <p className="m-0 text-[13px] text-muted">{subtitle}</p>
         </div>
+        <form onSubmit={handleSearch} className="ml-auto flex items-center gap-2">
+          <input
+            type="text"
+            value={searchTerm}
+            onChange={(event) => setSearchTerm(event.target.value)}
+            placeholder={UI_TEXT.searchPlaceholder}
+            className="h-11 rounded-lg border border-border px-3 text-[14px]"
+          />
+          <button
+            type="submit"
+            disabled={orderLookup.isFetching}
+            className="h-11 rounded-lg border border-border px-4 text-[14px] hover:border-border-hover disabled:opacity-60"
+          >
+            {UI_TEXT.searchAction}
+          </button>
+        </form>
         <button
           type="button"
           onClick={() => setIsCreating(true)}
-          className="ml-auto h-11 rounded-lg bg-accent px-4 text-[14px] font-semibold text-white hover:bg-accent-hover"
+          className="h-11 rounded-lg bg-accent px-4 text-[14px] font-semibold text-white hover:bg-accent-hover"
         >
           {UI_TEXT.newOrder}
         </button>
       </header>
+      {submittedTicketNumber !== '' && orderLookup.isError ? (
+        <p className="px-7 pt-3 text-[13px] text-red-600">{UI_TEXT.searchNotFound}</p>
+      ) : null}
 
       <section className="grid flex-1 grid-cols-1 gap-3 p-5 sm:grid-cols-2 lg:grid-cols-3">
         {BOARD_COLUMNS.map((column) => {
@@ -83,7 +127,10 @@ export function OrdersBoardPage(): JSX.Element {
                       key={order.id}
                       order={order}
                       advanceLabel={column.advanceActionLabel}
-                      onOpenDetail={(order) => setDetailOrderId(order.id)}
+                      onOpenDetail={(order) => {
+                        setSubmittedTicketNumber('');
+                        setDetailOrderId(order.id);
+                      }}
                       onAdvance={(orderId) => advanceOrder.mutate(orderId)}
                     />
                   ))
@@ -96,14 +143,7 @@ export function OrdersBoardPage(): JSX.Element {
 
       {isCreating ? <NewOrderModal onClose={() => setIsCreating(false)} /> : null}
       {detailOrder ? (
-        <OrderDetailModal
-          order={detailOrder}
-          advanceLabel={
-            BOARD_COLUMNS.find((column) => column.key === detailOrder.fulfillmentStatus)
-              ?.advanceActionLabel ?? UI_TEXT.newOrder
-          }
-          onClose={() => setDetailOrderId(null)}
-        />
+        <OrderDetailModal order={detailOrder} advanceLabel={detailAdvanceLabel} onClose={closeDetail} />
       ) : null}
     </AppShell>
   );

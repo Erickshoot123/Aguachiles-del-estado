@@ -6,8 +6,26 @@ type SaleWithRelations = Prisma.SaleGetPayload<{
     items: { include: { product: true } };
     payments: { include: { paymentMethod: true } };
     user: true;
+    refunds: { include: { items: true } };
   };
 }>;
+
+const REPORTABLE_STATUSES = ['completed', 'partially_refunded', 'refunded'] as const;
+
+function refundedTotalOf(sale: SaleWithRelations): Prisma.Decimal {
+  return sale.refunds.reduce((sum, refund) => sum.add(refund.totalRefunded), new Prisma.Decimal(0));
+}
+
+function refundedItemsOf(
+  sale: SaleWithRelations,
+  saleItemId: string,
+): { amount: Prisma.Decimal; quantity: Prisma.Decimal } {
+  const items = sale.refunds.flatMap((refund) => refund.items).filter((item) => item.saleItemId === saleItemId);
+  return {
+    amount: items.reduce((sum, item) => sum.add(item.amount), new Prisma.Decimal(0)),
+    quantity: items.reduce((sum, item) => sum.add(item.quantity), new Prisma.Decimal(0)),
+  };
+}
 
 interface Accumulator {
   totalSales: Prisma.Decimal;
@@ -41,18 +59,19 @@ function bumpTotalAndCount(
 }
 
 function accumulateSale(acc: Accumulator, sale: SaleWithRelations): void {
-  acc.totalSales = acc.totalSales.add(sale.total);
+  const netTotal = sale.total.sub(refundedTotalOf(sale));
+  acc.totalSales = acc.totalSales.add(netTotal);
 
   const dayKey = sale.createdAt.toISOString().slice(0, 10);
-  bumpTotalAndCount(acc.byDay, dayKey, sale.total);
-  bumpTotalAndCount(acc.byChannel, sale.channel, sale.total);
+  bumpTotalAndCount(acc.byDay, dayKey, netTotal);
+  bumpTotalAndCount(acc.byChannel, sale.channel, netTotal);
 
   const cashier = acc.byCashier.get(sale.userId) ?? {
     userName: sale.user.name,
     total: new Prisma.Decimal(0),
     count: 0,
   };
-  cashier.total = cashier.total.add(sale.total);
+  cashier.total = cashier.total.add(netTotal);
   cashier.count += 1;
   acc.byCashier.set(sale.userId, cashier);
 
@@ -62,14 +81,16 @@ function accumulateSale(acc: Accumulator, sale: SaleWithRelations): void {
       quantity: new Prisma.Decimal(0),
       total: new Prisma.Decimal(0),
     };
-    product.quantity = product.quantity.add(item.quantity);
-    product.total = product.total.add(item.subtotal);
+    const refundedItem = refundedItemsOf(sale, item.id);
+    product.quantity = product.quantity.add(item.quantity.sub(refundedItem.quantity));
+    product.total = product.total.add(item.subtotal.sub(refundedItem.amount));
     acc.byProduct.set(item.productId, product);
   }
 
+  const paymentScale = sale.total.greaterThan(0) ? netTotal.div(sale.total) : new Prisma.Decimal(0);
   for (const payment of sale.payments) {
     const current = acc.byPaymentMethod.get(payment.paymentMethod.name) ?? new Prisma.Decimal(0);
-    acc.byPaymentMethod.set(payment.paymentMethod.name, current.add(payment.amount));
+    acc.byPaymentMethod.set(payment.paymentMethod.name, current.add(payment.amount.mul(paymentScale)));
   }
 }
 
@@ -122,11 +143,12 @@ export async function getSalesReport(
   to: Date,
 ): Promise<SalesReport> {
   const sales = await prisma.sale.findMany({
-    where: { status: 'completed', createdAt: { gte: from, lte: to } },
+    where: { status: { in: [...REPORTABLE_STATUSES] }, createdAt: { gte: from, lte: to } },
     include: {
       items: { include: { product: true } },
       payments: { include: { paymentMethod: true } },
       user: true,
+      refunds: { include: { items: true } },
     },
   });
 

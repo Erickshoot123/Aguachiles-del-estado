@@ -64,6 +64,20 @@ export async function listActiveOrders(prisma: PrismaClient): Promise<Order[]> {
   return sales.map(toOrderDto);
 }
 
+export async function findOrderByTicketNumber(
+  prisma: PrismaClient,
+  ticketNumber: string,
+): Promise<Order> {
+  const sale = await prisma.sale.findUnique({
+    where: { ticketNumber },
+    include: { items: { include: { product: true } } },
+  });
+  if (!sale) {
+    throw new OrderNotFoundError();
+  }
+  return toOrderDto(sale);
+}
+
 export async function createOrder(
   prisma: PrismaClient,
   userId: string,

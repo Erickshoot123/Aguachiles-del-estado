@@ -41,6 +41,9 @@ function cashMovementsDelta(movements: MovementWithMethod[]): Prisma.Decimal {
     if (movement.type === 'sale_income' && movement.paymentMethod?.type === 'cash') {
       return total.add(movement.amount);
     }
+    if (movement.type === 'refund' && movement.paymentMethod?.type === 'cash') {
+      return total.sub(movement.amount);
+    }
     return total;
   }, new Prisma.Decimal(0));
 }

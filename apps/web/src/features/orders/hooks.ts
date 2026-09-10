@@ -2,7 +2,15 @@ import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import type { CreateOrderRequest } from '@aguachiles/shared';
 import { useIsLoggedIn } from '../auth/authStore';
 import { CASH_SESSION_QUERY_KEY } from '../cash/hooks';
-import { advanceOrder, cancelOrder, chargeOrder, createOrder, listOrders, listProducts } from './api';
+import {
+  advanceOrder,
+  cancelOrder,
+  chargeOrder,
+  createOrder,
+  listOrders,
+  listProducts,
+  lookupOrderByTicketNumber,
+} from './api';
 
 const ORDERS_QUERY_KEY = ['orders'] as const;
 const PRODUCTS_QUERY_KEY = ['products'] as const;
@@ -70,5 +78,16 @@ export function useChargeOrder() {
       void queryClient.invalidateQueries({ queryKey: ORDERS_QUERY_KEY });
       void queryClient.invalidateQueries({ queryKey: CASH_SESSION_QUERY_KEY });
     },
+  });
+}
+
+export function useOrderLookup(ticketNumber: string, enabled: boolean) {
+  const isLoggedIn = useIsLoggedIn();
+
+  return useQuery({
+    queryKey: ['order-lookup', ticketNumber] as const,
+    queryFn: () => lookupOrderByTicketNumber(ticketNumber),
+    enabled: enabled && isLoggedIn && ticketNumber !== '',
+    retry: false,
   });
 }

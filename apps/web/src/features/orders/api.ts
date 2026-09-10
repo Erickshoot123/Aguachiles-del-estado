@@ -24,3 +24,8 @@ export function chargeOrder(orderId: string): Promise<Order> {
 export function listProducts(): Promise<ProductSummary[]> {
   return authFetch<ProductSummary[]>('/api/products');
 }
+
+export function lookupOrderByTicketNumber(ticketNumber: string): Promise<Order> {
+  const params = new URLSearchParams({ ticketNumber });
+  return authFetch<Order>(`/api/orders/lookup?${params.toString()}`);
+}

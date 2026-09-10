@@ -2,6 +2,7 @@ import type { Order } from '@aguachiles/shared';
 import type { JSX } from 'react';
 import { useState } from 'react';
 import { ModalBackdrop } from '../../components/ModalBackdrop';
+import { RefundModal } from '../refunds/RefundModal';
 import { TicketModal } from '../receipts/TicketModal';
 import { CHANNEL_LABELS, formatCurrency, formatElapsedMinutes } from './channelLabels';
 import { useAdvanceOrder, useCancelOrder, useChargeOrder } from './hooks';
@@ -10,18 +11,29 @@ const UI_TEXT = {
   total: 'Total',
   onBoardSince: 'Tiempo en tablero',
   cancelAction: 'Cancelar pedido',
-  advanceAction: 'Avanzar',
   chargeAction: 'Cobrar (efectivo)',
   charging: 'Cobrando…',
-  paid: 'Pagado',
-  pending: 'Pendiente de cobro',
   chargeError: 'No se pudo cobrar. ¿Hay una caja abierta?',
   ticketAction: 'Ticket',
+  refundAction: 'Reembolsar',
+  statusPending: 'Pendiente de cobro',
+  statusPaid: 'Pagado',
+  statusPartiallyRefunded: 'Reembolso parcial',
+  statusRefunded: 'Reembolsado',
+  statusCancelled: 'Cancelado',
 } as const;
+
+const STATUS_BADGE: Record<Order['status'], { label: string; className: string }> = {
+  pending: { label: UI_TEXT.statusPending, className: 'bg-accent-soft text-accent-hover' },
+  completed: { label: UI_TEXT.statusPaid, className: 'bg-green-100 text-green-700' },
+  partially_refunded: { label: UI_TEXT.statusPartiallyRefunded, className: 'bg-amber-100 text-amber-700' },
+  refunded: { label: UI_TEXT.statusRefunded, className: 'bg-bg text-muted-2' },
+  cancelled: { label: UI_TEXT.statusCancelled, className: 'bg-bg text-muted-2' },
+};
 
 interface OrderDetailModalProps {
   order: Order;
-  advanceLabel: string;
+  advanceLabel: string | null;
   onClose: () => void;
 }
 
@@ -34,7 +46,12 @@ export function OrderDetailModal({
   const cancelOrder = useCancelOrder();
   const chargeOrder = useChargeOrder();
   const [isTicketOpen, setIsTicketOpen] = useState(false);
-  const isPaid = order.status !== 'pending';
+  const [isRefundOpen, setIsRefundOpen] = useState(false);
+
+  const canCancelOrCharge = order.status === 'pending';
+  const hasReceipt = order.status !== 'pending' && order.status !== 'cancelled';
+  const canRefund = order.status === 'completed' || order.status === 'partially_refunded';
+  const badge = STATUS_BADGE[order.status];
 
   return (
     <>
@@ -45,14 +62,8 @@ export function OrderDetailModal({
         <div className="flex items-baseline gap-2.5 border-b border-divider px-5 py-4">
           <span className="font-mono text-[20px] font-semibold">{order.ticketNumber}</span>
           <span className="text-[14px] text-muted">{CHANNEL_LABELS[order.channel]}</span>
-          <span
-            className={
-              isPaid
-                ? 'ml-auto rounded-full bg-green-100 px-2.5 py-1 text-[12px] font-semibold text-green-700'
-                : 'ml-auto rounded-full bg-accent-soft px-2.5 py-1 text-[12px] font-semibold text-accent-hover'
-            }
-          >
-            {isPaid ? UI_TEXT.paid : UI_TEXT.pending}
+          <span className={`ml-auto rounded-full px-2.5 py-1 text-[12px] font-semibold ${badge.className}`}>
+            {badge.label}
           </span>
         </div>
 
@@ -79,7 +90,7 @@ export function OrderDetailModal({
         </div>
 
         <div className="flex flex-wrap gap-2.5 bg-bg px-5 py-4">
-          {!isPaid ? (
+          {canCancelOrCharge ? (
             <button
               type="button"
               onClick={() => cancelOrder.mutate(order.id, { onSuccess: onClose })}
@@ -89,7 +100,7 @@ export function OrderDetailModal({
               {UI_TEXT.cancelAction}
             </button>
           ) : null}
-          {!isPaid ? (
+          {canCancelOrCharge ? (
             <button
               type="button"
               onClick={() => chargeOrder.mutate(order.id)}
@@ -99,7 +110,7 @@ export function OrderDetailModal({
               {chargeOrder.isPending ? UI_TEXT.charging : UI_TEXT.chargeAction}
             </button>
           ) : null}
-          {isPaid ? (
+          {hasReceipt ? (
             <button
               type="button"
               onClick={() => setIsTicketOpen(true)}
@@ -108,19 +119,33 @@ export function OrderDetailModal({
               {UI_TEXT.ticketAction}
             </button>
           ) : null}
-          <button
-            type="button"
-            onClick={() => advanceOrder.mutate(order.id, { onSuccess: onClose })}
-            disabled={advanceOrder.isPending}
-            className="ml-auto h-11 rounded-lg bg-accent px-4 text-[14px] font-semibold text-white hover:bg-accent-hover"
-          >
-            {advanceLabel}
-          </button>
+          {canRefund ? (
+            <button
+              type="button"
+              onClick={() => setIsRefundOpen(true)}
+              className="h-11 rounded-lg border border-red-200 px-4 text-[14px] text-red-700 hover:bg-red-50"
+            >
+              {UI_TEXT.refundAction}
+            </button>
+          ) : null}
+          {advanceLabel ? (
+            <button
+              type="button"
+              onClick={() => advanceOrder.mutate(order.id, { onSuccess: onClose })}
+              disabled={advanceOrder.isPending}
+              className="ml-auto h-11 rounded-lg bg-accent px-4 text-[14px] font-semibold text-white hover:bg-accent-hover"
+            >
+              {advanceLabel}
+            </button>
+          ) : null}
         </div>
       </ModalBackdrop>
 
       {isTicketOpen ? (
         <TicketModal orderId={order.id} onClose={() => setIsTicketOpen(false)} />
+      ) : null}
+      {isRefundOpen ? (
+        <RefundModal orderId={order.id} onClose={() => setIsRefundOpen(false)} />
       ) : null}
     </>
   );
