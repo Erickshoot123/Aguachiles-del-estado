@@ -47,3 +47,9 @@ export class PaymentAmountMismatchError extends ValidationError {
     super('La suma de los pagos no coincide con el total del pedido');
   }
 }
+
+export class NoLocationConfiguredError extends ConflictError {
+  constructor() {
+    super('No hay ninguna sucursal activa configurada');
+  }
+}

@@ -198,14 +198,35 @@ model RefreshToken {
   @@map("refresh_tokens")
 }
 
+// --- Sucursales -------------------------------------------------------------
+// Preparación de esquema para multi-sucursal (Fase 3): el MVP opera una sola
+// sucursal, pero cash_registers y sales ya cargan location_id para que una
+// segunda sucursal no requiera reescribir el esquema — no hay UI todavía
+// para administrar sucursales ni consolidar reportes entre ellas.
+
+model Location {
+  id       String   @id @default(uuid())
+  name     String
+  isActive Boolean  @default(true) @map("is_active")
+
+  cashRegisters CashRegister[]
+  sales         Sale[]
+
+  createdAt DateTime @default(now()) @map("created_at")
+
+  @@map("locations")
+}
+
 // --- Caja -----------------------------------------------------------------
 
 model CashRegister {
-  id       String                 @id @default(uuid())
-  name     String
-  location String?
-  isActive Boolean                @default(true) @map("is_active")
-  sessions CashRegisterSession[]
+  id         String                 @id @default(uuid())
+  name       String
+  location   String?
+  locationId String                 @map("location_id")
+  branch     Location               @relation(fields: [locationId], references: [id], onDelete: Restrict)
+  isActive   Boolean                @default(true) @map("is_active")
+  sessions   CashRegisterSession[]
 
   createdAt DateTime @default(now()) @map("created_at")
 
@@ -319,6 +340,8 @@ model Sale {
   user                   User                 @relation(fields: [userId], references: [id], onDelete: Restrict)
   cashRegisterSessionId  String?              @map("cash_register_session_id")
   cashRegisterSession    CashRegisterSession? @relation(fields: [cashRegisterSessionId], references: [id], onDelete: Restrict)
+  locationId             String               @map("location_id")
+  location               Location             @relation(fields: [locationId], references: [id], onDelete: Restrict)
   status                 SaleStatus           @default(pending)
   channel                SaleChannel          @default(digital_counter)
   fulfillmentStatus      FulfillmentStatus    @default(in_prep) @map("fulfillment_status")

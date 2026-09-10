@@ -6,6 +6,7 @@ import {
   CannotCancelPaidOrderError,
   InsufficientStockError,
   InvalidFulfillmentTransitionError,
+  NoLocationConfiguredError,
   OrderAlreadyChargedError,
   OrderNotFoundError,
   PaymentAmountMismatchError,
@@ -141,10 +142,16 @@ async function createOrderAttempt(
     const ticketNumber = await nextTicketNumber(tx);
     const total = subtotal.add(taxTotal);
 
+    const location = await tx.location.findFirst({ where: { isActive: true } });
+    if (!location) {
+      throw new NoLocationConfiguredError();
+    }
+
     const created = await tx.sale.create({
       data: {
         ticketNumber,
         userId,
+        locationId: location.id,
         channel: input.channel,
         status: 'pending',
         fulfillmentStatus: 'in_prep',

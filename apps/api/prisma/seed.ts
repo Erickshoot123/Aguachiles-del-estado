@@ -91,12 +91,19 @@ async function seedMenu(): Promise<void> {
   }
 }
 
-async function seedCashRegisters(): Promise<void> {
+async function seedLocation(): Promise<string> {
+  const existing = await prisma.location.findFirst({ where: { name: 'Sucursal principal' } });
+  if (existing) return existing.id;
+  const created = await prisma.location.create({ data: { name: 'Sucursal principal' } });
+  return created.id;
+}
+
+async function seedCashRegisters(locationId: string): Promise<void> {
   const registerNames = ['Caja principal', 'Caja móvil'];
   for (const name of registerNames) {
     const existing = await prisma.cashRegister.findFirst({ where: { name } });
     if (!existing) {
-      await prisma.cashRegister.create({ data: { name } });
+      await prisma.cashRegister.create({ data: { name, locationId } });
     }
   }
 }
@@ -106,7 +113,8 @@ async function main(): Promise<void> {
   await seedAdminUser(roleIds['admin'] as string);
   await seedPaymentMethods();
   await seedMenu();
-  await seedCashRegisters();
+  const locationId = await seedLocation();
+  await seedCashRegisters(locationId);
 
   console.warn(`Seed completado. Usuario admin: ${SEED_ADMIN_EMAIL} / ${SEED_ADMIN_PASSWORD}`);
 }
