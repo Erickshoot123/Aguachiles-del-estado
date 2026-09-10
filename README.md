@@ -55,8 +55,10 @@ La app queda en `http://localhost:5173`. Usuario semilla: `admin@aguachiles.loca
 `ChangeMe123!` (cámbialo antes de producción).
 
 Sin impresora térmica conectada, el print-agent escribe cada ticket como buffer ESC/POS
-crudo en `apps/print-agent/print-output/` (configurable con `PRINTER_INTERFACE`); para una
-impresora de red real, cambia esa variable a `tcp://<ip>:9100`.
+crudo en `apps/print-agent/print-output/` (configurable en `PRINTERS`, un JSON con una o más
+impresoras); para una impresora de red real, cambia su `interface` a `tcp://<ip>:9100`. El
+formato del ticket (58mm/80mm) y la impresora se eligen por terminal desde el modal de ticket
+en el frontend y se recuerdan en `localStorage`.
 
 ## Scripts de raíz
 

@@ -1,16 +1,27 @@
-import { printer as ThermalPrinter, types as PrinterTypes } from 'node-thermal-printer';
+import {
+  characterSet as CharacterSet,
+  printer as ThermalPrinter,
+  types as PrinterTypes,
+} from 'node-thermal-printer';
 import type { Ticket } from '@aguachiles/shared';
-import type { Env } from '../config/env.js';
+import type { PrinterConfig } from '../config/env.js';
 
 function formatMoney(amount: number): string {
   return `$${amount.toFixed(2)}`;
 }
 
-export function renderTicket(ticket: Ticket, env: Env): InstanceType<typeof ThermalPrinter> {
+export function renderTicket(
+  ticket: Ticket,
+  printerConfig: PrinterConfig,
+  width: number,
+): InstanceType<typeof ThermalPrinter> {
   const printer = new ThermalPrinter({
     type: PrinterTypes.EPSON,
-    interface: env.PRINTER_INTERFACE,
-    width: env.PRINTER_WIDTH,
+    interface: printerConfig.interface,
+    width,
+    // WPC1252 cubre acentos y ñ; sin esto, node-thermal-printer busca a
+    // tientas entre todas las tablas de códigos en cada carácter no-ASCII.
+    characterSet: CharacterSet.WPC1252,
   });
 
   printer.alignCenter();

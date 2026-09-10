@@ -26,3 +26,15 @@ export const ticketSchema = z.object({
 });
 
 export type Ticket = z.infer<typeof ticketSchema>;
+
+export const printRequestSchema = z.object({
+  ticket: ticketSchema,
+  printerId: z.string().min(1).optional(),
+});
+export type PrintRequest = z.infer<typeof printRequestSchema>;
+
+export const agentPrinterSchema = z.object({
+  id: z.string(),
+  name: z.string(),
+});
+export type AgentPrinter = z.infer<typeof agentPrinterSchema>;

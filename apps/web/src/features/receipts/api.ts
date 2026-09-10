@@ -1,4 +1,4 @@
-import type { Ticket } from '@aguachiles/shared';
+import type { AgentPrinter, Ticket } from '@aguachiles/shared';
 import { apiRequest } from '../../lib/apiClient';
 import { authFetch } from '../../lib/authFetch';
 import { env } from '../../lib/env';
@@ -16,10 +16,14 @@ export function confirmPrinted(orderId: string): Promise<void> {
   return authFetch<void>(`/api/orders/${orderId}/receipt/printed`, { method: 'POST' });
 }
 
-export function printAtAgent(ticket: Ticket): Promise<void> {
+export function printAtAgent(ticket: Ticket, printerId: string | null): Promise<void> {
   return apiRequest<void>('/print', {
     method: 'POST',
-    body: ticket,
+    body: { ticket, printerId: printerId ?? undefined },
     baseUrl: env.VITE_PRINT_AGENT_URL,
   });
+}
+
+export function listAgentPrinters(): Promise<AgentPrinter[]> {
+  return apiRequest<AgentPrinter[]>('/printers', { baseUrl: env.VITE_PRINT_AGENT_URL });
 }

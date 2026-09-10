@@ -5,6 +5,12 @@ import { loadEnv } from './config/env.js';
 import printRoutes from './print.routes.js';
 
 async function main(): Promise<void> {
+  try {
+    process.loadEnvFile();
+  } catch {
+    // Sin archivo .env (ej. producción con variables ya inyectadas): se usan
+    // las variables de entorno del proceso tal cual.
+  }
   const env = loadEnv();
   const app = Fastify({ logger: true });
 

@@ -1,7 +1,9 @@
+import type { TicketFormat } from '@aguachiles/shared';
 import type { JSX } from 'react';
 import { ModalBackdrop } from '../../components/ModalBackdrop';
 import { formatCurrency } from '../orders/channelLabels';
-import { usePrintTicket, useReceipt } from './hooks';
+import { useAgentPrinters, usePrintTicket, useReceipt } from './hooks';
+import { usePrintSettingsStore } from './printSettingsStore';
 
 const UI_TEXT = {
   loading: 'Cargando ticket…',
@@ -16,7 +18,55 @@ const UI_TEXT = {
   order: 'Pedido',
   time: 'Hora',
   total: 'TOTAL',
+  format58: '58mm',
+  format80: '80mm',
+  printerLabel: 'Impresora',
 } as const;
+
+const FORMAT_OPTIONS: { value: TicketFormat; label: string }[] = [
+  { value: 'thermal_58', label: UI_TEXT.format58 },
+  { value: 'thermal_80', label: UI_TEXT.format80 },
+];
+
+function PrintSettingsControls(): JSX.Element {
+  const printersQuery = useAgentPrinters();
+  const { ticketFormat, printerId, setTicketFormat, setPrinterId } = usePrintSettingsStore();
+  const printers = printersQuery.data ?? [];
+
+  return (
+    <div className="flex items-center gap-2 font-sans text-[12px]">
+      <div className="flex overflow-hidden rounded-lg border border-border">
+        {FORMAT_OPTIONS.map((option) => (
+          <button
+            key={option.value}
+            type="button"
+            onClick={() => setTicketFormat(option.value)}
+            className={
+              ticketFormat === option.value
+                ? 'bg-accent-soft px-2.5 py-1.5 font-semibold text-accent-hover'
+                : 'px-2.5 py-1.5 text-muted hover:bg-bg'
+            }
+          >
+            {option.label}
+          </button>
+        ))}
+      </div>
+      {printers.length > 1 ? (
+        <select
+          value={printerId ?? printers[0]?.id ?? ''}
+          onChange={(event) => setPrinterId(event.target.value)}
+          className="flex-1 rounded-lg border border-border px-2 py-1.5"
+        >
+          {printers.map((printer) => (
+            <option key={printer.id} value={printer.id}>
+              {printer.name}
+            </option>
+          ))}
+        </select>
+      ) : null}
+    </div>
+  );
+}
 
 interface TicketModalProps {
   orderId: string;
@@ -26,7 +76,13 @@ interface TicketModalProps {
 export function TicketModal({ orderId, onClose }: TicketModalProps): JSX.Element {
   const receiptQuery = useReceipt(orderId, true);
   const printTicket = usePrintTicket(orderId);
+  const { ticketFormat, printerId } = usePrintSettingsStore();
   const ticket = receiptQuery.data?.ticket;
+
+  const handlePrint = (): void => {
+    if (!ticket) return;
+    printTicket.mutate({ ticket: { ...ticket, format: ticketFormat }, printerId });
+  };
 
   return (
     <ModalBackdrop
@@ -86,13 +142,15 @@ export function TicketModal({ orderId, onClose }: TicketModalProps): JSX.Element
             </p>
           ) : null}
 
+          <PrintSettingsControls />
+
           {printTicket.isError ? (
             <p className="text-center text-[12px] text-red-600">{UI_TEXT.printError}</p>
           ) : null}
 
           <button
             type="button"
-            onClick={() => printTicket.mutate(ticket)}
+            onClick={handlePrint}
             disabled={printTicket.isPending}
             className="h-11 rounded-lg bg-text font-sans text-[14px] font-semibold text-white hover:bg-accent disabled:opacity-60"
           >
