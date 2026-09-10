@@ -2,6 +2,8 @@ import type { JSX, ReactNode } from 'react';
 import { Link, useLocation } from 'react-router-dom';
 import { useAuthStore } from '../features/auth/authStore';
 import { useLogout } from '../features/auth/useLogout';
+import { OfflineQueueBanner } from '../features/orders/OfflineQueueBanner';
+import { useOfflineQueueSync } from '../features/orders/offlineQueueSync';
 
 interface NavItem {
   label: string;
@@ -57,6 +59,7 @@ export function AppShell({ children }: AppShellProps): JSX.Element {
   const user = useAuthStore((state) => state.user);
   const logout = useLogout();
   const location = useLocation();
+  useOfflineQueueSync();
 
   return (
     <div className="flex min-h-screen w-full bg-bg">
@@ -95,7 +98,10 @@ export function AppShell({ children }: AppShellProps): JSX.Element {
         </div>
       </aside>
 
-      <main className="flex min-w-0 flex-1 flex-col">{children}</main>
+      <main className="flex min-w-0 flex-1 flex-col">
+        <OfflineQueueBanner />
+        {children}
+      </main>
     </div>
   );
 }

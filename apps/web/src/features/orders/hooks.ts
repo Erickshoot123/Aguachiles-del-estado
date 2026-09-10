@@ -1,5 +1,6 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
-import type { ChargeOrderRequest, CreateOrderRequest } from '@aguachiles/shared';
+import type { ChargeOrderRequest, CreateOrderRequest, Order } from '@aguachiles/shared';
+import { ApiError } from '../../lib/apiClient';
 import { useIsLoggedIn } from '../auth/authStore';
 import { CASH_SESSION_QUERY_KEY } from '../cash/hooks';
 import {
@@ -11,8 +12,9 @@ import {
   listProducts,
   lookupOrderByTicketNumber,
 } from './api';
+import { useOfflineQueueStore } from './offlineQueue';
 
-const ORDERS_QUERY_KEY = ['orders'] as const;
+export const ORDERS_QUERY_KEY = ['orders'] as const;
 const PRODUCTS_QUERY_KEY = ['products'] as const;
 
 export function useOrders() {
@@ -38,9 +40,24 @@ export function useProducts() {
 
 export function useCreateOrder() {
   const queryClient = useQueryClient();
+  const enqueue = useOfflineQueueStore((state) => state.enqueue);
 
   return useMutation({
-    mutationFn: (input: CreateOrderRequest) => createOrder(input),
+    mutationFn: async (input: CreateOrderRequest): Promise<Order | null> => {
+      try {
+        return await createOrder(input);
+      } catch (error) {
+        // Sin respuesta del servidor (servidor local caído, red intermitente):
+        // se guarda el pedido localmente para reintentarlo, en vez de perder
+        // la venta. Un error de negocio (ApiError, ej. stock insuficiente)
+        // no se encola porque reintentarlo tal cual fallaría de nuevo.
+        if (error instanceof ApiError) {
+          throw error;
+        }
+        enqueue(input);
+        return null;
+      }
+    },
     onSuccess: () => {
       void queryClient.invalidateQueries({ queryKey: ORDERS_QUERY_KEY });
     },
