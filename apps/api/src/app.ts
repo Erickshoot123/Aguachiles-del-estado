@@ -9,9 +9,11 @@ import cashRoutes from './modules/cash/cash.routes.js';
 import categoriesRoutes from './modules/categories/categories.routes.js';
 import ordersRoutes from './modules/orders/orders.routes.js';
 import productsRoutes from './modules/products/products.routes.js';
+import purchasesRoutes from './modules/purchases/purchases.routes.js';
 import receiptsRoutes from './modules/receipts/receipts.routes.js';
 import refundsRoutes from './modules/refunds/refunds.routes.js';
 import reportsRoutes from './modules/reports/reports.routes.js';
+import suppliersRoutes from './modules/suppliers/suppliers.routes.js';
 
 export async function buildApp(env: Env): Promise<FastifyInstance> {
   const app = Fastify({ logger: true });
@@ -28,6 +30,8 @@ export async function buildApp(env: Env): Promise<FastifyInstance> {
   await app.register(receiptsRoutes);
   await app.register(refundsRoutes);
   await app.register(reportsRoutes);
+  await app.register(suppliersRoutes);
+  await app.register(purchasesRoutes);
 
   app.get('/health', async () => ({ status: 'ok' }));
 

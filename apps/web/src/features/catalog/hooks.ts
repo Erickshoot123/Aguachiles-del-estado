@@ -14,7 +14,7 @@ import {
 } from './api';
 
 const CATEGORIES_QUERY_KEY = ['categories'] as const;
-const CATALOG_PRODUCTS_QUERY_KEY = ['products', 'catalog'] as const;
+export const CATALOG_PRODUCTS_QUERY_KEY = ['products', 'catalog'] as const;
 // El catálogo cambia con poca frecuencia (a diferencia del tablero de
 // pedidos); evita refetch en cada focus/mount mientras el usuario navega.
 const CATALOG_STALE_TIME_MS = 60_000;

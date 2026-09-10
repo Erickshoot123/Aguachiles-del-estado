@@ -14,6 +14,7 @@ const NAV_SECTIONS: readonly { title: string; items: readonly NavItem[] }[] = [
     items: [
       { label: 'Pedidos', path: '/' },
       { label: 'Menú y productos', path: '/menu' },
+      { label: 'Proveedores y compras', path: '/compras' },
       { label: 'Inventario' },
     ],
   },

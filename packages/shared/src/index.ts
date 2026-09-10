@@ -3,6 +3,8 @@ export * from './cash.js';
 export * from './categories.js';
 export * from './orders.js';
 export * from './products.js';
+export * from './purchases.js';
 export * from './refunds.js';
 export * from './reports.js';
+export * from './suppliers.js';
 export * from './ticket.js';
