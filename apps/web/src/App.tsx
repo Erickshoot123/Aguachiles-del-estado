@@ -36,7 +36,7 @@ export function App(): JSX.Element {
           <Route
             path="/menu"
             element={
-              <ProtectedRoute>
+              <ProtectedRoute permission="catalog.write">
                 <CatalogPage />
               </ProtectedRoute>
             }
@@ -44,7 +44,7 @@ export function App(): JSX.Element {
           <Route
             path="/reportes"
             element={
-              <ProtectedRoute>
+              <ProtectedRoute permission="reports.view">
                 <ReportsPage />
               </ProtectedRoute>
             }
@@ -52,7 +52,7 @@ export function App(): JSX.Element {
           <Route
             path="/compras"
             element={
-              <ProtectedRoute>
+              <ProtectedRoute permission="suppliers.write">
                 <SuppliersPage />
               </ProtectedRoute>
             }
@@ -60,7 +60,7 @@ export function App(): JSX.Element {
           <Route
             path="/auditoria"
             element={
-              <ProtectedRoute>
+              <ProtectedRoute permission="audit.view">
                 <AuditPage />
               </ProtectedRoute>
             }
@@ -68,7 +68,7 @@ export function App(): JSX.Element {
           <Route
             path="/analitica"
             element={
-              <ProtectedRoute>
+              <ProtectedRoute permission="reports.view">
                 <AnalyticsPage />
               </ProtectedRoute>
             }

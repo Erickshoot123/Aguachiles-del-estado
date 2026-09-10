@@ -1,13 +1,24 @@
 import { createHash, randomBytes } from 'node:crypto';
 import bcrypt from 'bcryptjs';
 import { Prisma, type PrismaClient } from '@prisma/client';
-import type { AuthUser, LoginRequest } from '@aguachiles/shared';
+import type { AuthUser, LoginRequest, PermissionCode } from '@aguachiles/shared';
 import { InactiveUserError, InvalidCredentialsError, InvalidRefreshTokenError } from './auth.errors.js';
 
 type PrismaClientOrTx = PrismaClient | Prisma.TransactionClient;
 
 export interface AuthenticatedUser {
   authUser: AuthUser;
+}
+
+export async function getRolePermissions(
+  prisma: PrismaClientOrTx,
+  roleId: string,
+): Promise<PermissionCode[]> {
+  const rolePermissions = await prisma.rolePermission.findMany({
+    where: { roleId },
+    include: { permission: true },
+  });
+  return rolePermissions.map((rolePermission) => rolePermission.permission.code as PermissionCode);
 }
 
 export async function authenticateUser(
@@ -32,12 +43,15 @@ export async function authenticateUser(
     throw new InactiveUserError();
   }
 
+  const permissions = await getRolePermissions(prisma, user.roleId);
+
   return {
     authUser: {
       id: user.id,
       name: user.name,
       email: user.email,
       roleName: user.role.name,
+      permissions,
     },
   };
 }
@@ -103,12 +117,15 @@ export async function rotateRefreshToken(
     return issueRefreshToken(tx, existing.userId, ttlHours);
   });
 
+  const permissions = await getRolePermissions(prisma, existing.user.roleId);
+
   return {
     authUser: {
       id: existing.user.id,
       name: existing.user.name,
       email: existing.user.email,
       roleName: existing.user.role.name,
+      permissions,
     },
     refreshToken: newRawToken,
   };

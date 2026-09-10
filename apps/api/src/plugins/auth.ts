@@ -1,11 +1,13 @@
 import fastifyJwt from '@fastify/jwt';
 import fp from 'fastify-plugin';
+import type { PermissionCode } from '@aguachiles/shared';
 import type { FastifyInstance, FastifyReply, FastifyRequest } from 'fastify';
 import type { Env } from '../config/env.js';
 
 export interface AuthTokenPayload {
   sub: string;
   roleName: string;
+  permissions: PermissionCode[];
 }
 
 declare module '@fastify/jwt' {

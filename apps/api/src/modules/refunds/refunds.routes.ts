@@ -1,5 +1,6 @@
 import { createRefundRequestSchema } from '@aguachiles/shared';
 import type { FastifyInstance } from 'fastify';
+import { requirePermission } from '../../lib/authorize.js';
 import { idParamSchema } from '../../lib/paramsSchemas.js';
 import { requireOpenSession } from '../cash/cash.service.js';
 import { createRefund, getRefundableSale } from './refunds.service.js';
@@ -17,7 +18,7 @@ export default async function refundsRoutes(fastify: FastifyInstance): Promise<v
 
   fastify.post(
     '/api/orders/:id/refund',
-    { preHandler: fastify.authenticate },
+    { preHandler: [fastify.authenticate, requirePermission('refunds.create')] },
     async (request, reply) => {
       const { id } = idParamSchema.parse(request.params);
       const input = createRefundRequestSchema.parse(request.body);

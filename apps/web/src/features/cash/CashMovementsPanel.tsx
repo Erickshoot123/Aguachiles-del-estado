@@ -1,6 +1,7 @@
 import type { CashMovement, CashMovementType } from '@aguachiles/shared';
 import type { JSX } from 'react';
 import { useState } from 'react';
+import { usePermission } from '../auth/authStore';
 import { formatCurrency } from '../orders/channelLabels';
 import { useCashMovements, useCreateCashMovement } from './hooks';
 
@@ -35,14 +36,17 @@ function formatDateTime(iso: string): string {
 function MovementTypeToggle({
   type,
   onChange,
+  canWithdraw,
 }: {
   type: ManualMovementType;
   onChange: (type: ManualMovementType) => void;
+  canWithdraw: boolean;
 }): JSX.Element {
-  const options: { value: ManualMovementType; label: string }[] = [
+  const allOptions: { value: ManualMovementType; label: string }[] = [
     { value: 'withdrawal', label: UI_TEXT.withdrawal },
     { value: 'deposit', label: UI_TEXT.deposit },
   ];
+  const options = canWithdraw ? allOptions : allOptions.filter((option) => option.value !== 'withdrawal');
   return (
     <div className="mb-4 flex gap-2">
       {options.map((option) => (
@@ -81,7 +85,8 @@ function MovementHistory({ movements }: { movements: CashMovement[] }): JSX.Elem
 
 function MovementForm({ sessionId }: { sessionId: string }): JSX.Element {
   const createMovement = useCreateCashMovement(sessionId);
-  const [type, setType] = useState<ManualMovementType>('withdrawal');
+  const canWithdraw = usePermission('cash.withdraw');
+  const [type, setType] = useState<ManualMovementType>(canWithdraw ? 'withdrawal' : 'deposit');
   const [amount, setAmount] = useState(0);
   const [description, setDescription] = useState('');
 
@@ -102,7 +107,7 @@ function MovementForm({ sessionId }: { sessionId: string }): JSX.Element {
 
   return (
     <>
-      <MovementTypeToggle type={type} onChange={setType} />
+      <MovementTypeToggle type={type} onChange={setType} canWithdraw={canWithdraw} />
       <label className="mb-1 block text-sm font-medium text-text" htmlFor="movement-amount">
         {UI_TEXT.amountLabel}
       </label>

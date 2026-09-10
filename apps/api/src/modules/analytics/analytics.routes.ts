@@ -1,5 +1,6 @@
 import { salesReportQuerySchema } from '@aguachiles/shared';
 import type { FastifyInstance } from 'fastify';
+import { requirePermission } from '../../lib/authorize.js';
 import { getAnalyticsDashboard } from './analytics.service.js';
 
 function startOfToday(): Date {
@@ -10,7 +11,7 @@ function startOfToday(): Date {
 export default async function analyticsRoutes(fastify: FastifyInstance): Promise<void> {
   fastify.get(
     '/api/analytics/dashboard',
-    { preHandler: fastify.authenticate },
+    { preHandler: [fastify.authenticate, requirePermission('reports.view')] },
     async (request, reply) => {
       const query = salesReportQuerySchema.parse(request.query);
       const from = query.from ? new Date(query.from) : startOfToday();

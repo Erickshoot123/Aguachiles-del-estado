@@ -1,6 +1,7 @@
+import type { PermissionCode } from '@aguachiles/shared';
 import type { JSX, ReactNode } from 'react';
 import { Link, useLocation } from 'react-router-dom';
-import { useAuthStore } from '../features/auth/authStore';
+import { useAuthStore, usePermissions } from '../features/auth/authStore';
 import { useLogout } from '../features/auth/useLogout';
 import { OfflineQueueBanner } from '../features/orders/OfflineQueueBanner';
 import { useOfflineQueueSync } from '../features/orders/offlineQueueSync';
@@ -8,6 +9,7 @@ import { useOfflineQueueSync } from '../features/orders/offlineQueueSync';
 interface NavItem {
   label: string;
   path?: string;
+  permission?: PermissionCode;
 }
 
 const NAV_SECTIONS: readonly { title: string; items: readonly NavItem[] }[] = [
@@ -15,8 +17,8 @@ const NAV_SECTIONS: readonly { title: string; items: readonly NavItem[] }[] = [
     title: 'Operación',
     items: [
       { label: 'Pedidos', path: '/' },
-      { label: 'Menú y productos', path: '/menu' },
-      { label: 'Proveedores y compras', path: '/compras' },
+      { label: 'Menú y productos', path: '/menu', permission: 'catalog.write' },
+      { label: 'Proveedores y compras', path: '/compras', permission: 'suppliers.write' },
       { label: 'Inventario' },
     ],
   },
@@ -24,9 +26,9 @@ const NAV_SECTIONS: readonly { title: string; items: readonly NavItem[] }[] = [
     title: 'Administración',
     items: [
       { label: 'Caja y cierre', path: '/caja' },
-      { label: 'Reportes', path: '/reportes' },
-      { label: 'Analítica', path: '/analitica' },
-      { label: 'Auditoría', path: '/auditoria' },
+      { label: 'Reportes', path: '/reportes', permission: 'reports.view' },
+      { label: 'Analítica', path: '/analitica', permission: 'reports.view' },
+      { label: 'Auditoría', path: '/auditoria', permission: 'audit.view' },
     ],
   },
 ];
@@ -56,10 +58,20 @@ function NavRow({ item, isActive }: { item: NavItem; isActive: boolean }): JSX.E
   );
 }
 
+function useVisibleNavSections(): readonly { title: string; items: readonly NavItem[] }[] {
+  const permissions = usePermissions();
+
+  return NAV_SECTIONS.map((section) => ({
+    ...section,
+    items: section.items.filter((item) => !item.permission || permissions.includes(item.permission)),
+  })).filter((section) => section.items.length > 0);
+}
+
 export function AppShell({ children }: AppShellProps): JSX.Element {
   const user = useAuthStore((state) => state.user);
   const logout = useLogout();
   const location = useLocation();
+  const visibleSections = useVisibleNavSections();
   useOfflineQueueSync();
 
   return (
@@ -73,7 +85,7 @@ export function AppShell({ children }: AppShellProps): JSX.Element {
         </div>
 
         <nav className="flex flex-col gap-4">
-          {NAV_SECTIONS.map((section) => (
+          {visibleSections.map((section) => (
             <div key={section.title} className="flex flex-col gap-0.5">
               <div className="px-2.5 pb-2 font-mono text-[10px] uppercase tracking-widest text-muted-2">
                 {section.title}

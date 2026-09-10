@@ -2,6 +2,7 @@ import type { Order } from '@aguachiles/shared';
 import type { JSX } from 'react';
 import { useState } from 'react';
 import { ModalBackdrop } from '../../components/ModalBackdrop';
+import { usePermission } from '../auth/authStore';
 import { useTerminalCashRegisterId } from '../cash/terminalStore';
 import { RefundModal } from '../refunds/RefundModal';
 import { TicketModal } from '../receipts/TicketModal';
@@ -46,13 +47,15 @@ export function OrderDetailModal({
   const advanceOrder = useAdvanceOrder();
   const cancelOrder = useCancelOrder();
   const cashRegisterId = useTerminalCashRegisterId();
+  const canCreateRefund = usePermission('refunds.create');
   const [isTicketOpen, setIsTicketOpen] = useState(false);
   const [isRefundOpen, setIsRefundOpen] = useState(false);
   const [isChargeOpen, setIsChargeOpen] = useState(false);
 
   const canCancelOrCharge = order.status === 'pending';
   const hasReceipt = order.status !== 'pending' && order.status !== 'cancelled';
-  const canRefund = order.status === 'completed' || order.status === 'partially_refunded';
+  const canRefund =
+    (order.status === 'completed' || order.status === 'partially_refunded') && canCreateRefund;
   const badge = STATUS_BADGE[order.status];
 
   return (

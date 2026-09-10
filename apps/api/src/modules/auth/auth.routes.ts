@@ -2,7 +2,13 @@ import { loginRequestSchema, refreshRequestSchema, type LoginResponse, type Refr
 import type { FastifyInstance } from 'fastify';
 import type { Env } from '../../config/env.js';
 import { NotFoundError } from '../../lib/errors.js';
-import { authenticateUser, issueRefreshToken, revokeRefreshToken, rotateRefreshToken } from './auth.service.js';
+import {
+  authenticateUser,
+  getRolePermissions,
+  issueRefreshToken,
+  revokeRefreshToken,
+  rotateRefreshToken,
+} from './auth.service.js';
 
 export default async function authRoutes(
   fastify: FastifyInstance,
@@ -12,7 +18,11 @@ export default async function authRoutes(
     const input = loginRequestSchema.parse(request.body);
     const { authUser } = await authenticateUser(fastify.prisma, input);
 
-    const accessToken = await reply.jwtSign({ sub: authUser.id, roleName: authUser.roleName });
+    const accessToken = await reply.jwtSign({
+      sub: authUser.id,
+      roleName: authUser.roleName,
+      permissions: authUser.permissions,
+    });
     const refreshToken = await issueRefreshToken(
       fastify.prisma,
       authUser.id,
@@ -31,7 +41,11 @@ export default async function authRoutes(
       opts.env.REFRESH_TOKEN_TTL_HOURS,
     );
 
-    const accessToken = await reply.jwtSign({ sub: authUser.id, roleName: authUser.roleName });
+    const accessToken = await reply.jwtSign({
+      sub: authUser.id,
+      roleName: authUser.roleName,
+      permissions: authUser.permissions,
+    });
 
     const body: RefreshResponse = { accessToken, refreshToken, user: authUser };
     reply.status(200).send(body);
@@ -53,11 +67,14 @@ export default async function authRoutes(
       throw new NotFoundError('Usuario no encontrado');
     }
 
+    const permissions = await getRolePermissions(fastify.prisma, user.roleId);
+
     reply.status(200).send({
       id: user.id,
       name: user.name,
       email: user.email,
       roleName: user.role.name,
+      permissions,
     });
   });
 }

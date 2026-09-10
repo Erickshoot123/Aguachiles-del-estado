@@ -1,6 +1,6 @@
 import { create } from 'zustand';
 import { persist } from 'zustand/middleware';
-import type { AuthUser } from '@aguachiles/shared';
+import type { AuthUser, PermissionCode } from '@aguachiles/shared';
 
 interface AuthState {
   accessToken: string | null;
@@ -34,4 +34,19 @@ export const useAuthStore = create<AuthState>()(
 
 export function useIsLoggedIn(): boolean {
   return useAuthStore((state) => Boolean(state.accessToken));
+}
+
+export function usePermission(code: PermissionCode): boolean {
+  return useAuthStore((state) => state.user?.permissions.includes(code) ?? false);
+}
+
+// Referencia estable: un `?? []` dentro del selector crearía un arreglo nuevo
+// en cada render, y Zustand (useSyncExternalStore) lo interpreta como que el
+// snapshot cambió siempre — "Maximum update depth exceeded" en un loop
+// infinito. Con esta constante de módulo, el fallback es la misma referencia
+// entre renders mientras no haya usuario.
+const EMPTY_PERMISSIONS: PermissionCode[] = [];
+
+export function usePermissions(): PermissionCode[] {
+  return useAuthStore((state) => state.user?.permissions ?? EMPTY_PERMISSIONS);
 }

@@ -5,6 +5,7 @@ import {
 } from '@aguachiles/shared';
 import type { FastifyInstance } from 'fastify';
 import { z } from 'zod';
+import { assertPermission } from '../../lib/authorize.js';
 import { idParamSchema } from '../../lib/paramsSchemas.js';
 import {
   closeSession,
@@ -79,6 +80,9 @@ export default async function cashRoutes(fastify: FastifyInstance): Promise<void
     async (request, reply) => {
       const { id } = idParamSchema.parse(request.params);
       const input = createCashMovementRequestSchema.parse(request.body);
+      if (input.type === 'withdrawal') {
+        assertPermission(request, 'cash.withdraw');
+      }
       const movement = await createCashMovement(fastify.prisma, id, request.user.sub, input);
       reply.status(201).send(movement);
     },
