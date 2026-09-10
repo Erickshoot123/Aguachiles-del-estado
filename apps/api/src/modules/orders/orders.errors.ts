@@ -1,4 +1,4 @@
-import { ConflictError, NotFoundError } from '../../lib/errors.js';
+import { ConflictError, NotFoundError, ValidationError } from '../../lib/errors.js';
 
 export class OrderNotFoundError extends NotFoundError {
   constructor() {
@@ -36,8 +36,14 @@ export class CannotCancelPaidOrderError extends ConflictError {
   }
 }
 
-export class CashPaymentMethodNotConfiguredError extends ConflictError {
+export class PaymentMethodNotFoundError extends NotFoundError {
   constructor() {
-    super('No hay un método de pago en efectivo activo configurado');
+    super('Uno de los métodos de pago no existe o no está activo');
+  }
+}
+
+export class PaymentAmountMismatchError extends ValidationError {
+  constructor() {
+    super('La suma de los pagos no coincide con el total del pedido');
   }
 }

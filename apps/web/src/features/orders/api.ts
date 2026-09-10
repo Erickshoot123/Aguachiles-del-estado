@@ -1,4 +1,4 @@
-import type { CreateOrderRequest, Order, ProductSummary } from '@aguachiles/shared';
+import type { ChargeOrderRequest, CreateOrderRequest, Order, ProductSummary } from '@aguachiles/shared';
 import { authFetch } from '../../lib/authFetch';
 
 export function listOrders(): Promise<Order[]> {
@@ -17,10 +17,10 @@ export function cancelOrder(orderId: string): Promise<Order> {
   return authFetch<Order>(`/api/orders/${orderId}/cancel`, { method: 'PATCH' });
 }
 
-export function chargeOrder(orderId: string, cashRegisterId: string): Promise<Order> {
+export function chargeOrder(orderId: string, input: ChargeOrderRequest): Promise<Order> {
   return authFetch<Order>(`/api/orders/${orderId}/charge`, {
     method: 'PATCH',
-    body: { cashRegisterId },
+    body: input,
   });
 }
 

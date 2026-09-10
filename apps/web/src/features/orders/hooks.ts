@@ -1,5 +1,5 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
-import type { CreateOrderRequest } from '@aguachiles/shared';
+import type { ChargeOrderRequest, CreateOrderRequest } from '@aguachiles/shared';
 import { useIsLoggedIn } from '../auth/authStore';
 import { CASH_SESSION_QUERY_KEY } from '../cash/hooks';
 import {
@@ -73,8 +73,8 @@ export function useChargeOrder() {
   const queryClient = useQueryClient();
 
   return useMutation({
-    mutationFn: ({ orderId, cashRegisterId }: { orderId: string; cashRegisterId: string }) =>
-      chargeOrder(orderId, cashRegisterId),
+    mutationFn: ({ orderId, input }: { orderId: string; input: ChargeOrderRequest }) =>
+      chargeOrder(orderId, input),
     onSuccess: () => {
       void queryClient.invalidateQueries({ queryKey: ORDERS_QUERY_KEY });
       void queryClient.invalidateQueries({ queryKey: CASH_SESSION_QUERY_KEY });

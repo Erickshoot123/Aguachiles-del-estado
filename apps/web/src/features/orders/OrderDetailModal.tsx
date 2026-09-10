@@ -5,16 +5,15 @@ import { ModalBackdrop } from '../../components/ModalBackdrop';
 import { useTerminalCashRegisterId } from '../cash/terminalStore';
 import { RefundModal } from '../refunds/RefundModal';
 import { TicketModal } from '../receipts/TicketModal';
+import { ChargeOrderModal } from './ChargeOrderModal';
 import { CHANNEL_LABELS, formatCurrency, formatElapsedMinutes } from './channelLabels';
-import { useAdvanceOrder, useCancelOrder, useChargeOrder } from './hooks';
+import { useAdvanceOrder, useCancelOrder } from './hooks';
 
 const UI_TEXT = {
   total: 'Total',
   onBoardSince: 'Tiempo en tablero',
   cancelAction: 'Cancelar pedido',
-  chargeAction: 'Cobrar (efectivo)',
-  charging: 'Cobrando…',
-  chargeError: 'No se pudo cobrar. ¿Hay una caja abierta?',
+  chargeAction: 'Cobrar',
   noRegisterSelected: 'Selecciona la caja de esta terminal en "Caja y cierre"',
   ticketAction: 'Ticket',
   refundAction: 'Reembolsar',
@@ -46,10 +45,10 @@ export function OrderDetailModal({
 }: OrderDetailModalProps): JSX.Element {
   const advanceOrder = useAdvanceOrder();
   const cancelOrder = useCancelOrder();
-  const chargeOrder = useChargeOrder();
   const cashRegisterId = useTerminalCashRegisterId();
   const [isTicketOpen, setIsTicketOpen] = useState(false);
   const [isRefundOpen, setIsRefundOpen] = useState(false);
+  const [isChargeOpen, setIsChargeOpen] = useState(false);
 
   const canCancelOrCharge = order.status === 'pending';
   const hasReceipt = order.status !== 'pending' && order.status !== 'cancelled';
@@ -87,9 +86,6 @@ export function OrderDetailModal({
           <span className="text-[13px] text-muted">
             {UI_TEXT.onBoardSince} {formatElapsedMinutes(order.createdAt)}
           </span>
-          {chargeOrder.isError ? (
-            <p className="text-sm text-red-600">{UI_TEXT.chargeError}</p>
-          ) : null}
         </div>
 
         <div className="flex flex-wrap gap-2.5 bg-bg px-5 py-4">
@@ -106,14 +102,12 @@ export function OrderDetailModal({
           {canCancelOrCharge ? (
             <button
               type="button"
-              onClick={() =>
-                cashRegisterId && chargeOrder.mutate({ orderId: order.id, cashRegisterId })
-              }
-              disabled={chargeOrder.isPending || !cashRegisterId}
+              onClick={() => setIsChargeOpen(true)}
+              disabled={!cashRegisterId}
               title={!cashRegisterId ? UI_TEXT.noRegisterSelected : undefined}
               className="h-11 rounded-lg bg-text px-4 text-[14px] font-semibold text-white hover:bg-accent disabled:opacity-60"
             >
-              {chargeOrder.isPending ? UI_TEXT.charging : UI_TEXT.chargeAction}
+              {UI_TEXT.chargeAction}
             </button>
           ) : null}
           {hasReceipt ? (
@@ -152,6 +146,13 @@ export function OrderDetailModal({
       ) : null}
       {isRefundOpen ? (
         <RefundModal orderId={order.id} onClose={() => setIsRefundOpen(false)} />
+      ) : null}
+      {isChargeOpen && cashRegisterId ? (
+        <ChargeOrderModal
+          order={order}
+          cashRegisterId={cashRegisterId}
+          onClose={() => setIsChargeOpen(false)}
+        />
       ) : null}
     </>
   );

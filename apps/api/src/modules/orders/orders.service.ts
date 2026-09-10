@@ -1,14 +1,15 @@
 import { Prisma, type PrismaClient } from '@prisma/client';
-import type { CreateOrderRequest, Order } from '@aguachiles/shared';
+import type { ChargePayment, CreateOrderRequest, Order } from '@aguachiles/shared';
 import { NoOpenCashSessionError } from '../cash/cash.errors.js';
 import { createReceiptForSale } from '../receipts/receipts.service.js';
 import {
   CannotCancelPaidOrderError,
-  CashPaymentMethodNotConfiguredError,
   InsufficientStockError,
   InvalidFulfillmentTransitionError,
   OrderAlreadyChargedError,
   OrderNotFoundError,
+  PaymentAmountMismatchError,
+  PaymentMethodNotFoundError,
   ProductNotAvailableError,
 } from './orders.errors.js';
 
@@ -264,11 +265,48 @@ export async function cancelOrder(prisma: PrismaClient, orderId: string): Promis
   return toOrderDto(order);
 }
 
+async function applyChargePayments(
+  tx: Prisma.TransactionClient,
+  saleId: string,
+  saleTotal: Prisma.Decimal,
+  cashSessionId: string,
+  userId: string,
+  payments: ChargePayment[],
+): Promise<void> {
+  const paymentMethods = await tx.paymentMethod.findMany({
+    where: { id: { in: payments.map((payment) => payment.paymentMethodId) }, isActive: true },
+  });
+  const paymentMethodById = new Map(paymentMethods.map((method) => [method.id, method]));
+
+  const paidTotal = payments.reduce(
+    (sum, payment) => sum.add(new Prisma.Decimal(payment.amount)),
+    new Prisma.Decimal(0),
+  );
+  if (!paidTotal.equals(saleTotal)) {
+    throw new PaymentAmountMismatchError();
+  }
+
+  for (const payment of payments) {
+    const method = paymentMethodById.get(payment.paymentMethodId);
+    if (!method) {
+      throw new PaymentMethodNotFoundError();
+    }
+    const amount = new Prisma.Decimal(payment.amount);
+    await tx.salePayment.create({
+      data: { saleId, paymentMethodId: method.id, amount, reference: payment.reference },
+    });
+    await tx.cashMovement.create({
+      data: { sessionId: cashSessionId, type: 'sale_income', paymentMethodId: method.id, amount, userId },
+    });
+  }
+}
+
 export async function chargeOrder(
   prisma: PrismaClient,
   orderId: string,
   userId: string,
   cashSessionId: string,
+  payments: ChargePayment[],
 ): Promise<Order> {
   const order = await prisma.$transaction(async (tx) => {
     const sale = await tx.sale.findUnique({ where: { id: orderId } });
@@ -284,25 +322,7 @@ export async function chargeOrder(
       throw new NoOpenCashSessionError();
     }
 
-    const cashPaymentMethod = await tx.paymentMethod.findFirst({
-      where: { type: 'cash', isActive: true },
-    });
-    if (!cashPaymentMethod) {
-      throw new CashPaymentMethodNotConfiguredError();
-    }
-
-    await tx.salePayment.create({
-      data: { saleId: sale.id, paymentMethodId: cashPaymentMethod.id, amount: sale.total },
-    });
-    await tx.cashMovement.create({
-      data: {
-        sessionId: cashSessionId,
-        type: 'sale_income',
-        paymentMethodId: cashPaymentMethod.id,
-        amount: sale.total,
-        userId,
-      },
-    });
+    await applyChargePayments(tx, sale.id, sale.total, cashSessionId, userId, payments);
 
     const updatedSale = await tx.sale.update({
       where: { id: orderId },

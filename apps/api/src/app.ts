@@ -8,6 +8,7 @@ import authRoutes from './modules/auth/auth.routes.js';
 import cashRoutes from './modules/cash/cash.routes.js';
 import categoriesRoutes from './modules/categories/categories.routes.js';
 import ordersRoutes from './modules/orders/orders.routes.js';
+import paymentMethodsRoutes from './modules/payment-methods/payment-methods.routes.js';
 import productsRoutes from './modules/products/products.routes.js';
 import purchasesRoutes from './modules/purchases/purchases.routes.js';
 import receiptsRoutes from './modules/receipts/receipts.routes.js';
@@ -26,6 +27,7 @@ export async function buildApp(env: Env): Promise<FastifyInstance> {
   await app.register(categoriesRoutes);
   await app.register(productsRoutes);
   await app.register(ordersRoutes);
+  await app.register(paymentMethodsRoutes);
   await app.register(cashRoutes);
   await app.register(receiptsRoutes);
   await app.register(refundsRoutes);
