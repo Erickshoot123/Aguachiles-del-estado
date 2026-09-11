@@ -134,6 +134,38 @@ npm run restore:db --workspace=@aguachiles/api -- ./backups/aguachiles_pos_2026-
 El script termina con código de salida distinto de cero si el respaldo falla (contenedor caído,
 `pg_dump` con error), para que el programador de tareas pueda reportarlo como fallido.
 
+## Monitoreo
+
+No hay un APM externo previsto para una sola sucursal (ver sección 8 del plan); el mecanismo de
+monitoreo es una revisión periódica simple. `apps/api/scripts/check-health.ts` llama al endpoint
+`/health` del backend y, si no responde o responde con error, lo registra en un archivo de log y
+termina con código de salida distinto de cero (no escribe nada si todo está bien).
+
+```bash
+npm run check:health --workspace=@aguachiles/api
+```
+
+Variables de entorno opcionales: `HEALTH_CHECK_URL` (default `http://127.0.0.1:3000/health`),
+`HEALTH_CHECK_LOG_FILE` (default `./logs/health-check.log`, relativo a `apps/api`),
+`HEALTH_CHECK_TIMEOUT_MS` (default `5000`).
+
+Prográmalo cada pocos minutos junto al respaldo diario:
+
+- Windows (Task Scheduler):
+  ```powershell
+  schtasks /create /tn "Aguachiles POS - Health Check" /sc minute /mo 5 ^
+    /tr "cmd /c cd /d C:\ruta\al\proyecto && npm run check:health --workspace=@aguachiles/api"
+  ```
+- Linux/macOS (cron):
+  ```
+  */5 * * * * cd /ruta/al/proyecto && npm run check:health --workspace=@aguachiles/api
+  ```
+
+Esto no envía notificaciones (SMS/email) por sí solo — eso requeriría configurar un canal externo
+propio del negocio (proveedor de correo, webhook, etc.), fuera del alcance de un MVP de una sola
+sucursal. Revisa `apps/api/logs/health-check.log` periódicamente, o conecta la tarea programada a
+tu propio sistema de alertas si lo tienes.
+
 ## Estado actual (Fase 1 en curso)
 
 Fase 0 completa (monorepo, tooling, esquema de base de datos, auth). De la Fase 1 ya funcionan

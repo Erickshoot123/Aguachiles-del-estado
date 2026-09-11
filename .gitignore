@@ -22,3 +22,4 @@ Thumbs.db
 
 apps/print-agent/print-output/
 apps/api/backups/
+apps/api/logs/
