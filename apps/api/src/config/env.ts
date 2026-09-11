@@ -8,6 +8,8 @@ const envSchema = z.object({
   JWT_ACCESS_EXPIRES_IN: z.string().default('15m'),
   REFRESH_TOKEN_TTL_HOURS: z.coerce.number().int().positive().default(12),
   CORS_ORIGIN: z.string().default('http://localhost:5173'),
+  LOGIN_RATE_LIMIT_MAX: z.coerce.number().int().positive().default(20),
+  LOGIN_RATE_LIMIT_WINDOW_MS: z.coerce.number().int().positive().default(60_000),
 });
 
 export type Env = z.infer<typeof envSchema>;

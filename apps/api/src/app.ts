@@ -1,4 +1,5 @@
 import cors from '@fastify/cors';
+import rateLimit from '@fastify/rate-limit';
 import Fastify, { type FastifyInstance } from 'fastify';
 import type { Env } from './config/env.js';
 import authPlugin from './plugins/auth.js';
@@ -22,6 +23,7 @@ export async function buildApp(env: Env): Promise<FastifyInstance> {
   const app = Fastify({ logger: env.NODE_ENV !== 'test' });
 
   await app.register(cors, { origin: env.CORS_ORIGIN });
+  await app.register(rateLimit, { global: false });
   await app.register(errorHandlerPlugin);
   await app.register(prismaPlugin);
   await app.register(authPlugin, { env });

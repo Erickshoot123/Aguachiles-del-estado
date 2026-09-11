@@ -10,3 +10,7 @@ process.env.CORS_ORIGIN = 'http://localhost:5173';
 // app.inject() no abre un puerto real; este valor solo necesita pasar la
 // validación del esquema (PORT positivo).
 process.env.PORT = '3999';
+// Alto a propósito: muchas pruebas hacen login en cada `beforeEach` y no
+// deben chocar con el límite de fuerza bruta; rate-limit.test.ts lo baja
+// explícitamente en su propio archivo para probar el límite real.
+process.env.LOGIN_RATE_LIMIT_MAX = '1000';
