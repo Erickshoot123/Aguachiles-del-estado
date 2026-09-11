@@ -93,6 +93,47 @@ Las pruebas truncan y re-siembran la DB de prueba entre archivos, así que nunca
 Pendiente (fuera del alcance actual): pruebas E2E con Playwright contra la UI real, y cobertura
 exhaustiva endpoint-por-endpoint de módulos secundarios (proveedores, compras, analítica).
 
+## Respaldo y restauración de la base de datos
+
+El servidor local no tiene redundancia: si el contenedor de Postgres pierde su volumen, todo el
+historial de ventas y caja se pierde. `apps/api/scripts/backup-db.ts` hace un `pg_dump` (formato
+`custom`, comprimido) del contenedor de Postgres a un archivo local, y borra los respaldos más
+viejos que el periodo de retención.
+
+```bash
+npm run backup:db --workspace=@aguachiles/api
+```
+
+Variables de entorno opcionales (con sus valores por defecto):
+
+- `BACKUP_CONTAINER=aguachiles-postgres` — nombre del contenedor de Postgres.
+- `BACKUP_DIR=./backups` — carpeta donde se guardan los `.dump` (relativa a `apps/api`). En
+  producción, apunta esto a una unidad externa o carpeta sincronizada a la nube — un respaldo que
+  vive en el mismo disco que la base de datos no protege contra una falla de disco.
+- `BACKUP_RETENTION_DAYS=30` — respaldos más viejos que esto se eliminan automáticamente.
+
+**Restaurar** un respaldo (reemplaza todos los datos actuales de la base indicada en
+`DATABASE_URL` — úsalo con cuidado):
+
+```bash
+npm run restore:db --workspace=@aguachiles/api -- ./backups/aguachiles_pos_2026-01-15T03-00-00-000Z.dump
+```
+
+**Programar el respaldo diario** en el servidor de la tienda:
+
+- Windows (Task Scheduler), ejecutando una vez al día:
+  ```powershell
+  schtasks /create /tn "Aguachiles POS - Backup DB" /sc daily /st 03:00 ^
+    /tr "cmd /c cd /d C:\ruta\al\proyecto && npm run backup:db --workspace=@aguachiles/api"
+  ```
+- Linux/macOS (cron), agregar con `crontab -e`:
+  ```
+  0 3 * * * cd /ruta/al/proyecto && npm run backup:db --workspace=@aguachiles/api >> /var/log/aguachiles-backup.log 2>&1
+  ```
+
+El script termina con código de salida distinto de cero si el respaldo falla (contenedor caído,
+`pg_dump` con error), para que el programador de tareas pueda reportarlo como fallido.
+
 ## Estado actual (Fase 1 en curso)
 
 Fase 0 completa (monorepo, tooling, esquema de base de datos, auth). De la Fase 1 ya funcionan

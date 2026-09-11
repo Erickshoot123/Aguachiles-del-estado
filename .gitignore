@@ -21,3 +21,4 @@ Thumbs.db
 .claude/scheduled_tasks.lock
 
 apps/print-agent/print-output/
+apps/api/backups/
