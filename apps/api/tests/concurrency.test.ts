@@ -37,7 +37,7 @@ describe('concurrencia', () => {
         method: 'POST',
         url: '/api/orders',
         headers: authHeader(token),
-        payload: { channel: 'phone', items: [{ productId: product.id, quantity: 1 }] },
+        payload: { channel: 'delivery', items: [{ productId: product.id, quantity: 1 }] },
       });
 
     const results = await Promise.all(Array.from({ length: CONCURRENT_REQUESTS }, createOrder));

@@ -2,7 +2,8 @@ import { expect, test } from '@playwright/test';
 
 const CAJERO_EMAIL = 'cajero@aguachiles.local';
 const CAJERO_PASSWORD = 'ChangeMe123!';
-const PRODUCT_NAME = 'Aguachile clásico';
+const PRODUCT_NAME = 'Aguachile Tradicional (medio kilo)';
+const EXTRA_PRODUCT_NAME = 'Tostadas extra (5 pzas)';
 
 test('flujo completo de cajero: login, abrir caja, vender con pago dividido, imprimir ticket, cerrar caja', async ({
   page,
@@ -32,6 +33,12 @@ test('flujo completo de cajero: login, abrir caja, vender con pago dividido, imp
     const dialog = page.getByRole('dialog').last();
     const productRow = dialog.getByText(PRODUCT_NAME, { exact: true }).locator('..');
     await productRow.getByRole('spinbutton').fill('1');
+
+    // El aviso de "¿Quieres agregar algo extra?" solo aparece una vez que hay
+    // al menos un producto principal con cantidad > 0.
+    const extraRow = dialog.getByText(EXTRA_PRODUCT_NAME, { exact: true }).locator('..');
+    await extraRow.getByRole('spinbutton').fill('1');
+
     await dialog.getByRole('button', { name: 'Crear pedido' }).click();
     await expect(page.getByRole('dialog')).toHaveCount(0);
 

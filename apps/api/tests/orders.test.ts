@@ -36,7 +36,7 @@ describe('orders', () => {
       method: 'POST',
       url: '/api/orders',
       headers: authHeader(token),
-      payload: { channel: 'phone', items: [{ productId: product.id, quantity: 2 }] },
+      payload: { channel: 'delivery', items: [{ productId: product.id, quantity: 2 }] },
     });
 
     expect(response.statusCode).toBe(201);
@@ -53,7 +53,7 @@ describe('orders', () => {
       method: 'POST',
       url: '/api/orders',
       headers: authHeader(token),
-      payload: { channel: 'phone', items: [{ productId: product.id, quantity: 3 }] },
+      payload: { channel: 'delivery', items: [{ productId: product.id, quantity: 3 }] },
     });
 
     expect(response.statusCode).toBe(409);
@@ -68,7 +68,7 @@ describe('orders', () => {
       method: 'POST',
       url: '/api/orders',
       headers: authHeader(token),
-      payload: { channel: 'phone', items: [{ productId: product.id, quantity: 4 }] },
+      payload: { channel: 'delivery', items: [{ productId: product.id, quantity: 4 }] },
     });
 
     const stock = await testPrisma.inventory.findUnique({ where: { productId: product.id } });
@@ -82,7 +82,7 @@ describe('orders', () => {
       method: 'POST',
       url: '/api/orders',
       headers: authHeader(token),
-      payload: { channel: 'phone', items: [{ productId: product.id, quantity: 1 }] },
+      payload: { channel: 'delivery', items: [{ productId: product.id, quantity: 1 }] },
     });
     const order = createResponse.json();
 
@@ -113,7 +113,7 @@ describe('orders', () => {
       method: 'POST',
       url: '/api/orders',
       headers: authHeader(token),
-      payload: { channel: 'phone', items: [{ productId: product.id, quantity: 1 }] },
+      payload: { channel: 'delivery', items: [{ productId: product.id, quantity: 1 }] },
     });
     const order = orderResponse.json();
 
@@ -139,7 +139,7 @@ describe('orders', () => {
       method: 'POST',
       url: '/api/orders',
       headers: authHeader(token),
-      payload: { channel: 'phone', items: [{ productId: product.id, quantity: 1 }] },
+      payload: { channel: 'delivery', items: [{ productId: product.id, quantity: 1 }] },
     });
     const order = orderResponse.json();
 
@@ -168,7 +168,7 @@ describe('orders', () => {
       method: 'POST',
       url: '/api/orders',
       headers: authHeader(token),
-      payload: { channel: 'phone', items: [{ productId: product.id, quantity: 1 }] },
+      payload: { channel: 'delivery', items: [{ productId: product.id, quantity: 1 }] },
     });
     const order = orderResponse.json();
     await app.inject({
@@ -196,7 +196,7 @@ describe('orders', () => {
       method: 'POST',
       url: '/api/orders',
       headers: authHeader(token),
-      payload: { channel: 'phone', items: [{ productId: product.id, quantity: 3 }] },
+      payload: { channel: 'delivery', items: [{ productId: product.id, quantity: 3 }] },
     });
     const order = orderResponse.json();
 

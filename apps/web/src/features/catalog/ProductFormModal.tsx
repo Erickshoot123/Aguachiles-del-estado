@@ -20,6 +20,7 @@ const UI_TEXT = {
   unit: 'Unidad',
   initialStock: 'Stock inicial',
   isActive: 'Producto activo',
+  isComplement: 'Es un extra/complemento (se ofrece al pedir un platillo principal)',
   cancel: 'Cancelar',
   save: 'Guardar',
   saving: 'Guardando…',
@@ -43,6 +44,7 @@ interface FormState {
   unit: string;
   initialStock: string;
   isActive: boolean;
+  isComplement: boolean;
 }
 
 function toFormState(product: Product | undefined): FormState {
@@ -59,6 +61,7 @@ function toFormState(product: Product | undefined): FormState {
       unit: 'pieza',
       initialStock: '0',
       isActive: true,
+      isComplement: false,
     };
   }
   return {
@@ -73,6 +76,7 @@ function toFormState(product: Product | undefined): FormState {
     unit: product.unit,
     initialStock: String(product.stock),
     isActive: product.isActive,
+    isComplement: product.isComplement,
   };
 }
 
@@ -117,6 +121,7 @@ export function ProductFormModal({ product, onClose }: ProductFormModalProps): J
       cost: Number(form.cost),
       taxRate: Number(form.taxRate),
       unit: form.unit,
+      isComplement: form.isComplement,
     };
 
     if (isEditing && product) {
@@ -283,6 +288,15 @@ export function ProductFormModal({ product, onClose }: ProductFormModalProps): J
             </label>
           ) : null}
         </div>
+
+        <label className="flex items-center gap-2 text-sm">
+          <input
+            type="checkbox"
+            checked={form.isComplement}
+            onChange={(event) => setField('isComplement', event.target.checked)}
+          />
+          {UI_TEXT.isComplement}
+        </label>
 
         {isEditing ? (
           <label className="flex items-center gap-2 text-sm">

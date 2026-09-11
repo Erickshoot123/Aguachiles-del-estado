@@ -40,7 +40,7 @@ describe('reembolsos', () => {
       method: 'POST',
       url: '/api/orders',
       headers: authHeader(token),
-      payload: { channel: 'phone', items: [{ productId: product.id, quantity }] },
+      payload: { channel: 'delivery', items: [{ productId: product.id, quantity }] },
     });
     const order = orderResponse.json();
     await app.inject({

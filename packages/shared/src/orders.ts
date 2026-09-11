@@ -1,6 +1,6 @@
 import { z } from 'zod';
 
-export const saleChannelSchema = z.enum(['own_app', 'phone', 'whatsapp', 'digital_counter', 'other']);
+export const saleChannelSchema = z.enum(['counter', 'delivery']);
 export type SaleChannel = z.infer<typeof saleChannelSchema>;
 
 export const fulfillmentStatusSchema = z.enum([

@@ -1,4 +1,4 @@
-import type { SaleChannel } from '@aguachiles/shared';
+import type { ProductSummary, SaleChannel } from '@aguachiles/shared';
 import type { JSX } from 'react';
 import { useState } from 'react';
 import { ModalBackdrop } from '../../components/ModalBackdrop';
@@ -9,6 +9,7 @@ const UI_TEXT = {
   title: 'Nuevo pedido',
   channelLabel: 'Canal',
   itemsLabel: 'Productos',
+  extrasLabel: '¿Quieres agregar algo extra?',
   submit: 'Crear pedido',
   submitting: 'Creando…',
   cancel: 'Cancelar',
@@ -17,7 +18,29 @@ const UI_TEXT = {
   error: 'No se pudo crear el pedido.',
 } as const;
 
-const CHANNEL_OPTIONS: SaleChannel[] = ['digital_counter', 'own_app', 'phone', 'whatsapp', 'other'];
+const CHANNEL_OPTIONS: SaleChannel[] = ['counter', 'delivery'];
+
+interface ProductQuantityRowProps {
+  product: ProductSummary;
+  quantity: number;
+  onChange: (quantity: number) => void;
+}
+
+function ProductQuantityRow({ product, quantity, onChange }: ProductQuantityRowProps): JSX.Element {
+  return (
+    <div className="flex items-center gap-3">
+      <span className="min-w-0 flex-1 text-sm">{product.name}</span>
+      <span className="font-mono text-xs text-muted">{formatCurrency(product.price)}</span>
+      <input
+        type="number"
+        min={0}
+        value={quantity}
+        onChange={(event) => onChange(Number(event.target.value))}
+        className="w-16 rounded-lg border border-border px-2 py-1 text-right"
+      />
+    </div>
+  );
+}
 
 interface NewOrderModalProps {
   onClose: () => void;
@@ -26,15 +49,24 @@ interface NewOrderModalProps {
 export function NewOrderModal({ onClose }: NewOrderModalProps): JSX.Element {
   const productsQuery = useProducts();
   const createOrder = useCreateOrder();
-  const [channel, setChannel] = useState<SaleChannel>('digital_counter');
+  const [channel, setChannel] = useState<SaleChannel>('counter');
   const [quantities, setQuantities] = useState<Record<string, number>>({});
 
   const setQuantity = (productId: string, quantity: number): void => {
     setQuantities((prev) => ({ ...prev, [productId]: Math.max(0, quantity) }));
   };
 
+  const mainProducts = (productsQuery.data ?? []).filter((product) => !product.isComplement);
+  const extraProducts = (productsQuery.data ?? []).filter((product) => product.isComplement);
+  const hasMainItem = mainProducts.some((product) => (quantities[product.id] ?? 0) > 0);
+
+  // Los extras solo tienen sentido junto a un producto principal: si el
+  // cajero quita el principal, su cantidad de extra queda oculta y no debe
+  // colarse en el pedido aunque el estado interno todavía la recuerde.
+  const orderableProducts = hasMainItem ? [...mainProducts, ...extraProducts] : mainProducts;
+  const orderableProductIds = new Set(orderableProducts.map((product) => product.id));
   const items = Object.entries(quantities)
-    .filter(([, quantity]) => quantity > 0)
+    .filter(([productId, quantity]) => quantity > 0 && orderableProductIds.has(productId))
     .map(([productId, quantity]) => ({ productId, quantity }));
 
   const handleSubmit = (): void => {
@@ -76,24 +108,33 @@ export function NewOrderModal({ onClose }: NewOrderModalProps): JSX.Element {
             <p className="text-sm text-muted">{UI_TEXT.loadingProducts}</p>
           ) : (
             <div className="flex max-h-64 flex-col gap-2 overflow-y-auto">
-              {(productsQuery.data ?? []).map((product) => (
-                <div key={product.id} className="flex items-center gap-3">
-                  <span className="min-w-0 flex-1 text-sm">{product.name}</span>
-                  <span className="font-mono text-xs text-muted">
-                    {formatCurrency(product.price)}
-                  </span>
-                  <input
-                    type="number"
-                    min={0}
-                    value={quantities[product.id] ?? 0}
-                    onChange={(event) => setQuantity(product.id, Number(event.target.value))}
-                    className="w-16 rounded-lg border border-border px-2 py-1 text-right"
-                  />
-                </div>
+              {mainProducts.map((product) => (
+                <ProductQuantityRow
+                  key={product.id}
+                  product={product}
+                  quantity={quantities[product.id] ?? 0}
+                  onChange={(quantity) => setQuantity(product.id, quantity)}
+                />
               ))}
             </div>
           )}
         </div>
+
+        {hasMainItem && extraProducts.length > 0 ? (
+          <div>
+            <span className="mb-1 block text-sm font-medium text-text">{UI_TEXT.extrasLabel}</span>
+            <div className="flex flex-col gap-2">
+              {extraProducts.map((product) => (
+                <ProductQuantityRow
+                  key={product.id}
+                  product={product}
+                  quantity={quantities[product.id] ?? 0}
+                  onChange={(quantity) => setQuantity(product.id, quantity)}
+                />
+              ))}
+            </div>
+          </div>
+        ) : null}
 
         {createOrder.isError ? <p className="text-sm text-red-600">{UI_TEXT.error}</p> : null}
       </div>

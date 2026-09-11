@@ -71,7 +71,7 @@ describe('constraints de base de datos', () => {
       method: 'POST',
       url: '/api/orders',
       headers: authHeader(token),
-      payload: { channel: 'phone', items: [{ productId: product.id, quantity: 1 }] },
+      payload: { channel: 'delivery', items: [{ productId: product.id, quantity: 1 }] },
     });
     const ticketNumber = first.json().ticketNumber as string;
 
@@ -95,7 +95,7 @@ describe('constraints de base de datos', () => {
       method: 'POST',
       url: '/api/orders',
       headers: authHeader(token),
-      payload: { channel: 'phone', items: [{ productId: product.id, quantity: 1 }] },
+      payload: { channel: 'delivery', items: [{ productId: product.id, quantity: 1 }] },
     });
 
     await expect(testPrisma.location.delete({ where: { id: fixtures.locationId } })).rejects.toMatchObject({
@@ -109,7 +109,7 @@ describe('constraints de base de datos', () => {
       method: 'POST',
       url: '/api/orders',
       headers: authHeader(token),
-      payload: { channel: 'phone', items: [{ productId: product.id, quantity: 1 }] },
+      payload: { channel: 'delivery', items: [{ productId: product.id, quantity: 1 }] },
     });
 
     await expect(testPrisma.product.delete({ where: { id: product.id } })).rejects.toMatchObject({

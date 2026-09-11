@@ -103,27 +103,42 @@ async function seedPaymentMethods(): Promise<void> {
   }
 }
 
-const MENU_ITEMS = [
-  { sku: 'AGU-CLASICO', name: 'Aguachile clásico', price: 180, cost: 95 },
-  { sku: 'AGU-NEGRO', name: 'Aguachile negro', price: 195, cost: 105 },
-  { sku: 'AGU-MANGO', name: 'Aguachile de mango', price: 190, cost: 100 },
-  { sku: 'TOS-ATUN', name: 'Tostada de atún', price: 95, cost: 50 },
-  { sku: 'CEV-VERDE', name: 'Ceviche verde', price: 165, cost: 85 },
-  { sku: 'CALLO-HACHA', name: 'Callo de hacha', price: 220, cost: 130 },
-  { sku: 'TOSTICEVICHE', name: 'Tosticeviche', price: 110, cost: 55 },
-  { sku: 'AGUA-PEPINO', name: 'Agua de pepino', price: 45, cost: 15 },
-  { sku: 'ORD-TOSTADAS', name: 'Orden de tostadas', price: 35, cost: 12 },
+// Menú real del negocio: tres sabores de aguachile en dos presentaciones
+// (medio kilo / kilo), dos platillos adicionales, y los complementos que se
+// ofrecen como extra al pedir un platillo principal (sección 2 de PLAN_POS.md
+// más el flujo de "¿agregar algo extra?" descrito por el negocio). Costos
+// estimados al ~50% del precio para platillos y más bajos para complementos
+// (empaquetados, más baratos de producir) -- el negocio puede ajustarlos
+// desde la pantalla de Menú y productos.
+const MAIN_DISHES = [
+  { sku: 'AGU-COLORADO-MK', name: 'Aguachile Colorado (medio kilo)', price: 149, cost: 75, unit: 'medio kilo', stock: 20 },
+  { sku: 'AGU-COLORADO-1K', name: 'Aguachile Colorado (1 kilo)', price: 279, cost: 140, unit: 'kilo', stock: 20 },
+  { sku: 'AGU-TRAD-MK', name: 'Aguachile Tradicional (medio kilo)', price: 149, cost: 75, unit: 'medio kilo', stock: 20 },
+  { sku: 'AGU-TRAD-1K', name: 'Aguachile Tradicional (1 kilo)', price: 279, cost: 140, unit: 'kilo', stock: 20 },
+  { sku: 'AGU-PRIETO-MK', name: 'Aguachile Prieto (medio kilo)', price: 149, cost: 75, unit: 'medio kilo', stock: 20 },
+  { sku: 'AGU-PRIETO-1K', name: 'Aguachile Prieto (1 kilo)', price: 279, cost: 140, unit: 'kilo', stock: 20 },
+  { sku: 'TOSTI-AGUACHILE', name: 'Tosti aguachile', price: 100, cost: 50, unit: 'pieza', stock: 30 },
+  { sku: 'CHAROLA-AGUACHILE', name: 'Charola de aguachile', price: 1000, cost: 500, unit: 'charola', stock: 5 },
 ] as const;
 
-const INITIAL_STOCK = 50;
+const COMPLEMENTS = [
+  { sku: 'TOSTITOS-VERDE', name: 'Tostitos salsa verde', price: 20, cost: 8, unit: 'orden', stock: 50 },
+  { sku: 'TOSTADAS-5', name: 'Tostadas extra (5 pzas)', price: 6, cost: 2, unit: 'paquete', stock: 100 },
+  { sku: 'TOSTADAS-10', name: 'Tostadas extra (10 pzas)', price: 12, cost: 4, unit: 'paquete', stock: 100 },
+  { sku: 'TOSTADAS-20', name: 'Tostadas extra (20 pzas)', price: 20, cost: 7, unit: 'paquete', stock: 100 },
+] as const;
 
-async function seedMenu(): Promise<void> {
+async function seedCategoryProducts(
+  categoryName: string,
+  isComplement: boolean,
+  items: readonly { sku: string; name: string; price: number; cost: number; unit: string; stock: number }[],
+): Promise<void> {
   const existingCategory = await prisma.category.findFirst({
-    where: { name: 'Menú', parentId: null },
+    where: { name: categoryName, parentId: null },
   });
-  const category = existingCategory ?? (await prisma.category.create({ data: { name: 'Menú' } }));
+  const category = existingCategory ?? (await prisma.category.create({ data: { name: categoryName } }));
 
-  for (const item of MENU_ITEMS) {
+  for (const item of items) {
     const product = await prisma.product.upsert({
       where: { sku: item.sku },
       update: {},
@@ -133,16 +148,22 @@ async function seedMenu(): Promise<void> {
         categoryId: category.id,
         price: item.price,
         cost: item.cost,
-        unit: 'pieza',
+        unit: item.unit,
+        isComplement,
       },
     });
 
     await prisma.inventory.upsert({
       where: { productId: product.id },
       update: {},
-      create: { productId: product.id, quantity: INITIAL_STOCK, minStock: 5 },
+      create: { productId: product.id, quantity: item.stock, minStock: 5 },
     });
   }
+}
+
+async function seedMenu(): Promise<void> {
+  await seedCategoryProducts('Aguachiles', false, MAIN_DISHES);
+  await seedCategoryProducts('Complementos', true, COMPLEMENTS);
 }
 
 async function seedLocation(): Promise<string> {

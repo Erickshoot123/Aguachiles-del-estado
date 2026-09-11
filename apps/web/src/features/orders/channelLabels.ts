@@ -1,11 +1,8 @@
 import type { SaleChannel } from '@aguachiles/shared';
 
 export const CHANNEL_LABELS: Record<SaleChannel, string> = {
-  own_app: 'App propia',
-  phone: 'Teléfono',
-  whatsapp: 'WhatsApp',
-  digital_counter: 'Mostrador digital',
-  other: 'Otro',
+  counter: 'Mostrador',
+  delivery: 'Delivery',
 };
 
 export function formatElapsedMinutes(createdAt: string): string {

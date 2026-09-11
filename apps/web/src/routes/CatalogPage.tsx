@@ -69,7 +69,14 @@ export function CatalogPage(): JSX.Element {
                 {productsQuery.data.map((product) => (
                   <tr key={product.id} className="border-b border-divider last:border-0">
                     <td className="px-4 py-3">
-                      <div className="font-medium">{product.name}</div>
+                      <div className="flex items-center gap-2">
+                        <span className="font-medium">{product.name}</span>
+                        {product.isComplement ? (
+                          <span className="rounded-full bg-accent-soft px-2 py-0.5 text-[11px] font-semibold text-accent-hover">
+                            Extra
+                          </span>
+                        ) : null}
+                      </div>
                       <div className="font-mono text-[12px] text-muted-2">{product.sku}</div>
                     </td>
                     <td className="px-4 py-3 text-muted">{product.categoryName}</td>

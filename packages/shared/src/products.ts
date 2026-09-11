@@ -5,6 +5,7 @@ export const productSummarySchema = z.object({
   name: z.string(),
   price: z.number().nonnegative(),
   unit: z.string(),
+  isComplement: z.boolean(),
 });
 
 export type ProductSummary = z.infer<typeof productSummarySchema>;
@@ -24,6 +25,7 @@ export const productSchema = z.object({
   taxRate: z.number().nonnegative(),
   unit: z.string(),
   isActive: z.boolean(),
+  isComplement: z.boolean(),
   stock: z.number().nonnegative(),
 });
 export type Product = z.infer<typeof productSchema>;
@@ -39,6 +41,7 @@ export const createProductRequestSchema = z.object({
   taxRate: z.number().nonnegative().default(0),
   unit: z.string().min(1),
   initialStock: z.number().nonnegative().default(0),
+  isComplement: z.boolean().default(false),
 });
 export type CreateProductRequest = z.infer<typeof createProductRequestSchema>;
 
@@ -53,6 +56,7 @@ export const updateProductRequestSchema = z.object({
   taxRate: z.number().nonnegative().optional(),
   unit: z.string().min(1).optional(),
   isActive: z.boolean().optional(),
+  isComplement: z.boolean().optional(),
 });
 export type UpdateProductRequest = z.infer<typeof updateProductRequestSchema>;
 
