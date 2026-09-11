@@ -1,3 +1,5 @@
+import type { Order } from '@aguachiles/shared';
+
 export type BoardColumnKey = 'in_prep' | 'waiting_pickup' | 'in_delivery';
 
 export interface BoardColumn {
@@ -31,3 +33,15 @@ export const BOARD_COLUMNS: readonly BoardColumn[] = [
     advanceActionLabel: 'Entregado',
   },
 ];
+
+// Un pedido de mostrador se recoge ahí mismo apenas está listo: en la
+// columna "En preparación" su acción es "Entregado" en vez de "Listo", y al
+// hacer clic pasa directo a entregado sin las etapas de recolección/delivery.
+export function getAdvanceActionLabel(
+  order: Pick<Order, 'channel' | 'fulfillmentStatus'>,
+): string | null {
+  if (order.fulfillmentStatus === 'in_prep' && order.channel === 'counter') {
+    return 'Entregado';
+  }
+  return BOARD_COLUMNS.find((column) => column.key === order.fulfillmentStatus)?.advanceActionLabel ?? null;
+}

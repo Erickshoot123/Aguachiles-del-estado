@@ -2,7 +2,7 @@ import type { Order } from '@aguachiles/shared';
 import type { FormEvent, JSX } from 'react';
 import { useState } from 'react';
 import { AppShell } from '../components/AppShell';
-import { BOARD_COLUMNS } from '../features/orders/boardColumns';
+import { BOARD_COLUMNS, getAdvanceActionLabel } from '../features/orders/boardColumns';
 import { useAdvanceOrder, useOrderLookup, useOrders } from '../features/orders/hooks';
 import { NewOrderModal } from '../features/orders/NewOrderModal';
 import { OrderCard } from '../features/orders/OrderCard';
@@ -39,10 +39,7 @@ export function OrdersBoardPage(): JSX.Element {
   const boardDetailOrder = orders.find((order) => order.id === detailOrderId) ?? null;
   const searchedOrder = submittedTicketNumber !== '' ? (orderLookup.data ?? null) : null;
   const detailOrder = boardDetailOrder ?? searchedOrder;
-  const detailAdvanceLabel = boardDetailOrder
-    ? (BOARD_COLUMNS.find((column) => column.key === boardDetailOrder.fulfillmentStatus)
-        ?.advanceActionLabel ?? null)
-    : null;
+  const detailAdvanceLabel = boardDetailOrder ? getAdvanceActionLabel(boardDetailOrder) : null;
 
   const closeDetail = (): void => {
     setDetailOrderId(null);
@@ -126,7 +123,7 @@ export function OrdersBoardPage(): JSX.Element {
                     <OrderCard
                       key={order.id}
                       order={order}
-                      advanceLabel={column.advanceActionLabel}
+                      advanceLabel={getAdvanceActionLabel(order) ?? column.advanceActionLabel}
                       onOpenDetail={(order) => {
                         setSubmittedTicketNumber('');
                         setDetailOrderId(order.id);

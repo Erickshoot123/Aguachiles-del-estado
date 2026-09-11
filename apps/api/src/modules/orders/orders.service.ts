@@ -1,5 +1,5 @@
 import { Prisma, type PrismaClient } from '@prisma/client';
-import type { ChargePayment, CreateOrderRequest, Order } from '@aguachiles/shared';
+import type { ChargePayment, CreateOrderRequest, FulfillmentStatus, Order, SaleChannel } from '@aguachiles/shared';
 import { NoOpenCashSessionError } from '../cash/cash.errors.js';
 import { createReceiptForSale } from '../receipts/receipts.service.js';
 import {
@@ -15,8 +15,15 @@ import {
 } from './orders.errors.js';
 
 const ACTIVE_BOARD_STATUSES = ['received', 'in_prep', 'waiting_pickup', 'in_delivery'] as const;
-const FORWARD_SEQUENCE = ['in_prep', 'waiting_pickup', 'in_delivery', 'delivered'] as const;
 const MAX_TICKET_NUMBER_RETRIES = 3;
+
+// Un pedido de mostrador lo recoge quien lo pidió apenas está listo: no hay
+// "esperando quien lo recoja" ni "en camino" porque el cliente ya está ahí.
+// Solo delivery pasa por las cuatro etapas completas.
+const FORWARD_SEQUENCE_BY_CHANNEL: Record<SaleChannel, readonly FulfillmentStatus[]> = {
+  counter: ['in_prep', 'delivered'],
+  delivery: ['in_prep', 'waiting_pickup', 'in_delivery', 'delivered'],
+};
 
 function isTicketNumberCollision(error: unknown): boolean {
   return (
@@ -218,14 +225,13 @@ export async function advanceOrder(prisma: PrismaClient, orderId: string): Promi
       throw new OrderNotFoundError();
     }
 
-    const currentIndex = FORWARD_SEQUENCE.indexOf(
-      sale.fulfillmentStatus as (typeof FORWARD_SEQUENCE)[number],
-    );
-    if (currentIndex === -1 || currentIndex === FORWARD_SEQUENCE.length - 1) {
+    const sequence = FORWARD_SEQUENCE_BY_CHANNEL[sale.channel as SaleChannel];
+    const currentIndex = sequence.indexOf(sale.fulfillmentStatus as FulfillmentStatus);
+    if (currentIndex === -1 || currentIndex === sequence.length - 1) {
       throw new InvalidFulfillmentTransitionError(sale.fulfillmentStatus);
     }
 
-    const nextStatus = FORWARD_SEQUENCE[currentIndex + 1] as (typeof FORWARD_SEQUENCE)[number];
+    const nextStatus = sequence[currentIndex + 1] as FulfillmentStatus;
     return tx.sale.update({
       where: { id: orderId },
       data: { fulfillmentStatus: nextStatus },

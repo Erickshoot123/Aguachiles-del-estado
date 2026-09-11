@@ -210,4 +210,81 @@ describe('orders', () => {
     const stock = await testPrisma.inventory.findUnique({ where: { productId: product.id } });
     expect(stock?.quantity.toNumber()).toBe(10);
   });
+
+  it('un pedido de mostrador pasa de "en preparación" directo a "entregado" (sin recolección ni delivery)', async () => {
+    const product = await createTestProduct(testPrisma, { stock: 5 });
+    const orderResponse = await app.inject({
+      method: 'POST',
+      url: '/api/orders',
+      headers: authHeader(token),
+      payload: { channel: 'counter', items: [{ productId: product.id, quantity: 1 }] },
+    });
+    const order = orderResponse.json();
+    expect(order.fulfillmentStatus).toBe('in_prep');
+
+    const advanceResponse = await app.inject({
+      method: 'PATCH',
+      url: `/api/orders/${order.id}/advance`,
+      headers: authHeader(token),
+    });
+
+    expect(advanceResponse.statusCode).toBe(200);
+    expect(advanceResponse.json().fulfillmentStatus).toBe('delivered');
+  });
+
+  it('un pedido de delivery sí pasa por recolección y delivery antes de entregado', async () => {
+    const product = await createTestProduct(testPrisma, { stock: 5 });
+    const orderResponse = await app.inject({
+      method: 'POST',
+      url: '/api/orders',
+      headers: authHeader(token),
+      payload: { channel: 'delivery', items: [{ productId: product.id, quantity: 1 }] },
+    });
+    const order = orderResponse.json();
+
+    const afterPrep = await app.inject({
+      method: 'PATCH',
+      url: `/api/orders/${order.id}/advance`,
+      headers: authHeader(token),
+    });
+    expect(afterPrep.json().fulfillmentStatus).toBe('waiting_pickup');
+
+    const afterPickup = await app.inject({
+      method: 'PATCH',
+      url: `/api/orders/${order.id}/advance`,
+      headers: authHeader(token),
+    });
+    expect(afterPickup.json().fulfillmentStatus).toBe('in_delivery');
+
+    const afterDelivery = await app.inject({
+      method: 'PATCH',
+      url: `/api/orders/${order.id}/advance`,
+      headers: authHeader(token),
+    });
+    expect(afterDelivery.json().fulfillmentStatus).toBe('delivered');
+  });
+
+  it('no permite avanzar un pedido ya entregado', async () => {
+    const product = await createTestProduct(testPrisma, { stock: 5 });
+    const orderResponse = await app.inject({
+      method: 'POST',
+      url: '/api/orders',
+      headers: authHeader(token),
+      payload: { channel: 'counter', items: [{ productId: product.id, quantity: 1 }] },
+    });
+    const order = orderResponse.json();
+    await app.inject({
+      method: 'PATCH',
+      url: `/api/orders/${order.id}/advance`,
+      headers: authHeader(token),
+    });
+
+    const response = await app.inject({
+      method: 'PATCH',
+      url: `/api/orders/${order.id}/advance`,
+      headers: authHeader(token),
+    });
+
+    expect(response.statusCode).toBe(409);
+  });
 });
