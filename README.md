@@ -197,14 +197,32 @@ propio del negocio (proveedor de correo, webhook, etc.), fuera del alcance de un
 sucursal. Revisa `apps/api/logs/health-check.log` periódicamente, o conecta la tarea programada a
 tu propio sistema de alertas si lo tienes.
 
-## Estado actual (Fase 1 en curso)
+## Estado actual (Fases 0–3 completas)
 
-Fase 0 completa (monorepo, tooling, esquema de base de datos, auth). De la Fase 1 ya funcionan
-de punta a punta: tablero de pedidos (crear/avanzar/cancelar), caja (abrir/cerrar con cálculo de
-diferencia), cobro de pedidos en efectivo, tickets con impresión ESC/POS real vía el print-agent
-(reimpresión incluida), CRUD de catálogo (productos/categorías) desde la UI, y sesión persistente
-(refresh token con rotación — la sesión sobrevive a recargar la página, no solo el access token
-en memoria).
+Las cuatro fases de [PLAN_POS.md](./PLAN_POS.md) están implementadas de punta a punta:
+
+- **Fase 0** — monorepo, tooling, esquema de base de datos, auth (JWT + refresh token con
+  rotación — la sesión sobrevive a recargar la página, no solo el access token en memoria).
+- **Fase 1 (MVP)** — tablero de pedidos (crear/avanzar/cancelar), caja (abrir/cerrar con cálculo
+  de diferencia), cobro en efectivo, tickets con impresión ESC/POS real vía el print-agent
+  (reimpresión incluida), CRUD de catálogo (productos/categorías) desde la UI.
+- **Fase 2** — pagos múltiples y divididos, ingresos/retiros de caja, devoluciones/reembolsos
+  con reversión de inventario y caja, múltiples cajas concurrentes, proveedores y compras,
+  reportes de ventas/corte de caja.
+- **Fase 3** — permisos granulares por rol, auditoría avanzada visible en UI, multi-formato de
+  ticket (58/80mm) y multi-impresora por terminal, cola de reintento ante caída del servidor
+  local, dashboard analítico (márgenes, top productos, tendencia), esquema preparado para
+  multi-sucursal.
+
+Encima de eso, ya cerradas: suite de pruebas (unitarias, integración/API contra Postgres real,
+constraints de DB, concurrencia — ver [Pruebas](#pruebas-appsapi) — y E2E con Playwright — ver
+[Pruebas E2E](#pruebas-e2e-appse2e)), rate-limiting en login, ajuste manual de inventario,
+reseteo de contraseña por un admin con pantalla de gestión de usuarios, y respaldo/restauración
+y monitoreo de base de datos (ver las secciones correspondientes más abajo).
+
+Pendiente y explícitamente fuera de alcance por ahora: cobertura de pruebas de los módulos
+secundarios (proveedores, compras, analítica, recibos, métodos de pago) — hoy solo se ejercitan
+indirectamente como dependencias de las pruebas de pedidos/caja/reembolsos.
 
 La carpeta `referencia/` contiene el mockup de diseño original del negocio; es material de
 referencia visual, no código de producción.
