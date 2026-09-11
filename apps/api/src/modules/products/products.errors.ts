@@ -17,3 +17,9 @@ export class DuplicateBarcodeError extends ConflictError {
     super('Ya existe un producto con ese código de barras');
   }
 }
+
+export class InsufficientStockForAdjustmentError extends ConflictError {
+  constructor(productName: string) {
+    super(`Stock insuficiente para el ajuste de "${productName}"`);
+  }
+}

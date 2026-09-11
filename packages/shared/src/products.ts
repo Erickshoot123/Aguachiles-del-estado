@@ -55,3 +55,24 @@ export const updateProductRequestSchema = z.object({
   isActive: z.boolean().optional(),
 });
 export type UpdateProductRequest = z.infer<typeof updateProductRequestSchema>;
+
+export const inventoryAdjustmentTypeSchema = z.enum(['adjustment_in', 'adjustment_out']);
+export type InventoryAdjustmentType = z.infer<typeof inventoryAdjustmentTypeSchema>;
+
+export const createInventoryAdjustmentRequestSchema = z.object({
+  type: inventoryAdjustmentTypeSchema,
+  quantity: z.number().positive(),
+  reason: z.string().min(1, 'La razón del ajuste es obligatoria'),
+});
+export type CreateInventoryAdjustmentRequest = z.infer<typeof createInventoryAdjustmentRequestSchema>;
+
+export const inventoryAdjustmentSchema = z.object({
+  productId: z.string().uuid(),
+  productName: z.string(),
+  type: inventoryAdjustmentTypeSchema,
+  quantity: z.number().positive(),
+  previousStock: z.number().nonnegative(),
+  newStock: z.number().nonnegative(),
+  reason: z.string(),
+});
+export type InventoryAdjustment = z.infer<typeof inventoryAdjustmentSchema>;

@@ -1,11 +1,13 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import type {
   CreateCategoryRequest,
+  CreateInventoryAdjustmentRequest,
   CreateProductRequest,
   UpdateProductRequest,
 } from '@aguachiles/shared';
 import { useIsLoggedIn } from '../auth/authStore';
 import {
+  adjustInventory,
   createCategory,
   createProduct,
   listCatalogProducts,
@@ -69,6 +71,23 @@ export function useUpdateProduct() {
   return useMutation({
     mutationFn: ({ productId, input }: { productId: string; input: UpdateProductRequest }) =>
       updateProduct(productId, input),
+    onSuccess: () => {
+      void queryClient.invalidateQueries({ queryKey: CATALOG_PRODUCTS_QUERY_KEY });
+    },
+  });
+}
+
+export function useAdjustInventory() {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: ({
+      productId,
+      input,
+    }: {
+      productId: string;
+      input: CreateInventoryAdjustmentRequest;
+    }) => adjustInventory(productId, input),
     onSuccess: () => {
       void queryClient.invalidateQueries({ queryKey: CATALOG_PRODUCTS_QUERY_KEY });
     },

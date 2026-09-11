@@ -3,6 +3,7 @@ import { useState } from 'react';
 import { AppShell } from '../components/AppShell';
 import { formatCurrency } from '../features/orders/channelLabels';
 import { useCatalogProducts } from '../features/catalog/hooks';
+import { InventoryAdjustmentModal } from '../features/catalog/InventoryAdjustmentModal';
 import { ProductFormModal } from '../features/catalog/ProductFormModal';
 
 const UI_TEXT = {
@@ -20,13 +21,16 @@ const UI_TEXT = {
   active: 'Activo',
   inactive: 'Inactivo',
   edit: 'Editar',
+  adjustStock: 'Ajustar stock',
 } as const;
 
 export function CatalogPage(): JSX.Element {
   const productsQuery = useCatalogProducts();
   const [isCreating, setIsCreating] = useState(false);
   const [editingProductId, setEditingProductId] = useState<string | null>(null);
+  const [adjustingProductId, setAdjustingProductId] = useState<string | null>(null);
   const editingProduct = productsQuery.data?.find((product) => product.id === editingProductId);
+  const adjustingProduct = productsQuery.data?.find((product) => product.id === adjustingProductId);
 
   return (
     <AppShell>
@@ -86,13 +90,22 @@ export function CatalogPage(): JSX.Element {
                       </span>
                     </td>
                     <td className="px-4 py-3 text-right">
-                      <button
-                        type="button"
-                        onClick={() => setEditingProductId(product.id)}
-                        className="rounded-lg border border-border px-3 py-1.5 text-[13px] hover:border-border-hover"
-                      >
-                        {UI_TEXT.edit}
-                      </button>
+                      <div className="flex justify-end gap-2">
+                        <button
+                          type="button"
+                          onClick={() => setAdjustingProductId(product.id)}
+                          className="rounded-lg border border-border px-3 py-1.5 text-[13px] hover:border-border-hover"
+                        >
+                          {UI_TEXT.adjustStock}
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => setEditingProductId(product.id)}
+                          className="rounded-lg border border-border px-3 py-1.5 text-[13px] hover:border-border-hover"
+                        >
+                          {UI_TEXT.edit}
+                        </button>
+                      </div>
                     </td>
                   </tr>
                 ))}
@@ -105,6 +118,12 @@ export function CatalogPage(): JSX.Element {
       {isCreating ? <ProductFormModal onClose={() => setIsCreating(false)} /> : null}
       {editingProduct ? (
         <ProductFormModal product={editingProduct} onClose={() => setEditingProductId(null)} />
+      ) : null}
+      {adjustingProduct ? (
+        <InventoryAdjustmentModal
+          product={adjustingProduct}
+          onClose={() => setAdjustingProductId(null)}
+        />
       ) : null}
     </AppShell>
   );

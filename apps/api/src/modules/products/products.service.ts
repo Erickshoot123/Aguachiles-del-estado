@@ -1,6 +1,8 @@
 import { Prisma, type Product as PrismaProduct, type PrismaClient } from '@prisma/client';
 import type {
+  CreateInventoryAdjustmentRequest,
   CreateProductRequest,
+  InventoryAdjustment,
   Product,
   ProductSummary,
   UpdateProductRequest,
@@ -9,6 +11,7 @@ import { recordAuditLog } from '../audit/audit.service.js';
 import {
   DuplicateBarcodeError,
   DuplicateSkuError,
+  InsufficientStockForAdjustmentError,
   ProductNotFoundError,
 } from './products.errors.js';
 
@@ -121,6 +124,71 @@ export async function createProduct(
     if (isUniqueConstraintOn(error, 'barcode')) throw new DuplicateBarcodeError();
     throw error;
   }
+}
+
+export async function adjustInventory(
+  prisma: PrismaClient,
+  productId: string,
+  userId: string,
+  input: CreateInventoryAdjustmentRequest,
+): Promise<InventoryAdjustment> {
+  const product = await prisma.product.findUnique({ where: { id: productId } });
+  if (!product) {
+    throw new ProductNotFoundError();
+  }
+
+  const quantity = new Prisma.Decimal(input.quantity);
+
+  return prisma.$transaction(async (tx) => {
+    let newStock: Prisma.Decimal;
+
+    if (input.type === 'adjustment_out') {
+      // Igual que el descuento de stock al vender: el `updateMany` con la
+      // guardia `quantity >= X` y el decremento son una sola sentencia
+      // atómica, así que un ajuste de salida nunca deja el stock en negativo
+      // aunque compita con otra venta/ajuste concurrente sobre el mismo producto.
+      const claimed = await tx.inventory.updateMany({
+        where: { productId, quantity: { gte: quantity } },
+        data: { quantity: { decrement: quantity } },
+      });
+      if (claimed.count === 0) {
+        throw new InsufficientStockForAdjustmentError(product.name);
+      }
+      newStock = (await tx.inventory.findUniqueOrThrow({ where: { productId } })).quantity;
+    } else {
+      const inventory = await tx.inventory.upsert({
+        where: { productId },
+        update: { quantity: { increment: quantity } },
+        create: { productId, quantity },
+      });
+      newStock = inventory.quantity;
+    }
+
+    const previousStock = input.type === 'adjustment_out' ? newStock.add(quantity) : newStock.sub(quantity);
+
+    await tx.inventoryMovement.create({
+      data: {
+        productId,
+        type: input.type,
+        quantity: input.type === 'adjustment_out' ? quantity.neg() : quantity,
+        previousStock,
+        newStock,
+        referenceType: 'manual',
+        userId,
+        reason: input.reason,
+      },
+    });
+
+    return {
+      productId,
+      productName: product.name,
+      type: input.type,
+      quantity: quantity.toNumber(),
+      previousStock: previousStock.toNumber(),
+      newStock: newStock.toNumber(),
+      reason: input.reason,
+    };
+  });
 }
 
 async function recordPriceChangeAudit(

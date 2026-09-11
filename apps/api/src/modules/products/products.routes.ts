@@ -1,8 +1,13 @@
-import { createProductRequestSchema, updateProductRequestSchema } from '@aguachiles/shared';
+import {
+  createInventoryAdjustmentRequestSchema,
+  createProductRequestSchema,
+  updateProductRequestSchema,
+} from '@aguachiles/shared';
 import type { FastifyInstance } from 'fastify';
 import { requirePermission } from '../../lib/authorize.js';
 import { idParamSchema } from '../../lib/paramsSchemas.js';
 import {
+  adjustInventory,
   createProduct,
   listActiveProductSummaries,
   listCatalogProducts,
@@ -40,6 +45,17 @@ export default async function productsRoutes(fastify: FastifyInstance): Promise<
       const input = updateProductRequestSchema.parse(request.body);
       const product = await updateProduct(fastify.prisma, id, request.user.sub, input);
       reply.status(200).send(product);
+    },
+  );
+
+  fastify.post(
+    '/api/products/:id/inventory-adjustments',
+    { preHandler: [fastify.authenticate, requirePermission('catalog.write')] },
+    async (request, reply) => {
+      const { id } = idParamSchema.parse(request.params);
+      const input = createInventoryAdjustmentRequestSchema.parse(request.body);
+      const adjustment = await adjustInventory(fastify.prisma, id, request.user.sub, input);
+      reply.status(201).send(adjustment);
     },
   );
 }
