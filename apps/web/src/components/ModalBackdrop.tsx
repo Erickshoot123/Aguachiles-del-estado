@@ -23,7 +23,12 @@ export function ModalBackdrop({
       onClick={handleBackdropClick}
       className={`fixed inset-0 flex items-center justify-center bg-text/40 p-6 ${zIndexClassName}`}
     >
-      <div onClick={(event) => event.stopPropagation()} className={contentClassName}>
+      <div
+        role="dialog"
+        aria-modal="true"
+        onClick={(event) => event.stopPropagation()}
+        className={contentClassName}
+      >
         {children}
       </div>
     </div>

@@ -90,8 +90,39 @@ prueba real), de contrato de API, de constraints de base de datos, y de concurre
 Las pruebas truncan y re-siembran la DB de prueba entre archivos, así que nunca tocan
 `aguachiles_pos` (la de desarrollo).
 
-Pendiente (fuera del alcance actual): pruebas E2E con Playwright contra la UI real, y cobertura
-exhaustiva endpoint-por-endpoint de módulos secundarios (proveedores, compras, analítica).
+Pendiente (fuera del alcance actual): cobertura exhaustiva endpoint-por-endpoint de módulos
+secundarios (proveedores, compras, analítica).
+
+## Pruebas E2E (`apps/e2e`)
+
+Cubre el flujo completo de cajero descrito en la sección 7 del plan: login → abrir caja → vender
+con pago dividido (efectivo + tarjeta) → imprimir ticket (contra el Print Agent real, en modo
+archivo — no se mockea nada) → cerrar caja. Usa Playwright contra el stack real: API, frontend y
+Print Agent levantados como procesos de verdad, no mocks de red.
+
+Crea una base de datos dedicada (separada de `aguachiles_pos_test`, que usan las pruebas de
+`apps/api`) y aplícale migraciones + el seed real del proyecto:
+
+```bash
+docker exec -it aguachiles-postgres psql -U postgres -c "CREATE DATABASE aguachiles_pos_e2e;"
+DATABASE_URL="postgresql://postgres:postgres@localhost:5432/aguachiles_pos_e2e" npx --workspace=@aguachiles/api prisma migrate deploy
+DATABASE_URL="postgresql://postgres:postgres@localhost:5432/aguachiles_pos_e2e" npx tsx apps/api/prisma/seed.ts
+```
+
+Instala el navegador de Playwright una sola vez (`npx playwright install chromium` dentro de
+`apps/e2e`), y luego, desde la raíz:
+
+```bash
+npm run test:e2e
+```
+
+Playwright levanta por sí solo la API (puerto 3100), el Print Agent (4100) y el frontend (5273) —
+puertos distintos a los de desarrollo normal para poder correr en paralelo sin chocar — apuntando
+a `aguachiles_pos_e2e`, corre la prueba, y los apaga al terminar. La prueba es segura de repetir
+sin resetear la base entre corridas (cada pedido usa un folio nuevo; la sesión de caja siempre
+queda cerrada al final), pero si se interrumpe a la mitad puede dejar una sesión de caja abierta —
+en ese caso, recrea la base de datos (`DROP DATABASE` + los tres comandos de arriba) antes de
+volver a correrla.
 
 ## Respaldo y restauración de la base de datos
 

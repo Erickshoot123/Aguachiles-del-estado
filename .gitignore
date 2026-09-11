@@ -23,3 +23,7 @@ Thumbs.db
 apps/print-agent/print-output/
 apps/api/backups/
 apps/api/logs/
+
+apps/e2e/test-results/
+apps/e2e/playwright-report/
+apps/e2e/.cache/
