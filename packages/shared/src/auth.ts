@@ -14,6 +14,7 @@ export const permissionCodeSchema = z.enum([
   'suppliers.write',
   'reports.view',
   'audit.view',
+  'users.manage',
 ]);
 export type PermissionCode = z.infer<typeof permissionCodeSchema>;
 
@@ -24,6 +25,7 @@ export const PERMISSION_DESCRIPTIONS: Record<PermissionCode, string> = {
   'suppliers.write': 'Administrar proveedores y compras',
   'reports.view': 'Ver reportes y analítica',
   'audit.view': 'Ver el historial de auditoría',
+  'users.manage': 'Restablecer la contraseña de otros usuarios',
 };
 
 export const authUserSchema = z.object({
@@ -57,3 +59,17 @@ export const refreshResponseSchema = z.object({
 });
 
 export type RefreshResponse = z.infer<typeof refreshResponseSchema>;
+
+export const resetPasswordRequestSchema = z.object({
+  newPassword: z.string().min(8, 'La contraseña debe tener al menos 8 caracteres'),
+});
+export type ResetPasswordRequest = z.infer<typeof resetPasswordRequestSchema>;
+
+export const userSummarySchema = z.object({
+  id: z.string().uuid(),
+  name: z.string(),
+  email: z.string().email(),
+  roleName: z.string(),
+  isActive: z.boolean(),
+});
+export type UserSummary = z.infer<typeof userSummarySchema>;

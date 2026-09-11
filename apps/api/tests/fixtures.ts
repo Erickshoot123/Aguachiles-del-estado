@@ -11,6 +11,7 @@ const ALL_PERMISSIONS: PermissionCode[] = [
   'suppliers.write',
   'reports.view',
   'audit.view',
+  'users.manage',
 ];
 
 export interface BaseFixtures {

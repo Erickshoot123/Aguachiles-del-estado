@@ -1,7 +1,9 @@
 import { createHash, randomBytes } from 'node:crypto';
 import bcrypt from 'bcryptjs';
 import { Prisma, type PrismaClient } from '@prisma/client';
-import type { AuthUser, LoginRequest, PermissionCode } from '@aguachiles/shared';
+import type { AuthUser, LoginRequest, PermissionCode, UserSummary } from '@aguachiles/shared';
+import { recordAuditLog } from '../audit/audit.service.js';
+import { NotFoundError } from '../../lib/errors.js';
 import { InactiveUserError, InvalidCredentialsError, InvalidRefreshTokenError } from './auth.errors.js';
 
 type PrismaClientOrTx = PrismaClient | Prisma.TransactionClient;
@@ -136,5 +138,52 @@ export async function revokeRefreshToken(prisma: PrismaClient, rawToken: string)
   await prisma.refreshToken.updateMany({
     where: { tokenHash, revokedAt: null },
     data: { revokedAt: new Date() },
+  });
+}
+
+export async function listUsers(prisma: PrismaClient): Promise<UserSummary[]> {
+  const users = await prisma.user.findMany({
+    include: { role: true },
+    orderBy: { name: 'asc' },
+  });
+
+  return users.map((user) => ({
+    id: user.id,
+    name: user.name,
+    email: user.email,
+    roleName: user.role.name,
+    isActive: user.isActive,
+  }));
+}
+
+export async function resetUserPassword(
+  prisma: PrismaClient,
+  adminUserId: string,
+  targetUserId: string,
+  newPassword: string,
+): Promise<void> {
+  const user = await prisma.user.findUnique({ where: { id: targetUserId } });
+  if (!user) {
+    throw new NotFoundError('Usuario no encontrado');
+  }
+
+  const passwordHash = await bcrypt.hash(newPassword, 12);
+
+  await prisma.$transaction(async (tx) => {
+    await tx.user.update({ where: { id: targetUserId }, data: { passwordHash } });
+    // Un reseteo de contraseña cierra todas las sesiones activas de ese
+    // usuario: si alguien más tenía acceso con la contraseña vieja, un
+    // refresh token vigente no debe seguir sirviendo para renovar sesión.
+    await tx.refreshToken.updateMany({
+      where: { userId: targetUserId, revokedAt: null },
+      data: { revokedAt: new Date() },
+    });
+    await recordAuditLog(tx, {
+      userId: adminUserId,
+      action: 'user.password_reset',
+      entity: 'user',
+      entityId: targetUserId,
+      newValue: { targetEmail: user.email },
+    });
   });
 }

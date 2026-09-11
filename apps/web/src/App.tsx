@@ -10,6 +10,7 @@ import { LoginPage } from './routes/LoginPage';
 import { OrdersBoardPage } from './routes/OrdersBoardPage';
 import { ReportsPage } from './routes/ReportsPage';
 import { SuppliersPage } from './routes/SuppliersPage';
+import { UsersPage } from './routes/UsersPage';
 
 export function App(): JSX.Element {
   return (
@@ -70,6 +71,14 @@ export function App(): JSX.Element {
             element={
               <ProtectedRoute permission="reports.view">
                 <AnalyticsPage />
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="/usuarios"
+            element={
+              <ProtectedRoute permission="users.manage">
+                <UsersPage />
               </ProtectedRoute>
             }
           />

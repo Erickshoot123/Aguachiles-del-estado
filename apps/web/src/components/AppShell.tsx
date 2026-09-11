@@ -29,6 +29,7 @@ const NAV_SECTIONS: readonly { title: string; items: readonly NavItem[] }[] = [
       { label: 'Reportes', path: '/reportes', permission: 'reports.view' },
       { label: 'Analítica', path: '/analitica', permission: 'reports.view' },
       { label: 'Auditoría', path: '/auditoria', permission: 'audit.view' },
+      { label: 'Usuarios', path: '/usuarios', permission: 'users.manage' },
     ],
   },
 ];
