@@ -60,6 +60,25 @@ impresoras); para una impresora de red real, cambia su `interface` a `tcp://<ip>
 formato del ticket (58mm/80mm) y la impresora se eligen por terminal desde el modal de ticket
 en el frontend y se recuerdan en `localStorage`.
 
+Cada terminal elige, también desde el modal de ticket, **cómo** imprime — pensado para
+terminales (tablets) que no pueden correr el Print Agent local:
+
+- **Agente local** (comportamiento anterior): el navegador llama directo al Print Agent de
+  esta misma máquina (`VITE_PRINT_AGENT_URL`).
+- **Impresora de red**: el navegador no puede abrir un socket TCP crudo, así que es el
+  backend (`apps/api`) quien envía el ticket ESC/POS por TCP al puerto (9100 por defecto) de
+  la IP configurada.
+- **Impresora de otra terminal**: el backend reenvía el ticket al Print Agent de otra
+  terminal en la red local (mismo payload que el modo local). Para que esto funcione, el
+  Print Agent de esa otra terminal debe escuchar en su IP de red, no solo en `127.0.0.1`
+  (variable `HOST` en su `.env` — por defecto sigue siendo `127.0.0.1`, así que hay que
+  activarlo explícitamente y solo en una red local de confianza).
+
+Los tres modos renderizan el ticket con el mismo código (`packages/shared/src/printing`), así
+que el resultado impreso es idéntico sin importar el camino. Si la impresora no responde, el
+modal de ticket muestra el error devuelto y permite reintentar sin bloquear el cobro (el
+cobro ya ocurrió antes de abrir el modal de impresión).
+
 ## Scripts de raíz
 
 - `npm run lint` — ESLint sobre todo el monorepo.

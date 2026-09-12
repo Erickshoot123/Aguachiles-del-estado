@@ -31,8 +31,13 @@ async function main(): Promise<void> {
   await app.register(printRoutes, { env });
   app.get('/health', async () => ({ status: 'ok' }));
 
-  // Solo escucha en localhost: el Print Agent nunca debe exponerse a la red.
-  await app.listen({ port: env.PORT, host: '127.0.0.1' });
+  if (env.HOST !== '127.0.0.1') {
+    app.log.warn(
+      { host: env.HOST },
+      'El Print Agent está escuchando fuera de localhost: cualquier equipo en esa red podrá pedirle imprimir.',
+    );
+  }
+  await app.listen({ port: env.PORT, host: env.HOST });
 }
 
 main().catch((error: unknown) => {

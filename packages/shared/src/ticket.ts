@@ -38,3 +38,36 @@ export const agentPrinterSchema = z.object({
   name: z.string(),
 });
 export type AgentPrinter = z.infer<typeof agentPrinterSchema>;
+
+/**
+ * Cómo llega el ticket a papel en esta terminal:
+ * - agente_local: el navegador llama al Print Agent corriendo en esta misma
+ *   máquina (comportamiento original, requiere poder correr el agente).
+ * - red: el backend envía el ticket ESC/POS directo por TCP al puerto de una
+ *   impresora de red (para terminales, como tablets, que no pueden correr
+ *   el Print Agent).
+ * - otra_terminal: el backend reenvía el ticket al Print Agent de otra
+ *   terminal en la red local.
+ */
+export const printModeSchema = z.enum(['agente_local', 'red', 'otra_terminal']);
+export type PrintMode = z.infer<typeof printModeSchema>;
+
+export const printTargetSchema = z.discriminatedUnion('mode', [
+  z.object({ mode: z.literal('agente_local') }),
+  z.object({
+    mode: z.literal('red'),
+    host: z.string().min(1),
+    port: z.number().int().positive().default(9100),
+  }),
+  z.object({
+    mode: z.literal('otra_terminal'),
+    agentUrl: z.string().url(),
+  }),
+]);
+export type PrintTarget = z.infer<typeof printTargetSchema>;
+
+export const printDispatchRequestSchema = z.object({
+  target: printTargetSchema,
+  printerId: z.string().min(1).optional(),
+});
+export type PrintDispatchRequest = z.infer<typeof printDispatchRequestSchema>;

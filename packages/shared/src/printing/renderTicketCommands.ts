@@ -1,29 +1,20 @@
-import {
-  characterSet as CharacterSet,
-  printer as ThermalPrinter,
-  types as PrinterTypes,
-} from 'node-thermal-printer';
-import type { Ticket } from '@aguachiles/shared';
-import type { PrinterConfig } from '../config/env.js';
+import type { printer as ThermalPrinter } from 'node-thermal-printer';
+import type { Ticket } from '../ticket.js';
 
 function formatMoney(amount: number): string {
   return `$${amount.toFixed(2)}`;
 }
 
-export function renderTicket(
+/**
+ * Única fuente de verdad del contenido del ticket. La usan el Print Agent
+ * (modo agente local, y cuando reenvía el ticket de otra terminal) y el
+ * backend (modo impresora de red) para que el ticket impreso sea idéntico
+ * sin importar el camino que tomó.
+ */
+export function renderTicketCommands(
+  printer: InstanceType<typeof ThermalPrinter>,
   ticket: Ticket,
-  printerConfig: PrinterConfig,
-  width: number,
-): InstanceType<typeof ThermalPrinter> {
-  const printer = new ThermalPrinter({
-    type: PrinterTypes.EPSON,
-    interface: printerConfig.interface,
-    width,
-    // WPC1252 cubre acentos y ñ; sin esto, node-thermal-printer busca a
-    // tientas entre todas las tablas de códigos en cada carácter no-ASCII.
-    characterSet: CharacterSet.WPC1252,
-  });
-
+): void {
   printer.alignCenter();
   printer.bold(true);
   printer.println(ticket.businessName.toUpperCase());
@@ -52,5 +43,4 @@ export function renderTicket(
   }
 
   printer.cut();
-  return printer;
 }

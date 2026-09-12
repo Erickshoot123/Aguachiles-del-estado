@@ -35,6 +35,12 @@ const printersSchema = z
 
 const envSchema = z.object({
   PORT: z.coerce.number().int().positive().default(4000),
+  // Por defecto solo escucha en localhost: el navegador de esta misma
+  // terminal es el único que debería llamar al agente. Cambialo a la IP de
+  // esta máquina en la red local (o "0.0.0.0") únicamente si otra terminal
+  // necesita usar esta impresora en modo "impresora de otra terminal" —
+  // eso expone el endpoint de impresión a quien esté en esa red.
+  HOST: z.string().min(1).default('127.0.0.1'),
   PRINTERS: printersSchema,
   // Ancho en caracteres por línea según el formato del ticket.
   PRINTER_WIDTH_58: z.coerce.number().int().positive().default(32),
