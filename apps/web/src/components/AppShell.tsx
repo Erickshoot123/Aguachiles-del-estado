@@ -8,7 +8,7 @@ import { useOfflineQueueSync } from '../features/orders/offlineQueueSync';
 
 interface NavItem {
   label: string;
-  path?: string;
+  path: string;
   permission?: PermissionCode;
 }
 
@@ -19,7 +19,6 @@ const NAV_SECTIONS: readonly { title: string; items: readonly NavItem[] }[] = [
       { label: 'Pedidos', path: '/' },
       { label: 'Menú y productos', path: '/menu', permission: 'catalog.write' },
       { label: 'Proveedores y compras', path: '/compras', permission: 'suppliers.write' },
-      { label: 'Inventario' },
     ],
   },
   {
@@ -49,9 +48,6 @@ function NavRow({ item, isActive }: { item: NavItem; isActive: boolean }): JSX.E
     ? 'flex min-h-[44px] items-center rounded-[9px] bg-accent-soft px-3 text-[15px] font-semibold text-accent-hover'
     : 'flex min-h-[44px] items-center rounded-[9px] px-3 text-[15px] text-muted-2 hover:bg-bg';
 
-  if (!item.path) {
-    return <div className={className}>{item.label}</div>;
-  }
   return (
     <Link to={item.path} className={className}>
       {item.label}
