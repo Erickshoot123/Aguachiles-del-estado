@@ -225,13 +225,28 @@ export async function advanceOrder(prisma: PrismaClient, orderId: string): Promi
       throw new OrderNotFoundError();
     }
 
-    const sequence = FORWARD_SEQUENCE_BY_CHANNEL[sale.channel as SaleChannel];
-    const currentIndex = sequence.indexOf(sale.fulfillmentStatus as FulfillmentStatus);
-    if (currentIndex === -1 || currentIndex === sequence.length - 1) {
+    if (sale.fulfillmentStatus === 'cancelled') {
       throw new InvalidFulfillmentTransitionError(sale.fulfillmentStatus);
     }
 
-    const nextStatus = sequence[currentIndex + 1] as FulfillmentStatus;
+    const sequence = FORWARD_SEQUENCE_BY_CHANNEL[sale.channel as SaleChannel];
+    const currentIndex = sequence.indexOf(sale.fulfillmentStatus as FulfillmentStatus);
+
+    let nextStatus: FulfillmentStatus;
+    if (currentIndex === -1) {
+      // El pedido quedó en un estado que ya no forma parte de la secuencia
+      // de su canal (p. ej. un mostrador varado en "waiting_pickup" de
+      // antes de que se simplificara su flujo, como pasó con el pedido
+      // #1018). No hay un "siguiente paso" que tenga sentido dentro de la
+      // secuencia actual, así que lo llevamos directo al estado final de su
+      // canal en vez de bloquear al cajero con un 409 permanente.
+      nextStatus = sequence[sequence.length - 1] as FulfillmentStatus;
+    } else if (currentIndex === sequence.length - 1) {
+      throw new InvalidFulfillmentTransitionError(sale.fulfillmentStatus);
+    } else {
+      nextStatus = sequence[currentIndex + 1] as FulfillmentStatus;
+    }
+
     return tx.sale.update({
       where: { id: orderId },
       data: { fulfillmentStatus: nextStatus },

@@ -264,6 +264,61 @@ describe('orders', () => {
     expect(afterDelivery.json().fulfillmentStatus).toBe('delivered');
   });
 
+  it('un pedido de mostrador varado en un estado que ya no existe en su secuencia salta directo a entregado', async () => {
+    // Reproduce el caso real del pedido #1018: quedó en "waiting_pickup" de
+    // antes de que la secuencia de mostrador se simplificara a
+    // ['in_prep', 'delivered']. Ya no hay forma de crear un pedido así hoy,
+    // así que se fuerza el estado directo en la base para simular el dato
+    // legado, igual que ocurrió en producción.
+    const product = await createTestProduct(testPrisma, { stock: 5 });
+    const orderResponse = await app.inject({
+      method: 'POST',
+      url: '/api/orders',
+      headers: authHeader(token),
+      payload: { channel: 'counter', items: [{ productId: product.id, quantity: 1 }] },
+    });
+    const order = orderResponse.json();
+    await testPrisma.sale.update({
+      where: { id: order.id },
+      data: { fulfillmentStatus: 'waiting_pickup' },
+    });
+
+    const advanceResponse = await app.inject({
+      method: 'PATCH',
+      url: `/api/orders/${order.id}/advance`,
+      headers: authHeader(token),
+    });
+
+    expect(advanceResponse.statusCode).toBe(200);
+    expect(advanceResponse.json().fulfillmentStatus).toBe('delivered');
+  });
+
+  it('no permite avanzar un pedido cancelado aunque su estado no esté en la secuencia de su canal', async () => {
+    const product = await createTestProduct(testPrisma, { stock: 5 });
+    const orderResponse = await app.inject({
+      method: 'POST',
+      url: '/api/orders',
+      headers: authHeader(token),
+      payload: { channel: 'counter', items: [{ productId: product.id, quantity: 1 }] },
+    });
+    const order = orderResponse.json();
+    await app.inject({
+      method: 'PATCH',
+      url: `/api/orders/${order.id}/cancel`,
+      headers: authHeader(token),
+    });
+
+    const advanceResponse = await app.inject({
+      method: 'PATCH',
+      url: `/api/orders/${order.id}/advance`,
+      headers: authHeader(token),
+    });
+
+    expect(advanceResponse.statusCode).toBe(409);
+    const sale = await testPrisma.sale.findUniqueOrThrow({ where: { id: order.id } });
+    expect(sale.fulfillmentStatus).toBe('cancelled');
+  });
+
   it('no permite avanzar un pedido ya entregado', async () => {
     const product = await createTestProduct(testPrisma, { stock: 5 });
     const orderResponse = await app.inject({
