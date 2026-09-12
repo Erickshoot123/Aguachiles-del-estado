@@ -1,19 +1,7 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
-import type {
-  CreateCategoryRequest,
-  CreateInventoryAdjustmentRequest,
-  CreateProductRequest,
-  UpdateProductRequest,
-} from '@aguachiles/shared';
+import type { CreateCategoryRequest, CreateProductRequest, UpdateProductRequest } from '@aguachiles/shared';
 import { useIsLoggedIn } from '../auth/authStore';
-import {
-  adjustInventory,
-  createCategory,
-  createProduct,
-  listCatalogProducts,
-  listCategories,
-  updateProduct,
-} from './api';
+import { createCategory, createProduct, listCatalogProducts, listCategories, updateProduct } from './api';
 
 const CATEGORIES_QUERY_KEY = ['categories'] as const;
 export const CATALOG_PRODUCTS_QUERY_KEY = ['products', 'catalog'] as const;
@@ -71,23 +59,6 @@ export function useUpdateProduct() {
   return useMutation({
     mutationFn: ({ productId, input }: { productId: string; input: UpdateProductRequest }) =>
       updateProduct(productId, input),
-    onSuccess: () => {
-      void queryClient.invalidateQueries({ queryKey: CATALOG_PRODUCTS_QUERY_KEY });
-    },
-  });
-}
-
-export function useAdjustInventory() {
-  const queryClient = useQueryClient();
-
-  return useMutation({
-    mutationFn: ({
-      productId,
-      input,
-    }: {
-      productId: string;
-      input: CreateInventoryAdjustmentRequest;
-    }) => adjustInventory(productId, input),
     onSuccess: () => {
       void queryClient.invalidateQueries({ queryKey: CATALOG_PRODUCTS_QUERY_KEY });
     },

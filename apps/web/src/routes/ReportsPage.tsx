@@ -1,7 +1,7 @@
 import type { JSX } from 'react';
 import { useState } from 'react';
 import { AppShell } from '../components/AppShell';
-import { CHANNEL_LABELS, formatCurrency } from '../features/orders/channelLabels';
+import { formatCurrency } from '../features/orders/channelLabels';
 import * as dateRanges from '../features/reports/dateRanges';
 import type { DateRange } from '../features/reports/dateRanges';
 import { useCashSessionHistory, useSalesReport } from '../features/reports/hooks';
@@ -16,16 +16,10 @@ const UI_TEXT = {
   totalSales: 'Total vendido',
   totalTickets: 'Tickets',
   averageTicket: 'Ticket promedio',
-  byProduct: 'Ventas por producto',
-  byCashier: 'Ventas por cajero',
-  byChannel: 'Ventas por canal',
   byPaymentMethod: 'Ventas por método de pago',
   cashHistory: 'Historial de cortes de caja',
   loading: 'Cargando…',
   error: 'No se pudo cargar el reporte.',
-  emptyProduct: 'Sin ventas en este periodo.',
-  emptyCashier: 'Sin ventas en este periodo.',
-  emptyChannel: 'Sin ventas en este periodo.',
   emptyPaymentMethod: 'Sin cobros en este periodo.',
   emptyHistory: 'Aún no hay cortes de caja.',
 } as const;
@@ -101,47 +95,15 @@ export function ReportsPage(): JSX.Element {
               <SummaryCard label={UI_TEXT.averageTicket} value={formatCurrency(averageTicket)} />
             </div>
 
-            <div className="grid grid-cols-1 gap-4 lg:grid-cols-2">
-              <ReportTable
-                title={UI_TEXT.byProduct}
-                columns={['Producto', 'Cantidad', 'Total']}
-                rows={report.byProduct.map((row) => [
-                  row.productName,
-                  row.quantity,
-                  formatCurrency(row.total),
-                ])}
-                emptyText={UI_TEXT.emptyProduct}
-              />
-              <ReportTable
-                title={UI_TEXT.byCashier}
-                columns={['Cajero', 'Tickets', 'Total']}
-                rows={report.byCashier.map((row) => [
-                  row.userName,
-                  row.count,
-                  formatCurrency(row.total),
-                ])}
-                emptyText={UI_TEXT.emptyCashier}
-              />
-              <ReportTable
-                title={UI_TEXT.byChannel}
-                columns={['Canal', 'Tickets', 'Total']}
-                rows={report.byChannel.map((row) => [
-                  CHANNEL_LABELS[row.channel],
-                  row.count,
-                  formatCurrency(row.total),
-                ])}
-                emptyText={UI_TEXT.emptyChannel}
-              />
-              <ReportTable
-                title={UI_TEXT.byPaymentMethod}
-                columns={['Método', 'Total']}
-                rows={report.byPaymentMethod.map((row) => [
-                  row.paymentMethodName,
-                  formatCurrency(row.total),
-                ])}
-                emptyText={UI_TEXT.emptyPaymentMethod}
-              />
-            </div>
+            <ReportTable
+              title={UI_TEXT.byPaymentMethod}
+              columns={['Método', 'Total']}
+              rows={report.byPaymentMethod.map((row) => [
+                row.paymentMethodName,
+                formatCurrency(row.total),
+              ])}
+              emptyText={UI_TEXT.emptyPaymentMethod}
+            />
           </>
         ) : null}
 

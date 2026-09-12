@@ -55,13 +55,13 @@ describe('reembolsos', () => {
     return { id: order.id, itemId: order.items[0].id };
   }
 
-  it('un reembolso parcial repone el stock de la cantidad devuelta', async () => {
+  it('un reembolso parcial no toca el stock (nunca se descontó al vender)', async () => {
     const { id: orderId, itemId } = await createAndChargeOrder(4, 100);
-    const stockAfterSale = await testPrisma.sale.findUnique({
+    const saleWithItems = await testPrisma.sale.findUnique({
       where: { id: orderId },
       include: { items: true },
     });
-    const productId = stockAfterSale?.items[0]?.productId as string;
+    const productId = saleWithItems?.items[0]?.productId as string;
     const stockBeforeRefund = await testPrisma.inventory.findUnique({ where: { productId } });
 
     const response = await app.inject({
@@ -77,7 +77,7 @@ describe('reembolsos', () => {
 
     expect(response.statusCode).toBe(201);
     const stockAfterRefund = await testPrisma.inventory.findUnique({ where: { productId } });
-    expect(stockAfterRefund?.quantity.toNumber()).toBe((stockBeforeRefund?.quantity.toNumber() ?? 0) + 1);
+    expect(stockAfterRefund?.quantity.toNumber()).toBe(stockBeforeRefund?.quantity.toNumber() ?? 0);
 
     const sale = await testPrisma.sale.findUnique({ where: { id: orderId } });
     expect(sale?.status).toBe('partially_refunded');

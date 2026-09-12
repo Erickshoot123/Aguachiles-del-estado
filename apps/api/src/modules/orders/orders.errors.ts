@@ -12,12 +12,6 @@ export class ProductNotAvailableError extends NotFoundError {
   }
 }
 
-export class InsufficientStockError extends ConflictError {
-  constructor(productName: string) {
-    super(`Stock insuficiente para "${productName}"`);
-  }
-}
-
 export class InvalidFulfillmentTransitionError extends ConflictError {
   constructor(currentStatus: string) {
     super(`Esta operación no es válida para un pedido en estado "${currentStatus}"`);

@@ -3,7 +3,6 @@ import { useState } from 'react';
 import { AppShell } from '../components/AppShell';
 import { formatCurrency } from '../features/orders/channelLabels';
 import { useCatalogProducts } from '../features/catalog/hooks';
-import { InventoryAdjustmentModal } from '../features/catalog/InventoryAdjustmentModal';
 import { ProductFormModal } from '../features/catalog/ProductFormModal';
 
 const UI_TEXT = {
@@ -15,22 +14,17 @@ const UI_TEXT = {
   colName: 'Producto',
   colCategory: 'Categoría',
   colPrice: 'Precio',
-  colCost: 'Costo',
-  colStock: 'Stock',
   colStatus: 'Estado',
   active: 'Activo',
   inactive: 'Inactivo',
   edit: 'Editar',
-  adjustStock: 'Ajustar stock',
 } as const;
 
 export function CatalogPage(): JSX.Element {
   const productsQuery = useCatalogProducts();
   const [isCreating, setIsCreating] = useState(false);
   const [editingProductId, setEditingProductId] = useState<string | null>(null);
-  const [adjustingProductId, setAdjustingProductId] = useState<string | null>(null);
   const editingProduct = productsQuery.data?.find((product) => product.id === editingProductId);
-  const adjustingProduct = productsQuery.data?.find((product) => product.id === adjustingProductId);
 
   return (
     <AppShell>
@@ -59,8 +53,6 @@ export function CatalogPage(): JSX.Element {
                   <th className="px-4 py-3">{UI_TEXT.colName}</th>
                   <th className="px-4 py-3">{UI_TEXT.colCategory}</th>
                   <th className="px-4 py-3">{UI_TEXT.colPrice}</th>
-                  <th className="px-4 py-3">{UI_TEXT.colCost}</th>
-                  <th className="px-4 py-3">{UI_TEXT.colStock}</th>
                   <th className="px-4 py-3">{UI_TEXT.colStatus}</th>
                   <th className="px-4 py-3" />
                 </tr>
@@ -81,10 +73,6 @@ export function CatalogPage(): JSX.Element {
                     </td>
                     <td className="px-4 py-3 text-muted">{product.categoryName}</td>
                     <td className="px-4 py-3 font-mono">{formatCurrency(product.price)}</td>
-                    <td className="px-4 py-3 font-mono text-muted">
-                      {formatCurrency(product.cost)}
-                    </td>
-                    <td className="px-4 py-3 font-mono">{product.stock}</td>
                     <td className="px-4 py-3">
                       <span
                         className={
@@ -97,22 +85,13 @@ export function CatalogPage(): JSX.Element {
                       </span>
                     </td>
                     <td className="px-4 py-3 text-right">
-                      <div className="flex justify-end gap-2">
-                        <button
-                          type="button"
-                          onClick={() => setAdjustingProductId(product.id)}
-                          className="rounded-lg border border-border px-3 py-1.5 text-[13px] hover:border-border-hover"
-                        >
-                          {UI_TEXT.adjustStock}
-                        </button>
-                        <button
-                          type="button"
-                          onClick={() => setEditingProductId(product.id)}
-                          className="rounded-lg border border-border px-3 py-1.5 text-[13px] hover:border-border-hover"
-                        >
-                          {UI_TEXT.edit}
-                        </button>
-                      </div>
+                      <button
+                        type="button"
+                        onClick={() => setEditingProductId(product.id)}
+                        className="rounded-lg border border-border px-3 py-1.5 text-[13px] hover:border-border-hover"
+                      >
+                        {UI_TEXT.edit}
+                      </button>
                     </td>
                   </tr>
                 ))}
@@ -125,12 +104,6 @@ export function CatalogPage(): JSX.Element {
       {isCreating ? <ProductFormModal onClose={() => setIsCreating(false)} /> : null}
       {editingProduct ? (
         <ProductFormModal product={editingProduct} onClose={() => setEditingProductId(null)} />
-      ) : null}
-      {adjustingProduct ? (
-        <InventoryAdjustmentModal
-          product={adjustingProduct}
-          onClose={() => setAdjustingProductId(null)}
-        />
       ) : null}
     </AppShell>
   );

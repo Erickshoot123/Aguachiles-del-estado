@@ -15,10 +15,8 @@ const UI_TEXT = {
   newCategory: 'Nueva categoría',
   addCategory: 'Agregar',
   price: 'Precio de venta',
-  cost: 'Costo',
   taxRate: 'Impuesto (%)',
   unit: 'Unidad',
-  initialStock: 'Stock inicial',
   isActive: 'Producto activo',
   isComplement: 'Es un extra/complemento (se ofrece al pedir un platillo principal)',
   cancel: 'Cancelar',
@@ -39,10 +37,8 @@ interface FormState {
   description: string;
   categoryId: string;
   price: string;
-  cost: string;
   taxRate: string;
   unit: string;
-  initialStock: string;
   isActive: boolean;
   isComplement: boolean;
 }
@@ -56,10 +52,8 @@ function toFormState(product: Product | undefined): FormState {
       description: '',
       categoryId: '',
       price: '',
-      cost: '',
       taxRate: '0',
       unit: 'pieza',
-      initialStock: '0',
       isActive: true,
       isComplement: false,
     };
@@ -71,10 +65,8 @@ function toFormState(product: Product | undefined): FormState {
     description: product.description ?? '',
     categoryId: product.categoryId,
     price: String(product.price),
-    cost: String(product.cost),
     taxRate: String(product.taxRate),
     unit: product.unit,
-    initialStock: String(product.stock),
     isActive: product.isActive,
     isComplement: product.isComplement,
   };
@@ -111,6 +103,9 @@ export function ProductFormModal({ product, onClose }: ProductFormModalProps): J
   const hasError = createProduct.isError || updateProduct.isError;
 
   const handleSubmit = (): void => {
+    // Costo y stock no aplican a este negocio (todo se prepara al momento,
+    // sin inventario real que trackear), así que no se capturan en el
+    // formulario; el backend igual los requiere en el payload por ahora.
     const basePayload = {
       sku: form.sku,
       barcode: form.barcode.trim() === '' ? null : form.barcode.trim(),
@@ -118,7 +113,7 @@ export function ProductFormModal({ product, onClose }: ProductFormModalProps): J
       description: form.description.trim() === '' ? null : form.description.trim(),
       categoryId: form.categoryId,
       price: Number(form.price),
-      cost: Number(form.cost),
+      cost: 0,
       taxRate: Number(form.taxRate),
       unit: form.unit,
       isComplement: form.isComplement,
@@ -132,10 +127,7 @@ export function ProductFormModal({ product, onClose }: ProductFormModalProps): J
       return;
     }
 
-    createProduct.mutate(
-      { ...basePayload, initialStock: Number(form.initialStock) },
-      { onSuccess: onClose },
-    );
+    createProduct.mutate({ ...basePayload, initialStock: 0 }, { onSuccess: onClose });
   };
 
   const canSubmit =
@@ -143,7 +135,6 @@ export function ProductFormModal({ product, onClose }: ProductFormModalProps): J
     form.name.trim() !== '' &&
     form.categoryId !== '' &&
     form.price !== '' &&
-    form.cost !== '' &&
     form.unit.trim() !== '';
 
   return (
@@ -233,7 +224,7 @@ export function ProductFormModal({ product, onClose }: ProductFormModalProps): J
           </button>
         </div>
 
-        <div className="grid grid-cols-3 gap-3">
+        <div className="grid grid-cols-2 gap-3">
           <label className="flex flex-col gap-1 text-sm">
             {UI_TEXT.price}
             <input
@@ -241,16 +232,6 @@ export function ProductFormModal({ product, onClose }: ProductFormModalProps): J
               min={0}
               value={form.price}
               onChange={(event) => setField('price', event.target.value)}
-              className="rounded-lg border border-border px-3 py-2"
-            />
-          </label>
-          <label className="flex flex-col gap-1 text-sm">
-            {UI_TEXT.cost}
-            <input
-              type="number"
-              min={0}
-              value={form.cost}
-              onChange={(event) => setField('cost', event.target.value)}
               className="rounded-lg border border-border px-3 py-2"
             />
           </label>
@@ -266,28 +247,14 @@ export function ProductFormModal({ product, onClose }: ProductFormModalProps): J
           </label>
         </div>
 
-        <div className="grid grid-cols-2 gap-3">
-          <label className="flex flex-col gap-1 text-sm">
-            {UI_TEXT.unit}
-            <input
-              value={form.unit}
-              onChange={(event) => setField('unit', event.target.value)}
-              className="rounded-lg border border-border px-3 py-2"
-            />
-          </label>
-          {!isEditing ? (
-            <label className="flex flex-col gap-1 text-sm">
-              {UI_TEXT.initialStock}
-              <input
-                type="number"
-                min={0}
-                value={form.initialStock}
-                onChange={(event) => setField('initialStock', event.target.value)}
-                className="rounded-lg border border-border px-3 py-2"
-              />
-            </label>
-          ) : null}
-        </div>
+        <label className="flex flex-col gap-1 text-sm">
+          {UI_TEXT.unit}
+          <input
+            value={form.unit}
+            onChange={(event) => setField('unit', event.target.value)}
+            className="rounded-lg border border-border px-3 py-2"
+          />
+        </label>
 
         <label className="flex items-center gap-2 text-sm">
           <input

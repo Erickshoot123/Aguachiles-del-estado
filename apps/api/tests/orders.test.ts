@@ -46,22 +46,20 @@ describe('orders', () => {
     expect(order.total).toBe(232);
   });
 
-  it('rechaza un pedido cuando la cantidad pedida excede el stock disponible', async () => {
+  it('crea un pedido aunque la cantidad exceda el stock registrado (el stock no aplica en este POS)', async () => {
     const product = await createTestProduct(testPrisma, { stock: 2 });
 
     const response = await app.inject({
       method: 'POST',
       url: '/api/orders',
       headers: authHeader(token),
-      payload: { channel: 'delivery', items: [{ productId: product.id, quantity: 3 }] },
+      payload: { channel: 'delivery', items: [{ productId: product.id, quantity: 5 }] },
     });
 
-    expect(response.statusCode).toBe(409);
-    const stock = await testPrisma.inventory.findUnique({ where: { productId: product.id } });
-    expect(stock?.quantity.toNumber()).toBe(2);
+    expect(response.statusCode).toBe(201);
   });
 
-  it('descuenta el stock correctamente al crear un pedido', async () => {
+  it('no toca el stock registrado al crear un pedido', async () => {
     const product = await createTestProduct(testPrisma, { stock: 10 });
 
     await app.inject({
@@ -72,7 +70,7 @@ describe('orders', () => {
     });
 
     const stock = await testPrisma.inventory.findUnique({ where: { productId: product.id } });
-    expect(stock?.quantity.toNumber()).toBe(6);
+    expect(stock?.quantity.toNumber()).toBe(10);
   });
 
   it('el precio del pedido no cambia si el producto se actualiza después de crearlo', async () => {
@@ -190,7 +188,7 @@ describe('orders', () => {
     expect(cancelResponse.statusCode).toBe(409);
   });
 
-  it('cancelar un pedido pendiente repone el stock', async () => {
+  it('cancelar un pedido pendiente no toca el stock (nunca se descontó al crearlo)', async () => {
     const product = await createTestProduct(testPrisma, { stock: 10 });
     const orderResponse = await app.inject({
       method: 'POST',

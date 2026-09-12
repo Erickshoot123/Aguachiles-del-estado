@@ -28,7 +28,7 @@ describe('concurrencia', () => {
     await resetDatabase();
   });
 
-  it('varios pedidos simultáneos por la última unidad de stock: solo uno debe tener éxito', async () => {
+  it('varios pedidos simultáneos por el mismo producto: todos tienen éxito (el stock ya no limita las ventas)', async () => {
     const product = await createTestProduct(testPrisma, { stock: 1 });
     const CONCURRENT_REQUESTS = 8;
 
@@ -42,16 +42,14 @@ describe('concurrencia', () => {
 
     const results = await Promise.all(Array.from({ length: CONCURRENT_REQUESTS }, createOrder));
     const succeeded = results.filter((result) => result.statusCode === 201);
-    const rejected = results.filter((result) => result.statusCode === 409);
 
-    expect(succeeded).toHaveLength(1);
-    expect(rejected).toHaveLength(CONCURRENT_REQUESTS - 1);
+    expect(succeeded).toHaveLength(CONCURRENT_REQUESTS);
 
     const stock = await testPrisma.inventory.findUnique({ where: { productId: product.id } });
-    expect(stock?.quantity.toNumber()).toBe(0);
+    expect(stock?.quantity.toNumber()).toBe(1);
 
     const sales = await testPrisma.sale.count({ where: { status: 'pending' } });
-    expect(sales).toBe(1);
+    expect(sales).toBe(CONCURRENT_REQUESTS);
   });
 
   it('varias aperturas simultáneas de la misma caja registradora: solo una debe tener éxito', async () => {

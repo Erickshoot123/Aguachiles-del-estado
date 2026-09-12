@@ -4,7 +4,6 @@ import { NoOpenCashSessionError } from '../cash/cash.errors.js';
 import { createReceiptForSale } from '../receipts/receipts.service.js';
 import {
   CannotCancelPaidOrderError,
-  InsufficientStockError,
   InvalidFulfillmentTransitionError,
   NoLocationConfiguredError,
   OrderAlreadyChargedError,
@@ -15,7 +14,6 @@ import {
 } from './orders.errors.js';
 
 const ACTIVE_BOARD_STATUSES = ['received', 'in_prep', 'waiting_pickup', 'in_delivery'] as const;
-const MAX_TICKET_NUMBER_RETRIES = 3;
 
 // Un pedido de mostrador lo recoge quien lo pidió apenas está listo: no hay
 // "esperando quien lo recoja" ni "en camino" porque el cliente ya está ahí.
@@ -24,15 +22,6 @@ const FORWARD_SEQUENCE_BY_CHANNEL: Record<SaleChannel, readonly FulfillmentStatu
   counter: ['in_prep', 'delivered'],
   delivery: ['in_prep', 'waiting_pickup', 'in_delivery', 'delivered'],
 };
-
-function isTicketNumberCollision(error: unknown): boolean {
-  return (
-    error instanceof Prisma.PrismaClientKnownRequestError &&
-    error.code === 'P2002' &&
-    Array.isArray(error.meta?.['target']) &&
-    (error.meta?.['target'] as string[]).includes('ticket_number')
-  );
-}
 
 type SaleWithItems = Prisma.SaleGetPayload<{ include: { items: { include: { product: true } } } }>;
 
@@ -59,8 +48,11 @@ function toOrderDto(sale: SaleWithItems): Order {
 }
 
 async function nextTicketNumber(tx: Prisma.TransactionClient): Promise<string> {
-  const salesCount = await tx.sale.count();
-  return `#${1000 + salesCount + 1}`;
+  // nextval() es atómico bajo concurrencia a nivel de Postgres (no bloquea
+  // ni puede repetir un valor), a diferencia de un `count()+1` leído dentro
+  // de la transacción.
+  const [{ nextval }] = await tx.$queryRaw<[{ nextval: bigint }]>`SELECT nextval('sale_ticket_number_seq')`;
+  return `#${nextval}`;
 }
 
 export async function listActiveOrders(prisma: PrismaClient): Promise<Order[]> {
@@ -92,28 +84,10 @@ export async function createOrder(
   userId: string,
   input: CreateOrderRequest,
 ): Promise<Order> {
-  for (let attempt = 1; attempt <= MAX_TICKET_NUMBER_RETRIES; attempt += 1) {
-    try {
-      return await createOrderAttempt(prisma, userId, input);
-    } catch (error) {
-      if (!isTicketNumberCollision(error) || attempt === MAX_TICKET_NUMBER_RETRIES) {
-        throw error;
-      }
-    }
-  }
-  throw new Error('No se pudo generar un folio de pedido único');
-}
-
-async function createOrderAttempt(
-  prisma: PrismaClient,
-  userId: string,
-  input: CreateOrderRequest,
-): Promise<Order> {
   const sale = await prisma.$transaction(async (tx) => {
     const productIds = [...new Set(input.items.map((item) => item.productId))];
     const products = await tx.product.findMany({
       where: { id: { in: productIds }, isActive: true },
-      include: { inventory: true },
     });
     const productById = new Map(products.map((product) => [product.id, product]));
 
@@ -126,10 +100,6 @@ async function createOrderAttempt(
       }
 
       const quantity = new Prisma.Decimal(item.quantity);
-      if (!product.inventory || product.inventory.quantity.lessThan(quantity)) {
-        throw new InsufficientStockError(product.name);
-      }
-
       const lineSubtotal = product.price.mul(quantity);
       const lineTax = lineSubtotal.mul(product.taxRate).div(100);
       subtotal = subtotal.add(lineSubtotal);
@@ -137,7 +107,6 @@ async function createOrderAttempt(
 
       return {
         productId: product.id,
-        productName: product.name,
         quantity,
         unitPrice: product.price,
         taxAmount: lineTax,
@@ -176,41 +145,6 @@ async function createOrderAttempt(
       },
       include: { items: { include: { product: true } } },
     });
-
-    // La comprobación de arriba usa una lectura hecha antes de este punto,
-    // así que por sí sola no evita que dos pedidos concurrentes por la
-    // última unidad pasen ambos la validación. La garantía real es este
-    // updateMany: la condición `quantity >= item.quantity` y el decremento
-    // ocurren en una sola sentencia atómica, así que si dos transacciones
-    // compiten por el mismo stock, como mucho una tiene `count > 0`.
-    for (const item of itemsToCreate) {
-      const claimed = await tx.inventory.updateMany({
-        where: { productId: item.productId, quantity: { gte: item.quantity } },
-        data: { quantity: { decrement: item.quantity } },
-      });
-      if (claimed.count === 0) {
-        throw new InsufficientStockError(item.productName);
-      }
-
-      const inventory = await tx.inventory.findUniqueOrThrow({
-        where: { productId: item.productId },
-      });
-      const newStock = inventory.quantity;
-      const previousStock = newStock.add(item.quantity);
-
-      await tx.inventoryMovement.create({
-        data: {
-          productId: item.productId,
-          type: 'sale',
-          quantity: item.quantity.neg(),
-          previousStock,
-          newStock,
-          referenceType: 'sale',
-          referenceId: created.id,
-          userId,
-        },
-      });
-    }
 
     return created;
   });
@@ -259,10 +193,7 @@ export async function advanceOrder(prisma: PrismaClient, orderId: string): Promi
 
 export async function cancelOrder(prisma: PrismaClient, orderId: string): Promise<Order> {
   const order = await prisma.$transaction(async (tx) => {
-    const sale = await tx.sale.findUnique({
-      where: { id: orderId },
-      include: { items: true },
-    });
+    const sale = await tx.sale.findUnique({ where: { id: orderId } });
     if (!sale) {
       throw new OrderNotFoundError();
     }
@@ -271,30 +202,6 @@ export async function cancelOrder(prisma: PrismaClient, orderId: string): Promis
     }
     if (sale.status !== 'pending') {
       throw new CannotCancelPaidOrderError();
-    }
-
-    for (const item of sale.items) {
-      const inventory = await tx.inventory.findUnique({ where: { productId: item.productId } });
-      if (!inventory) continue;
-
-      const newStock = inventory.quantity.add(item.quantity);
-      await tx.inventory.update({
-        where: { productId: item.productId },
-        data: { quantity: newStock },
-      });
-      await tx.inventoryMovement.create({
-        data: {
-          productId: item.productId,
-          type: 'return',
-          quantity: item.quantity,
-          previousStock: inventory.quantity,
-          newStock,
-          referenceType: 'sale',
-          referenceId: sale.id,
-          userId: sale.userId,
-          reason: 'Cancelación de pedido',
-        },
-      });
     }
 
     return tx.sale.update({

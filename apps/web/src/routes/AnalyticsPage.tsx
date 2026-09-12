@@ -14,8 +14,6 @@ const UI_TEXT = {
   last30Days: 'Últimos 30 días',
   thisMonth: 'Este mes',
   revenue: 'Ingresos netos',
-  cost: 'Costo de venta',
-  grossMargin: 'Margen bruto',
   loading: 'Cargando…',
   error: 'No se pudo cargar la analítica.',
   trendTitle: 'Tendencia de ventas',
@@ -25,7 +23,6 @@ const UI_TEXT = {
   colProduct: 'Producto',
   colQuantity: 'Cantidad',
   colRevenue: 'Ingresos',
-  colMargin: 'Margen',
 } as const;
 
 const RANGE_OPTIONS: { label: string; getRange: () => DateRange }[] = [
@@ -39,13 +36,11 @@ function formatShortDate(iso: string): string {
   return new Date(iso).toLocaleDateString('es-MX', { day: 'numeric', month: 'short' });
 }
 
-function SummaryCard({ label, value, tone }: { label: string; value: string; tone?: 'accent' }): JSX.Element {
+function SummaryCard({ label, value }: { label: string; value: string }): JSX.Element {
   return (
-    <div className="rounded-2xl border border-border bg-surface p-4">
+    <div className="max-w-xs rounded-2xl border border-border bg-surface p-4">
       <div className="text-[13px] text-muted">{label}</div>
-      <div className={`font-mono text-[22px] font-semibold ${tone === 'accent' ? 'text-accent-hover' : ''}`}>
-        {value}
-      </div>
+      <div className="font-mono text-[22px] font-semibold">{value}</div>
     </div>
   );
 }
@@ -91,7 +86,6 @@ function TopProductsTable({ products }: { products: AnalyticsTopProduct[] }): JS
           <th className="px-4 py-3">{UI_TEXT.colProduct}</th>
           <th className="px-4 py-3">{UI_TEXT.colQuantity}</th>
           <th className="px-4 py-3">{UI_TEXT.colRevenue}</th>
-          <th className="px-4 py-3">{UI_TEXT.colMargin}</th>
         </tr>
       </thead>
       <tbody>
@@ -100,9 +94,6 @@ function TopProductsTable({ products }: { products: AnalyticsTopProduct[] }): JS
             <td className="px-4 py-3 font-medium">{product.productName}</td>
             <td className="px-4 py-3 font-mono">{product.quantity}</td>
             <td className="px-4 py-3 font-mono">{formatCurrency(product.revenue)}</td>
-            <td className="px-4 py-3 font-mono text-muted">
-              {formatCurrency(product.margin)} ({product.marginPercent.toFixed(0)}%)
-            </td>
           </tr>
         ))}
       </tbody>
@@ -147,14 +138,8 @@ export function AnalyticsPage(): JSX.Element {
 
         {dashboard ? (
           <>
-            <div className="mb-6 grid grid-cols-1 gap-3 sm:grid-cols-3">
+            <div className="mb-6">
               <SummaryCard label={UI_TEXT.revenue} value={formatCurrency(dashboard.totalRevenue)} />
-              <SummaryCard label={UI_TEXT.cost} value={formatCurrency(dashboard.totalCost)} />
-              <SummaryCard
-                label={UI_TEXT.grossMargin}
-                value={`${formatCurrency(dashboard.grossMargin)} (${dashboard.grossMarginPercent.toFixed(1)}%)`}
-                tone="accent"
-              />
             </div>
 
             <h2 className="m-0 mb-3 text-[15px] font-semibold">{UI_TEXT.trendTitle}</h2>

@@ -1,9 +1,7 @@
 import type {
   Category,
   CreateCategoryRequest,
-  CreateInventoryAdjustmentRequest,
   CreateProductRequest,
-  InventoryAdjustment,
   Product,
   UpdateProductRequest,
 } from '@aguachiles/shared';
@@ -27,14 +25,4 @@ export function createProduct(input: CreateProductRequest): Promise<Product> {
 
 export function updateProduct(productId: string, input: UpdateProductRequest): Promise<Product> {
   return authFetch<Product>(`/api/products/${productId}`, { method: 'PATCH', body: input });
-}
-
-export function adjustInventory(
-  productId: string,
-  input: CreateInventoryAdjustmentRequest,
-): Promise<InventoryAdjustment> {
-  return authFetch<InventoryAdjustment>(`/api/products/${productId}/inventory-adjustments`, {
-    method: 'POST',
-    body: input,
-  });
 }

@@ -82,32 +82,6 @@ function buildRefundLines(
   });
 }
 
-async function revertInventoryForRefund(
-  tx: Prisma.TransactionClient,
-  line: RefundLine,
-  saleId: string,
-  userId: string,
-): Promise<void> {
-  const inventory = await tx.inventory.findUnique({ where: { productId: line.productId } });
-  if (!inventory) return;
-
-  const newStock = inventory.quantity.add(line.quantity);
-  await tx.inventory.update({ where: { productId: line.productId }, data: { quantity: newStock } });
-  await tx.inventoryMovement.create({
-    data: {
-      productId: line.productId,
-      type: 'return',
-      quantity: line.quantity,
-      previousStock: inventory.quantity,
-      newStock,
-      referenceType: 'sale',
-      referenceId: saleId,
-      userId,
-      reason: 'Reembolso',
-    },
-  });
-}
-
 function nextSaleStatus(sale: SaleWithRefundableItems, lines: RefundLine[]): 'refunded' | 'partially_refunded' {
   const fullyRefunded = sale.items.every((item) => {
     const alreadyRefunded = refundedQuantityOf(item);
@@ -158,10 +132,6 @@ export async function createRefund(
         },
       },
     });
-
-    for (const line of lines) {
-      await revertInventoryForRefund(tx, line, saleId, userId);
-    }
 
     const cashPaymentMethod = await tx.paymentMethod.findFirst({ where: { type: 'cash', isActive: true } });
     if (cashPaymentMethod) {
