@@ -78,11 +78,14 @@ export function AppShell({ children }: AppShellProps): JSX.Element {
   return (
     <div className="flex min-h-screen w-full bg-bg">
       <aside className="flex w-[232px] shrink-0 flex-col gap-6 border-r border-border bg-surface p-4">
-        <div className="flex flex-col gap-0.5 px-1.5">
-          <span className="text-[19px] font-bold tracking-tight">{UI_TEXT.brand}</span>
-          <span className="font-mono text-[11px] uppercase tracking-widest text-muted-2">
-            {UI_TEXT.brandSubtitle}
-          </span>
+        <div className="flex items-center gap-1.5 px-1.5">
+          <img src="/logo.png" alt="" className="h-8 w-8 shrink-0" />
+          <div className="flex min-w-0 flex-col gap-0.5">
+            <span className="text-[19px] font-bold tracking-tight">{UI_TEXT.brand}</span>
+            <span className="whitespace-nowrap font-mono text-[11px] uppercase tracking-wide text-muted-2">
+              {UI_TEXT.brandSubtitle}
+            </span>
+          </div>
         </div>
 
         <nav className="flex flex-col gap-4">

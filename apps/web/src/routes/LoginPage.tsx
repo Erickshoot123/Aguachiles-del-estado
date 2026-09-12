@@ -7,8 +7,7 @@ import { useAuthStore } from '../features/auth/authStore';
 import { useLogin } from '../features/auth/useLogin';
 
 const UI_TEXT = {
-  brand: 'Aguachiles',
-  brandSubtitle: 'Cocina · solo delivery',
+  brand: 'Aguachiles del Estado',
   emailLabel: 'Correo electrónico',
   passwordLabel: 'Contraseña',
   submit: 'Ingresar',
@@ -35,16 +34,17 @@ export function LoginPage(): JSX.Element {
   });
 
   return (
-    <div className="flex min-h-screen items-center justify-center bg-bg">
+    <div
+      className="flex min-h-screen items-center justify-center bg-bg bg-cover bg-center"
+      style={{ backgroundImage: 'url(/mountain-bg.jpg)' }}
+    >
       <form
         onSubmit={onSubmit}
-        className="w-full max-w-sm rounded-2xl border border-border bg-surface p-8"
+        className="w-full max-w-sm rounded-2xl border border-border bg-surface/70 p-8 shadow-lg backdrop-blur-sm"
       >
-        <div className="mb-6 flex flex-col gap-0.5">
+        <div className="mb-6 flex flex-col items-center gap-2 text-center">
+          <img src="/logo.png" alt={UI_TEXT.brand} className="h-16 w-16" />
           <span className="text-[19px] font-bold tracking-tight">{UI_TEXT.brand}</span>
-          <span className="font-mono text-[11px] uppercase tracking-widest text-muted-2">
-            {UI_TEXT.brandSubtitle}
-          </span>
         </div>
 
         <label className="mb-1 block text-sm font-medium text-text" htmlFor="email">
