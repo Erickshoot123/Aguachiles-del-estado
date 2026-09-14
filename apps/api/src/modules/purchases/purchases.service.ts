@@ -13,23 +13,25 @@ async function applyPurchaseLine(
   userId: string,
   reason: string | undefined,
 ): Promise<PurchaseLine> {
-  const product = await tx.product.findUnique({
-    where: { id: productId },
-    include: { inventory: true },
-  });
+  const product = await tx.product.findUnique({ where: { id: productId } });
   if (!product) {
     throw new ProductNotFoundError();
   }
 
-  const previousStock = product.inventory?.quantity ?? new Prisma.Decimal(0);
   const addedQuantity = new Prisma.Decimal(quantity);
-  const newStock = previousStock.add(addedQuantity);
 
-  if (product.inventory) {
-    await tx.inventory.update({ where: { productId }, data: { quantity: newStock } });
-  } else {
-    await tx.inventory.create({ data: { productId, quantity: newStock } });
-  }
+  // Increment atómico (igual que adjustInventory en products.service.ts) en
+  // vez de leer el stock y reescribir un total calculado: así dos compras
+  // concurrentes del mismo producto no se pisan — con un read-modify-write
+  // simple, la segunda en confirmar sobrescribiría el stock ignorando lo que
+  // sumó la primera.
+  const inventory = await tx.inventory.upsert({
+    where: { productId },
+    update: { quantity: { increment: addedQuantity } },
+    create: { productId, quantity: addedQuantity },
+  });
+  const newStock = inventory.quantity;
+  const previousStock = newStock.sub(addedQuantity);
 
   await tx.inventoryMovement.create({
     data: {
