@@ -51,8 +51,9 @@ npm run dev --workspace=@aguachiles/web
 npm run dev --workspace=@aguachiles/print-agent
 ```
 
-La app queda en `http://localhost:5173`. Usuario semilla: `admin@aguachiles.local` /
-`ChangeMe123!` (cámbialo antes de producción).
+La app queda en `http://localhost:5173`. Usuario semilla: `admin` / `ChangeMe123!`
+(cámbialo antes de producción). El login es por nombre de usuario, no por correo —
+el sistema trabaja 100% offline y un correo no tiene ningún uso real aquí.
 
 Sin impresora térmica conectada, el print-agent escribe cada ticket como buffer ESC/POS
 crudo en `apps/print-agent/print-output/` (configurable en `PRINTERS`, un JSON con una o más
@@ -83,8 +84,20 @@ cobro ya ocurrió antes de abrir el modal de impresión).
 
 - `npm run lint` — ESLint sobre todo el monorepo.
 - `npm run typecheck` — chequeo de tipos por workspace.
-- `npm run build` — build de producción por workspace.
+- `npm run build` — build de producción por workspace (compila primero
+  `packages/shared`, que los demás workspaces necesitan ya compilado — ver
+  nota abajo).
 - `npm run test` — pruebas por workspace.
+
+`packages/shared` no tiene build propio en desarrollo (`tsx`/Vite/Vitest leen
+directo su código fuente vía la condición `development` de sus `exports`,
+para que un cambio ahí se refleje al instante en todo lo demás sin
+recompilar nada). Para producción sí necesita su `dist/` compilado — por
+eso `npm run build` lo compila explícitamente primero. Si alguna vez corres
+`node dist/...` de `apps/api` o `apps/print-agent` a mano (sin pasar por
+`npm run build`), asegúrate de haber compilado `packages/shared` antes
+(`npm run build --workspace=@aguachiles/shared`), o fallará con
+`ERR_MODULE_NOT_FOUND`.
 
 ## Pruebas (`apps/api`)
 
