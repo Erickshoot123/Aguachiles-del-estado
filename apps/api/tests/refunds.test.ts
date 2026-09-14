@@ -173,6 +173,34 @@ describe('reembolsos', () => {
     expect(refundMovement?.amount.toNumber()).toBe(150);
   });
 
+  it('dos reembolsos simultáneos del mismo artículo no exceden lo vendido', async () => {
+    const { id: orderId, itemId } = await createAndChargeOrder(2, 100);
+
+    const refundRequest = () =>
+      app.inject({
+        method: 'POST',
+        url: `/api/orders/${orderId}/refund`,
+        headers: authHeader(token),
+        payload: {
+          cashRegisterId: fixtures.cashRegisterId,
+          reason: 'reembolso concurrente',
+          items: [{ saleItemId: itemId, quantity: 2 }],
+        },
+      });
+
+    const [first, second] = await Promise.all([refundRequest(), refundRequest()]);
+    const statusCodes = [first.statusCode, second.statusCode].sort();
+
+    // Solo una de las dos solicitudes concurrentes debe lograr reembolsar
+    // (201); la otra debe rechazarse (409) porque ya no queda cantidad
+    // disponible, sin importar cuál llegó primero a la base de datos.
+    expect(statusCodes).toEqual([201, 409]);
+
+    const refundItems = await testPrisma.refundItem.findMany({ where: { saleItemId: itemId } });
+    const totalRefunded = refundItems.reduce((sum, item) => sum + item.quantity.toNumber(), 0);
+    expect(totalRefunded).toBe(2);
+  });
+
   it('un cajero no puede procesar un reembolso', async () => {
     const cajeroToken = await loginAs(app, fixtures.cajeroEmail, TEST_PASSWORD);
     const { id: orderId, itemId } = await createAndChargeOrder(1, 100);

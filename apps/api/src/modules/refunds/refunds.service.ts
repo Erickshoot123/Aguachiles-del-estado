@@ -99,6 +99,14 @@ export async function createRefund(
   input: CreateRefundRequest,
 ): Promise<RefundResult> {
   const refund = await prisma.$transaction(async (tx) => {
+    // Bloquea las filas de sale_items de esta venta hasta que la transacción
+    // termine. Sin esto, dos reembolsos casi simultáneos del mismo artículo
+    // pueden leer ambos "0 reembolsado todavía" (READ COMMITTED no lo impide
+    // por sí solo) y los dos pasar la validación de abajo, reembolsando el
+    // doble de lo vendido. Con el lock, el segundo espera a que el primero
+    // confirme y entonces vuelve a leer refundItems ya actualizado.
+    await tx.$queryRaw`SELECT id FROM sale_items WHERE sale_id = ${saleId} FOR UPDATE`;
+
     const sale = await tx.sale.findUnique({
       where: { id: saleId },
       include: { items: { include: { refundItems: true, product: true } } },
