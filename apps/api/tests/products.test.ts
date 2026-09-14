@@ -22,7 +22,7 @@ describe('productos: complementos/extras', () => {
   beforeEach(async () => {
     await resetDatabase();
     fixtures = await seedBaseFixtures(testPrisma);
-    token = await loginAs(app, fixtures.adminEmail, TEST_PASSWORD);
+    token = await loginAs(app, fixtures.adminUsername, TEST_PASSWORD);
     const category = await testPrisma.category.create({ data: { name: 'Menú' } });
     categoryId = category.id;
   });
@@ -164,7 +164,7 @@ describe('canal de pedidos: mostrador/delivery', () => {
   beforeEach(async () => {
     await resetDatabase();
     fixtures = await seedBaseFixtures(testPrisma);
-    token = await loginAs(app, fixtures.adminEmail, TEST_PASSWORD);
+    token = await loginAs(app, fixtures.adminUsername, TEST_PASSWORD);
   });
 
   afterEach(async () => {

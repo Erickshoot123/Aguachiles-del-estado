@@ -28,7 +28,7 @@ describe('constraints de base de datos', () => {
   beforeEach(async () => {
     await resetDatabase();
     fixtures = await seedBaseFixtures(testPrisma);
-    token = await loginAs(app, fixtures.adminEmail, TEST_PASSWORD);
+    token = await loginAs(app, fixtures.adminUsername, TEST_PASSWORD);
   });
 
   afterEach(async () => {
@@ -58,12 +58,12 @@ describe('constraints de base de datos', () => {
     expect(response.statusCode).toBe(409);
   });
 
-  it('rechaza un correo de usuario duplicado a nivel de base de datos', async () => {
+  it('rechaza un nombre de usuario duplicado a nivel de base de datos', async () => {
     await expect(
       testPrisma.user.create({
         data: {
           name: 'Duplicado',
-          email: fixtures.adminEmail,
+          username: fixtures.adminUsername,
           passwordHash: 'x',
           roleId: fixtures.roleIds.cajero,
         },
@@ -85,7 +85,7 @@ describe('constraints de base de datos', () => {
       testPrisma.sale.create({
         data: {
           ticketNumber,
-          userId: (await testPrisma.user.findUniqueOrThrow({ where: { email: fixtures.adminEmail } })).id,
+          userId: (await testPrisma.user.findUniqueOrThrow({ where: { username: fixtures.adminUsername } })).id,
           locationId: fixtures.locationId,
           subtotal: new Prisma.Decimal(0),
           taxTotal: new Prisma.Decimal(0),

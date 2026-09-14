@@ -10,7 +10,7 @@ const UI_TEXT = {
   error: 'No se pudieron cargar los usuarios.',
   empty: 'Aún no hay usuarios.',
   colName: 'Nombre',
-  colEmail: 'Correo',
+  colUsername: 'Usuario',
   colRole: 'Rol',
   colStatus: 'Estado',
   active: 'Activo',
@@ -41,7 +41,7 @@ export function UsersPage(): JSX.Element {
               <thead>
                 <tr className="border-b border-border text-[12px] uppercase tracking-wide text-muted-2">
                   <th className="px-4 py-3">{UI_TEXT.colName}</th>
-                  <th className="px-4 py-3">{UI_TEXT.colEmail}</th>
+                  <th className="px-4 py-3">{UI_TEXT.colUsername}</th>
                   <th className="px-4 py-3">{UI_TEXT.colRole}</th>
                   <th className="px-4 py-3">{UI_TEXT.colStatus}</th>
                   <th className="px-4 py-3" />
@@ -51,7 +51,7 @@ export function UsersPage(): JSX.Element {
                 {usersQuery.data.map((user) => (
                   <tr key={user.id} className="border-b border-divider last:border-0">
                     <td className="px-4 py-3 font-medium">{user.name}</td>
-                    <td className="px-4 py-3 font-mono text-[13px] text-muted">{user.email}</td>
+                    <td className="px-4 py-3 font-mono text-[13px] text-muted">{user.username}</td>
                     <td className="px-4 py-3 capitalize text-muted">{user.roleName}</td>
                     <td className="px-4 py-3">
                       <span

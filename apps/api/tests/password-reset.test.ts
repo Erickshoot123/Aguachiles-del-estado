@@ -21,7 +21,7 @@ describe('reseteo de contraseña por un admin', () => {
   beforeEach(async () => {
     await resetDatabase();
     fixtures = await seedBaseFixtures(testPrisma);
-    adminToken = await loginAs(app, fixtures.adminEmail, TEST_PASSWORD);
+    adminToken = await loginAs(app, fixtures.adminUsername, TEST_PASSWORD);
   });
 
   afterEach(async () => {
@@ -29,7 +29,7 @@ describe('reseteo de contraseña por un admin', () => {
   });
 
   it('un admin puede resetear la contraseña de otro usuario', async () => {
-    const cajero = await testPrisma.user.findUniqueOrThrow({ where: { email: fixtures.cajeroEmail } });
+    const cajero = await testPrisma.user.findUniqueOrThrow({ where: { username: fixtures.cajeroUsername } });
 
     const response = await app.inject({
       method: 'POST',
@@ -43,24 +43,24 @@ describe('reseteo de contraseña por un admin', () => {
     const oldLogin = await app.inject({
       method: 'POST',
       url: '/api/auth/login',
-      payload: { email: fixtures.cajeroEmail, password: TEST_PASSWORD },
+      payload: { username: fixtures.cajeroUsername, password: TEST_PASSWORD },
     });
     expect(oldLogin.statusCode).toBe(401);
 
     const newLogin = await app.inject({
       method: 'POST',
       url: '/api/auth/login',
-      payload: { email: fixtures.cajeroEmail, password: 'NuevaContraseña123!' },
+      payload: { username: fixtures.cajeroUsername, password: 'NuevaContraseña123!' },
     });
     expect(newLogin.statusCode).toBe(200);
   });
 
   it('revoca las sesiones activas del usuario al resetear su contraseña', async () => {
-    const cajero = await testPrisma.user.findUniqueOrThrow({ where: { email: fixtures.cajeroEmail } });
+    const cajero = await testPrisma.user.findUniqueOrThrow({ where: { username: fixtures.cajeroUsername } });
     const cajeroLogin = await app.inject({
       method: 'POST',
       url: '/api/auth/login',
-      payload: { email: fixtures.cajeroEmail, password: TEST_PASSWORD },
+      payload: { username: fixtures.cajeroUsername, password: TEST_PASSWORD },
     });
     const { refreshToken } = cajeroLogin.json();
 
@@ -81,8 +81,8 @@ describe('reseteo de contraseña por un admin', () => {
   });
 
   it('un cajero no puede resetear contraseñas', async () => {
-    const admin = await testPrisma.user.findUniqueOrThrow({ where: { email: fixtures.adminEmail } });
-    const cajeroToken = await loginAs(app, fixtures.cajeroEmail, TEST_PASSWORD);
+    const admin = await testPrisma.user.findUniqueOrThrow({ where: { username: fixtures.adminUsername } });
+    const cajeroToken = await loginAs(app, fixtures.cajeroUsername, TEST_PASSWORD);
 
     const response = await app.inject({
       method: 'POST',
@@ -95,7 +95,7 @@ describe('reseteo de contraseña por un admin', () => {
   });
 
   it('rechaza una contraseña nueva demasiado corta', async () => {
-    const cajero = await testPrisma.user.findUniqueOrThrow({ where: { email: fixtures.cajeroEmail } });
+    const cajero = await testPrisma.user.findUniqueOrThrow({ where: { username: fixtures.cajeroUsername } });
 
     const response = await app.inject({
       method: 'POST',
@@ -115,12 +115,12 @@ describe('reseteo de contraseña por un admin', () => {
     });
 
     expect(response.statusCode).toBe(200);
-    const users = response.json() as Array<{ email: string }>;
-    expect(users.some((user) => user.email === fixtures.cajeroEmail)).toBe(true);
+    const users = response.json() as Array<{ username: string }>;
+    expect(users.some((user) => user.username === fixtures.cajeroUsername)).toBe(true);
   });
 
   it('un cajero no puede listar los usuarios', async () => {
-    const cajeroToken = await loginAs(app, fixtures.cajeroEmail, TEST_PASSWORD);
+    const cajeroToken = await loginAs(app, fixtures.cajeroUsername, TEST_PASSWORD);
 
     const response = await app.inject({
       method: 'GET',

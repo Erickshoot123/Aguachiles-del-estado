@@ -22,7 +22,7 @@ describe('compras', () => {
   beforeEach(async () => {
     await resetDatabase();
     fixtures = await seedBaseFixtures(testPrisma);
-    token = await loginAs(app, fixtures.adminEmail, TEST_PASSWORD);
+    token = await loginAs(app, fixtures.adminUsername, TEST_PASSWORD);
     const supplier = await testPrisma.supplier.create({ data: { name: 'Proveedor de prueba' } });
     supplierId = supplier.id;
   });
@@ -90,7 +90,7 @@ describe('compras', () => {
   });
 
   it('un cajero no puede registrar una compra', async () => {
-    const cajeroToken = await loginAs(app, fixtures.cajeroEmail, TEST_PASSWORD);
+    const cajeroToken = await loginAs(app, fixtures.cajeroUsername, TEST_PASSWORD);
     const product = await createTestProduct(testPrisma, { stock: 10 });
 
     const response = await app.inject({

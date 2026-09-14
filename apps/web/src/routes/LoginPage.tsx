@@ -8,7 +8,7 @@ import { useLogin } from '../features/auth/useLogin';
 
 const UI_TEXT = {
   brand: 'Aguachiles del Estado',
-  emailLabel: 'Correo electrónico',
+  usernameLabel: 'Usuario',
   passwordLabel: 'Contraseña',
   submit: 'Ingresar',
   submitting: 'Ingresando…',
@@ -47,17 +47,18 @@ export function LoginPage(): JSX.Element {
           <span className="text-[19px] font-bold tracking-tight">{UI_TEXT.brand}</span>
         </div>
 
-        <label className="mb-1 block text-sm font-medium text-text" htmlFor="email">
-          {UI_TEXT.emailLabel}
+        <label className="mb-1 block text-sm font-medium text-text" htmlFor="username">
+          {UI_TEXT.usernameLabel}
         </label>
         <input
-          id="email"
-          type="email"
+          id="username"
+          type="text"
+          autoComplete="username"
           className="mb-1 w-full rounded-lg border border-border px-3 py-2 focus:border-accent focus:outline-none"
-          {...register('email')}
+          {...register('username')}
         />
-        {errors.email ? (
-          <p className="mb-3 text-sm text-red-600">{errors.email.message}</p>
+        {errors.username ? (
+          <p className="mb-3 text-sm text-red-600">{errors.username.message}</p>
         ) : (
           <div className="mb-3" />
         )}

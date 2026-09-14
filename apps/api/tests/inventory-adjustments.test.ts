@@ -21,7 +21,7 @@ describe('ajustes manuales de inventario', () => {
   beforeEach(async () => {
     await resetDatabase();
     fixtures = await seedBaseFixtures(testPrisma);
-    token = await loginAs(app, fixtures.adminEmail, TEST_PASSWORD);
+    token = await loginAs(app, fixtures.adminUsername, TEST_PASSWORD);
   });
 
   afterEach(async () => {
@@ -104,7 +104,7 @@ describe('ajustes manuales de inventario', () => {
 
   it('un cajero no puede hacer ajustes de inventario', async () => {
     const product = await createTestProduct(testPrisma, { stock: 10 });
-    const cajeroToken = await loginAs(app, fixtures.cajeroEmail, TEST_PASSWORD);
+    const cajeroToken = await loginAs(app, fixtures.cajeroUsername, TEST_PASSWORD);
 
     const response = await app.inject({
       method: 'POST',

@@ -27,8 +27,8 @@ const ALL_PERMISSIONS: PermissionCode[] = [
 
 export interface BaseFixtures {
   roleIds: { admin: string; gerente: string; cajero: string };
-  adminEmail: string;
-  cajeroEmail: string;
+  adminUsername: string;
+  cajeroUsername: string;
   locationId: string;
   cashRegisterId: string;
   cashPaymentMethodId: string;
@@ -59,13 +59,13 @@ export async function seedBaseFixtures(prisma: PrismaClient): Promise<BaseFixtur
   }
 
   const passwordHash = await bcrypt.hash(TEST_PASSWORD, 4);
-  const adminEmail = 'admin@test.local';
-  const cajeroEmail = 'cajero@test.local';
+  const adminUsername = 'admin-prueba';
+  const cajeroUsername = 'cajero-prueba';
   await prisma.user.create({
-    data: { name: 'Admin de prueba', email: adminEmail, passwordHash, roleId: roleIds['admin'] as string },
+    data: { name: 'Admin de prueba', username: adminUsername, passwordHash, roleId: roleIds['admin'] as string },
   });
   await prisma.user.create({
-    data: { name: 'Cajero de prueba', email: cajeroEmail, passwordHash, roleId: roleIds['cajero'] as string },
+    data: { name: 'Cajero de prueba', username: cajeroUsername, passwordHash, roleId: roleIds['cajero'] as string },
   });
 
   const location = await prisma.location.create({ data: { name: 'Sucursal de prueba' } });
@@ -78,8 +78,8 @@ export async function seedBaseFixtures(prisma: PrismaClient): Promise<BaseFixtur
 
   return {
     roleIds: { admin: roleIds['admin'] as string, gerente: roleIds['gerente'] as string, cajero: roleIds['cajero'] as string },
-    adminEmail,
-    cajeroEmail,
+    adminUsername,
+    cajeroUsername,
     locationId: location.id,
     cashRegisterId: cashRegister.id,
     cashPaymentMethodId: cash.id,

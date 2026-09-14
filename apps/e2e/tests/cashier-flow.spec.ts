@@ -1,6 +1,6 @@
 import { expect, test } from '@playwright/test';
 
-const CAJERO_EMAIL = 'cajero@aguachiles.local';
+const CAJERO_USERNAME = 'cajero';
 const CAJERO_PASSWORD = 'ChangeMe123!';
 const PRODUCT_NAME = 'Aguachile Tradicional (medio kilo)';
 const EXTRA_PRODUCT_NAME = 'Tostadas extra (5 pzas)';
@@ -10,7 +10,7 @@ test('flujo completo de cajero: login, abrir caja, vender con pago dividido, imp
 }) => {
   await test.step('login', async () => {
     await page.goto('/');
-    await page.getByLabel('Correo electrónico').fill(CAJERO_EMAIL);
+    await page.getByLabel('Usuario').fill(CAJERO_USERNAME);
     await page.getByLabel('Contraseña').fill(CAJERO_PASSWORD);
     await page.getByRole('button', { name: 'Ingresar' }).click();
     await expect(page.getByRole('heading', { name: 'Tablero de pedidos' })).toBeVisible();

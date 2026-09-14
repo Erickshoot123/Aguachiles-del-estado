@@ -27,7 +27,7 @@ describe('concurrencia', () => {
   beforeEach(async () => {
     await resetDatabase();
     fixtures = await seedBaseFixtures(testPrisma);
-    token = await loginAs(app, fixtures.adminEmail, TEST_PASSWORD);
+    token = await loginAs(app, fixtures.adminUsername, TEST_PASSWORD);
   });
 
   afterEach(async () => {

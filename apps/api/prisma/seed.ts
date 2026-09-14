@@ -7,7 +7,7 @@ const prisma = new PrismaClient();
 
 const BASE_ROLES = ['admin', 'gerente', 'cajero'] as const;
 
-const SEED_ADMIN_EMAIL = 'admin@aguachiles.local';
+const SEED_ADMIN_USERNAME = 'admin';
 const SEED_ADMIN_PASSWORD = 'ChangeMe123!';
 const SEED_TEST_PASSWORD = 'ChangeMe123!';
 
@@ -27,11 +27,11 @@ async function seedRoles(): Promise<Record<string, string>> {
 async function seedAdminUser(adminRoleId: string): Promise<void> {
   const passwordHash = await bcrypt.hash(SEED_ADMIN_PASSWORD, 12);
   await prisma.user.upsert({
-    where: { email: SEED_ADMIN_EMAIL },
+    where: { username: SEED_ADMIN_USERNAME },
     update: {},
     create: {
       name: 'Administrador',
-      email: SEED_ADMIN_EMAIL,
+      username: SEED_ADMIN_USERNAME,
       passwordHash,
       roleId: adminRoleId,
     },
@@ -39,19 +39,19 @@ async function seedAdminUser(adminRoleId: string): Promise<void> {
 }
 
 const TEST_USERS = [
-  { name: 'Gerente de prueba', email: 'gerente@aguachiles.local', role: 'gerente' },
-  { name: 'Cajero de prueba', email: 'cajero@aguachiles.local', role: 'cajero' },
+  { name: 'Gerente de prueba', username: 'gerente', role: 'gerente' },
+  { name: 'Cajero de prueba', username: 'cajero', role: 'cajero' },
 ] as const;
 
 async function seedTestUsers(roleIds: Record<string, string>): Promise<void> {
   const passwordHash = await bcrypt.hash(SEED_TEST_PASSWORD, 12);
   for (const testUser of TEST_USERS) {
     await prisma.user.upsert({
-      where: { email: testUser.email },
+      where: { username: testUser.username },
       update: {},
       create: {
         name: testUser.name,
-        email: testUser.email,
+        username: testUser.username,
         passwordHash,
         roleId: roleIds[testUser.role] as string,
       },
@@ -193,8 +193,8 @@ async function main(): Promise<void> {
   const locationId = await seedLocation();
   await seedCashRegisters(locationId);
 
-  console.warn(`Seed completado. Usuario admin: ${SEED_ADMIN_EMAIL} / ${SEED_ADMIN_PASSWORD}`);
-  console.warn(`Usuarios de prueba (misma contraseña): gerente@aguachiles.local, cajero@aguachiles.local`);
+  console.warn(`Seed completado. Usuario admin: ${SEED_ADMIN_USERNAME} / ${SEED_ADMIN_PASSWORD}`);
+  console.warn(`Usuarios de prueba (misma contraseña): gerente, cajero`);
 }
 
 main()

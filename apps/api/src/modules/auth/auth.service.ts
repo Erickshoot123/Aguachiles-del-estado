@@ -28,7 +28,7 @@ export async function authenticateUser(
   input: LoginRequest,
 ): Promise<AuthenticatedUser> {
   const user = await prisma.user.findUnique({
-    where: { email: input.email },
+    where: { username: input.username },
     include: { role: true },
   });
 
@@ -51,7 +51,7 @@ export async function authenticateUser(
     authUser: {
       id: user.id,
       name: user.name,
-      email: user.email,
+      username: user.username,
       roleName: user.role.name,
       permissions,
     },
@@ -125,7 +125,7 @@ export async function rotateRefreshToken(
     authUser: {
       id: existing.user.id,
       name: existing.user.name,
-      email: existing.user.email,
+      username: existing.user.username,
       roleName: existing.user.role.name,
       permissions,
     },
@@ -150,7 +150,7 @@ export async function listUsers(prisma: PrismaClient): Promise<UserSummary[]> {
   return users.map((user) => ({
     id: user.id,
     name: user.name,
-    email: user.email,
+    username: user.username,
     roleName: user.role.name,
     isActive: user.isActive,
   }));
@@ -183,7 +183,7 @@ export async function resetUserPassword(
       action: 'user.password_reset',
       entity: 'user',
       entityId: targetUserId,
-      newValue: { targetEmail: user.email },
+      newValue: { targetUsername: user.username },
     });
   });
 }

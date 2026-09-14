@@ -1,7 +1,7 @@
 import { z } from 'zod';
 
 export const loginRequestSchema = z.object({
-  email: z.string().email(),
+  username: z.string().min(1),
   password: z.string().min(8),
 });
 
@@ -31,7 +31,7 @@ export const PERMISSION_DESCRIPTIONS: Record<PermissionCode, string> = {
 export const authUserSchema = z.object({
   id: z.string().uuid(),
   name: z.string(),
-  email: z.string().email(),
+  username: z.string(),
   roleName: z.string(),
   permissions: z.array(permissionCodeSchema),
 });
@@ -68,7 +68,7 @@ export type ResetPasswordRequest = z.infer<typeof resetPasswordRequestSchema>;
 export const userSummarySchema = z.object({
   id: z.string().uuid(),
   name: z.string(),
-  email: z.string().email(),
+  username: z.string(),
   roleName: z.string(),
   isActive: z.boolean(),
 });

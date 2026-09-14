@@ -37,7 +37,7 @@ describe('rate limit de login', () => {
       app.inject({
         method: 'POST',
         url: '/api/auth/login',
-        payload: { email: fixtures.adminEmail, password: 'contraseña-incorrecta' },
+        payload: { username: fixtures.adminUsername, password: 'contraseña-incorrecta' },
       });
 
     const first = await attemptLogin();
@@ -55,7 +55,7 @@ describe('rate limit de login', () => {
     const response = await app.inject({
       method: 'POST',
       url: '/api/auth/login',
-      payload: { email: fixtures.adminEmail, password: TEST_PASSWORD },
+      payload: { username: fixtures.adminUsername, password: TEST_PASSWORD },
     });
 
     expect(response.statusCode).toBe(200);
@@ -66,7 +66,7 @@ describe('rate limit de login', () => {
       await app.inject({
         method: 'POST',
         url: '/api/auth/login',
-        payload: { email: fixtures.adminEmail, password: 'contraseña-incorrecta' },
+        payload: { username: fixtures.adminUsername, password: 'contraseña-incorrecta' },
       });
     }
 

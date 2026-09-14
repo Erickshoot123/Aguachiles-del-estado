@@ -22,8 +22,8 @@ describe('caja', () => {
   beforeEach(async () => {
     await resetDatabase();
     fixtures = await seedBaseFixtures(testPrisma);
-    adminToken = await loginAs(app, fixtures.adminEmail, TEST_PASSWORD);
-    cajeroToken = await loginAs(app, fixtures.cajeroEmail, TEST_PASSWORD);
+    adminToken = await loginAs(app, fixtures.adminUsername, TEST_PASSWORD);
+    cajeroToken = await loginAs(app, fixtures.cajeroUsername, TEST_PASSWORD);
   });
 
   afterEach(async () => {

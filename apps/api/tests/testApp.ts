@@ -12,16 +12,16 @@ export async function buildTestApp(): Promise<FastifyInstance> {
 
 export async function loginAs(
   app: FastifyInstance,
-  email: string,
+  username: string,
   password: string = TEST_PASSWORD,
 ): Promise<string> {
   const response = await app.inject({
     method: 'POST',
     url: '/api/auth/login',
-    payload: { email, password },
+    payload: { username, password },
   });
   if (response.statusCode !== 200) {
-    throw new Error(`No se pudo iniciar sesión como ${email}: ${response.statusCode} ${response.body}`);
+    throw new Error(`No se pudo iniciar sesión como ${username}: ${response.statusCode} ${response.body}`);
   }
   const body = response.json() as { accessToken: string };
   return body.accessToken;

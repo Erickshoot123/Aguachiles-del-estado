@@ -27,7 +27,7 @@ describe('reembolsos', () => {
   beforeEach(async () => {
     await resetDatabase();
     fixtures = await seedBaseFixtures(testPrisma);
-    token = await loginAs(app, fixtures.adminEmail, TEST_PASSWORD);
+    token = await loginAs(app, fixtures.adminUsername, TEST_PASSWORD);
     await app.inject({
       method: 'POST',
       url: '/api/cash-sessions',
@@ -202,7 +202,7 @@ describe('reembolsos', () => {
   });
 
   it('un cajero no puede procesar un reembolso', async () => {
-    const cajeroToken = await loginAs(app, fixtures.cajeroEmail, TEST_PASSWORD);
+    const cajeroToken = await loginAs(app, fixtures.cajeroUsername, TEST_PASSWORD);
     const { id: orderId, itemId } = await createAndChargeOrder(1, 100);
 
     const response = await app.inject({
