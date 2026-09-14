@@ -39,5 +39,6 @@ export async function printTicket(
     interfaceString: printerConfig.interface,
     ticket,
     width: resolveWidth(env, ticket.format),
+    qrMode: printerConfig.qrMode,
   });
 }

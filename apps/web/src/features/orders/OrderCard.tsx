@@ -1,6 +1,12 @@
 import type { Order } from '@aguachiles/shared';
 import type { JSX } from 'react';
+import { useState } from 'react';
 import { CHANNEL_LABELS, formatCurrency, formatElapsedMinutes } from './channelLabels';
+import { WhatsAppModal } from './WhatsAppModal';
+
+const UI_TEXT = {
+  whatsapp: 'WhatsApp',
+} as const;
 
 interface OrderCardProps {
   order: Order;
@@ -10,6 +16,8 @@ interface OrderCardProps {
 }
 
 export function OrderCard({ order, advanceLabel, onOpenDetail, onAdvance }: OrderCardProps): JSX.Element {
+  const [isWhatsAppOpen, setIsWhatsAppOpen] = useState(false);
+
   return (
     <article
       onClick={() => onOpenDetail(order)}
@@ -39,17 +47,33 @@ export function OrderCard({ order, advanceLabel, onOpenDetail, onAdvance }: Orde
             Sin cobrar
           </span>
         ) : null}
+        {order.channel === 'delivery' ? (
+          <button
+            type="button"
+            onClick={(event) => {
+              event.stopPropagation();
+              setIsWhatsAppOpen(true);
+            }}
+            className="ml-auto h-9 whitespace-nowrap rounded-lg border border-border px-2.5 text-[13px] font-semibold text-text hover:border-border-hover"
+          >
+            {UI_TEXT.whatsapp}
+          </button>
+        ) : null}
         <button
           type="button"
           onClick={(event) => {
             event.stopPropagation();
             onAdvance(order.id);
           }}
-          className="ml-auto h-9 whitespace-nowrap rounded-lg bg-text px-2.5 text-[13px] font-semibold text-white hover:bg-accent"
+          className={`${order.channel === 'delivery' ? '' : 'ml-auto'} h-9 whitespace-nowrap rounded-lg bg-text px-2.5 text-[13px] font-semibold text-white hover:bg-accent`}
         >
           {advanceLabel}
         </button>
       </div>
+
+      {isWhatsAppOpen ? (
+        <WhatsAppModal orderId={order.id} onClose={() => setIsWhatsAppOpen(false)} />
+      ) : null}
     </article>
   );
 }

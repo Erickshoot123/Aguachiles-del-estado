@@ -9,6 +9,7 @@ import {
   chargeOrder,
   createOrder,
   findOrderByTicketNumber,
+  getWhatsAppShareForOrder,
   listActiveOrders,
 } from './orders.service.js';
 
@@ -71,6 +72,16 @@ export default async function ordersRoutes(fastify: FastifyInstance): Promise<vo
         input.payments,
       );
       reply.status(200).send(order);
+    },
+  );
+
+  fastify.get(
+    '/api/orders/:id/whatsapp',
+    { preHandler: fastify.authenticate },
+    async (request, reply) => {
+      const { id } = idParamSchema.parse(request.params);
+      const share = await getWhatsAppShareForOrder(fastify.prisma, id);
+      reply.status(200).send(share);
     },
   );
 }

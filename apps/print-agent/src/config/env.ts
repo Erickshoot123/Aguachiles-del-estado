@@ -4,11 +4,21 @@ const printerConfigSchema = z.object({
   id: z.string().min(1),
   name: z.string().min(1),
   interface: z.string().min(1),
+  // Cómo imprime esta impresora el QR de WhatsApp en tickets delivery:
+  // 'native' usa el comando ESC/POS nativo (la mayoría de impresoras
+  // térmicas modernas lo soportan); 'raster' lo manda como imagen para las
+  // que no lo entienden; 'off' nunca imprime el QR en esta impresora.
+  qrMode: z.enum(['native', 'raster', 'off']).default('native'),
 });
 export type PrinterConfig = z.infer<typeof printerConfigSchema>;
 
 const DEFAULT_PRINTERS: PrinterConfig[] = [
-  { id: 'default', name: 'Impresora principal', interface: './print-output/last-ticket.bin' },
+  {
+    id: 'default',
+    name: 'Impresora principal',
+    interface: './print-output/last-ticket.bin',
+    qrMode: 'native',
+  },
 ];
 
 const printersSchema = z

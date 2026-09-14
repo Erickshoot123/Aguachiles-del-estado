@@ -2,7 +2,7 @@ import type { FastifyInstance } from 'fastify';
 import { afterAll, afterEach, beforeAll, beforeEach, describe, expect, it } from 'vitest';
 import { authHeader, buildTestApp, loginAs } from './testApp.js';
 import { disconnectTestDb, resetDatabase, testPrisma } from './testDb.js';
-import { seedBaseFixtures, TEST_PASSWORD, type BaseFixtures } from './fixtures.js';
+import { DELIVERY_ORDER_INFO, seedBaseFixtures, TEST_PASSWORD, type BaseFixtures } from './fixtures.js';
 
 describe('productos: complementos/extras', () => {
   let app: FastifyInstance;
@@ -193,7 +193,7 @@ describe('canal de pedidos: mostrador/delivery', () => {
       method: 'POST',
       url: '/api/orders',
       headers: authHeader(token),
-      payload: { channel: 'delivery', items: [{ productId, quantity: 1 }] },
+      payload: { channel: 'delivery', ...DELIVERY_ORDER_INFO, items: [{ productId, quantity: 1 }] },
     });
 
     expect(counterResponse.statusCode).toBe(201);

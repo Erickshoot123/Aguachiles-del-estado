@@ -8,6 +8,7 @@ import {
   cancelOrder,
   chargeOrder,
   createOrder,
+  getWhatsAppShare,
   listOrders,
   listProducts,
   lookupOrderByTicketNumber,
@@ -96,6 +97,15 @@ export function useChargeOrder() {
       void queryClient.invalidateQueries({ queryKey: ORDERS_QUERY_KEY });
       void queryClient.invalidateQueries({ queryKey: CASH_SESSION_QUERY_KEY });
     },
+  });
+}
+
+export function useWhatsAppShare(orderId: string, enabled: boolean) {
+  return useQuery({
+    queryKey: ['whatsapp-share', orderId] as const,
+    queryFn: () => getWhatsAppShare(orderId),
+    enabled,
+    retry: false,
   });
 }
 

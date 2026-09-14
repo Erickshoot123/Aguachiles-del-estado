@@ -28,10 +28,50 @@ export const createOrderItemSchema = z.object({
 });
 export type CreateOrderItem = z.infer<typeof createOrderItemSchema>;
 
-export const createOrderRequestSchema = z.object({
-  channel: saleChannelSchema,
-  items: z.array(createOrderItemSchema).min(1),
+// Solo tienen sentido (y solo se piden) para channel = 'delivery'. No
+// participan en subtotal/total/pagos: son datos de logística de entrega
+// (quién, dónde, qué), capturados al crear el pedido para armar el mensaje
+// de WhatsApp del repartidor y, opcionalmente, el QR impreso en el ticket.
+// A propósito no incluye nada de montos (costo de envío, "paga con") — el
+// negocio no quiere esa información en el mensaje.
+const deliveryInfoFieldsSchema = z.object({
+  customerName: z.string().min(1).optional(),
+  customerPhone: z.string().min(1).optional(),
+  deliveryAddress: z.string().min(1).optional(),
+  deliveryReferences: z.string().min(1).optional(),
+  notes: z.string().min(1).optional(),
 });
+
+export const createOrderRequestSchema = z
+  .object({
+    channel: saleChannelSchema,
+    items: z.array(createOrderItemSchema).min(1),
+  })
+  .merge(deliveryInfoFieldsSchema)
+  .superRefine((data, ctx) => {
+    if (data.channel !== 'delivery') return;
+    if (!data.customerName) {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        message: 'El nombre del cliente es obligatorio para pedidos de delivery',
+        path: ['customerName'],
+      });
+    }
+    if (!data.customerPhone) {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        message: 'El teléfono del cliente es obligatorio para pedidos de delivery',
+        path: ['customerPhone'],
+      });
+    }
+    if (!data.deliveryAddress) {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        message: 'La dirección de entrega es obligatoria para pedidos de delivery',
+        path: ['deliveryAddress'],
+      });
+    }
+  });
 export type CreateOrderRequest = z.infer<typeof createOrderRequestSchema>;
 
 const chargePaymentSchema = z.object({
@@ -68,7 +108,22 @@ export const orderSchema = z.object({
   subtotal: z.number().nonnegative(),
   taxTotal: z.number().nonnegative(),
   total: z.number().nonnegative(),
+  customerName: z.string().nullable(),
+  customerPhone: z.string().nullable(),
+  deliveryAddress: z.string().nullable(),
+  deliveryReferences: z.string().nullable(),
+  notes: z.string().nullable(),
 });
 export type Order = z.infer<typeof orderSchema>;
 
 export const orderListResponseSchema = z.array(orderSchema);
+
+/** Mensaje y liga wa.me listos para compartir el pedido delivery por WhatsApp. */
+export const whatsAppShareSchema = z.object({
+  message: z.string(),
+  url: z.string().url(),
+  // Si el mensaje no cupo completo (~900 caracteres de URL) y se tuvieron
+  // que recortar las notas para que el QR siga siendo legible/escaneable.
+  truncated: z.boolean(),
+});
+export type WhatsAppShare = z.infer<typeof whatsAppShareSchema>;

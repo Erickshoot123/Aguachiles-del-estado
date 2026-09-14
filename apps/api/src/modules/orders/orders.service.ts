@@ -1,5 +1,12 @@
 import { Prisma, type PrismaClient } from '@prisma/client';
-import type { ChargePayment, CreateOrderRequest, FulfillmentStatus, Order, SaleChannel } from '@aguachiles/shared';
+import type {
+  ChargePayment,
+  CreateOrderRequest,
+  FulfillmentStatus,
+  Order,
+  SaleChannel,
+  WhatsAppShare,
+} from '@aguachiles/shared';
 import { NoOpenCashSessionError } from '../cash/cash.errors.js';
 import { createReceiptForSale } from '../receipts/receipts.service.js';
 import {
@@ -7,11 +14,14 @@ import {
   InvalidFulfillmentTransitionError,
   NoLocationConfiguredError,
   OrderAlreadyChargedError,
+  OrderMissingDeliveryInfoError,
+  OrderNotDeliveryError,
   OrderNotFoundError,
   PaymentAmountMismatchError,
   PaymentMethodNotFoundError,
   ProductNotAvailableError,
 } from './orders.errors.js';
+import { buildWhatsAppMessage } from './whatsapp.js';
 
 const ACTIVE_BOARD_STATUSES = ['received', 'in_prep', 'waiting_pickup', 'in_delivery'] as const;
 
@@ -44,6 +54,11 @@ function toOrderDto(sale: SaleWithItems): Order {
       unitPrice: item.unitPrice.toNumber(),
       subtotal: item.subtotal.toNumber(),
     })),
+    customerName: sale.customerName,
+    customerPhone: sale.customerPhone,
+    deliveryAddress: sale.deliveryAddress,
+    deliveryReferences: sale.deliveryReferences,
+    notes: sale.notes,
   };
 }
 
@@ -133,6 +148,11 @@ export async function createOrder(
         subtotal,
         taxTotal,
         total,
+        customerName: input.customerName ?? null,
+        customerPhone: input.customerPhone ?? null,
+        deliveryAddress: input.deliveryAddress ?? null,
+        deliveryReferences: input.deliveryReferences ?? null,
+        notes: input.notes ?? null,
         items: {
           create: itemsToCreate.map((item) => ({
             productId: item.productId,
@@ -285,4 +305,37 @@ export async function chargeOrder(
   });
 
   return toOrderDto(order);
+}
+
+export async function getWhatsAppShareForOrder(
+  prisma: PrismaClient,
+  orderId: string,
+): Promise<WhatsAppShare> {
+  const sale = await prisma.sale.findUnique({
+    where: { id: orderId },
+    include: { items: { include: { product: true } } },
+  });
+  if (!sale) {
+    throw new OrderNotFoundError();
+  }
+  if (sale.channel !== 'delivery') {
+    throw new OrderNotDeliveryError();
+  }
+  if (!sale.customerName || !sale.customerPhone || !sale.deliveryAddress) {
+    throw new OrderMissingDeliveryInfoError();
+  }
+
+  return buildWhatsAppMessage({
+    ticketNumber: sale.ticketNumber,
+    createdAt: sale.createdAt.toISOString(),
+    customerName: sale.customerName,
+    customerPhone: sale.customerPhone,
+    deliveryAddress: sale.deliveryAddress,
+    deliveryReferences: sale.deliveryReferences,
+    items: sale.items.map((item) => ({
+      productName: item.product.name,
+      quantity: item.quantity.toNumber(),
+    })),
+    notes: sale.notes,
+  });
 }

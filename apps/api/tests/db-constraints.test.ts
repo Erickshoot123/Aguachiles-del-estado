@@ -3,7 +3,13 @@ import type { FastifyInstance } from 'fastify';
 import { afterAll, afterEach, beforeAll, beforeEach, describe, expect, it } from 'vitest';
 import { authHeader, buildTestApp, loginAs } from './testApp.js';
 import { disconnectTestDb, resetDatabase, testPrisma } from './testDb.js';
-import { createTestProduct, seedBaseFixtures, TEST_PASSWORD, type BaseFixtures } from './fixtures.js';
+import {
+  createTestProduct,
+  DELIVERY_ORDER_INFO,
+  seedBaseFixtures,
+  TEST_PASSWORD,
+  type BaseFixtures,
+} from './fixtures.js';
 
 describe('constraints de base de datos', () => {
   let app: FastifyInstance;
@@ -71,7 +77,7 @@ describe('constraints de base de datos', () => {
       method: 'POST',
       url: '/api/orders',
       headers: authHeader(token),
-      payload: { channel: 'delivery', items: [{ productId: product.id, quantity: 1 }] },
+      payload: { channel: 'delivery', ...DELIVERY_ORDER_INFO, items: [{ productId: product.id, quantity: 1 }] },
     });
     const ticketNumber = first.json().ticketNumber as string;
 
@@ -95,7 +101,7 @@ describe('constraints de base de datos', () => {
       method: 'POST',
       url: '/api/orders',
       headers: authHeader(token),
-      payload: { channel: 'delivery', items: [{ productId: product.id, quantity: 1 }] },
+      payload: { channel: 'delivery', ...DELIVERY_ORDER_INFO, items: [{ productId: product.id, quantity: 1 }] },
     });
 
     await expect(testPrisma.location.delete({ where: { id: fixtures.locationId } })).rejects.toMatchObject({
@@ -109,7 +115,7 @@ describe('constraints de base de datos', () => {
       method: 'POST',
       url: '/api/orders',
       headers: authHeader(token),
-      payload: { channel: 'delivery', items: [{ productId: product.id, quantity: 1 }] },
+      payload: { channel: 'delivery', ...DELIVERY_ORDER_INFO, items: [{ productId: product.id, quantity: 1 }] },
     });
 
     await expect(testPrisma.product.delete({ where: { id: product.id } })).rejects.toMatchObject({

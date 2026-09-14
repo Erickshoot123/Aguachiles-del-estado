@@ -4,6 +4,17 @@ import type { PermissionCode } from '@aguachiles/shared';
 
 export const TEST_PASSWORD = 'ChangeMe123!';
 
+/**
+ * Datos de cliente obligatorios para crear un pedido channel: 'delivery'
+ * (ver createOrderRequestSchema). Las pruebas que no ejercitan esa
+ * validación en sí solo necesitan spread esto en el payload.
+ */
+export const DELIVERY_ORDER_INFO = {
+  customerName: 'Cliente de prueba',
+  customerPhone: '5555555555',
+  deliveryAddress: 'Calle de prueba 123',
+} as const;
+
 const ALL_PERMISSIONS: PermissionCode[] = [
   'refunds.create',
   'cash.withdraw',

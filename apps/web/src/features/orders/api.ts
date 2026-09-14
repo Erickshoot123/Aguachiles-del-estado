@@ -1,4 +1,10 @@
-import type { ChargeOrderRequest, CreateOrderRequest, Order, ProductSummary } from '@aguachiles/shared';
+import type {
+  ChargeOrderRequest,
+  CreateOrderRequest,
+  Order,
+  ProductSummary,
+  WhatsAppShare,
+} from '@aguachiles/shared';
 import { authFetch } from '../../lib/authFetch';
 
 export function listOrders(): Promise<Order[]> {
@@ -31,4 +37,8 @@ export function listProducts(): Promise<ProductSummary[]> {
 export function lookupOrderByTicketNumber(ticketNumber: string): Promise<Order> {
   const params = new URLSearchParams({ ticketNumber });
   return authFetch<Order>(`/api/orders/lookup?${params.toString()}`);
+}
+
+export function getWhatsAppShare(orderId: string): Promise<WhatsAppShare> {
+  return authFetch<WhatsAppShare>(`/api/orders/${orderId}/whatsapp`);
 }

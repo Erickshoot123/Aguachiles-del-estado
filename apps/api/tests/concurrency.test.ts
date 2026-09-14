@@ -2,7 +2,13 @@ import type { FastifyInstance } from 'fastify';
 import { afterAll, afterEach, beforeAll, beforeEach, describe, expect, it } from 'vitest';
 import { authHeader, buildTestApp, loginAs } from './testApp.js';
 import { disconnectTestDb, resetDatabase, testPrisma } from './testDb.js';
-import { createTestProduct, seedBaseFixtures, TEST_PASSWORD, type BaseFixtures } from './fixtures.js';
+import {
+  createTestProduct,
+  DELIVERY_ORDER_INFO,
+  seedBaseFixtures,
+  TEST_PASSWORD,
+  type BaseFixtures,
+} from './fixtures.js';
 
 describe('concurrencia', () => {
   let app: FastifyInstance;
@@ -37,7 +43,7 @@ describe('concurrencia', () => {
         method: 'POST',
         url: '/api/orders',
         headers: authHeader(token),
-        payload: { channel: 'delivery', items: [{ productId: product.id, quantity: 1 }] },
+        payload: { channel: 'delivery', ...DELIVERY_ORDER_INFO, items: [{ productId: product.id, quantity: 1 }] },
       });
 
     const results = await Promise.all(Array.from({ length: CONCURRENT_REQUESTS }, createOrder));

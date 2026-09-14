@@ -47,3 +47,15 @@ export class NoLocationConfiguredError extends ConflictError {
     super('No hay ninguna sucursal activa configurada');
   }
 }
+
+export class OrderNotDeliveryError extends ValidationError {
+  constructor() {
+    super('Solo los pedidos de delivery tienen datos para compartir por WhatsApp');
+  }
+}
+
+export class OrderMissingDeliveryInfoError extends ValidationError {
+  constructor() {
+    super('A este pedido de delivery le falta nombre, teléfono o dirección del cliente');
+  }
+}

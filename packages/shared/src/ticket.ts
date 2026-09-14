@@ -23,6 +23,10 @@ export const ticketSchema = z.object({
   discountTotal: z.number().nonnegative(),
   total: z.number().nonnegative(),
   isReprint: z.boolean().default(false),
+  // Liga wa.me del pedido, para imprimir su QR al final del ticket (solo
+  // pedidos delivery con datos de cliente). `null`/ausente en cualquier
+  // otro caso, incluyendo tickets impresos antes de esta funcionalidad.
+  whatsappUrl: z.string().url().nullable().optional(),
 });
 
 export type Ticket = z.infer<typeof ticketSchema>;

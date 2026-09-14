@@ -1,5 +1,6 @@
 import type { Prisma, PrismaClient } from '@prisma/client';
 import type { Ticket, TicketFormat } from '@aguachiles/shared';
+import { buildWhatsAppMessage } from '../orders/whatsapp.js';
 import { ReceiptNotFoundError } from './receipts.errors.js';
 
 const BUSINESS_NAME = 'Aguachiles del Estado';
@@ -7,6 +8,25 @@ const BUSINESS_NAME = 'Aguachiles del Estado';
 type SaleForReceipt = Prisma.SaleGetPayload<{
   include: { items: { include: { product: true } } };
 }>;
+
+function buildWhatsappUrlIfDelivery(sale: SaleForReceipt): string | null {
+  if (sale.channel !== 'delivery') return null;
+  if (!sale.customerName || !sale.customerPhone || !sale.deliveryAddress) return null;
+
+  return buildWhatsAppMessage({
+    ticketNumber: sale.ticketNumber,
+    createdAt: sale.createdAt.toISOString(),
+    customerName: sale.customerName,
+    customerPhone: sale.customerPhone,
+    deliveryAddress: sale.deliveryAddress,
+    deliveryReferences: sale.deliveryReferences,
+    items: sale.items.map((item) => ({
+      productName: item.product.name,
+      quantity: item.quantity.toNumber(),
+    })),
+    notes: sale.notes,
+  }).url;
+}
 
 export function buildTicket(sale: SaleForReceipt, format: TicketFormat): Ticket {
   return {
@@ -26,6 +46,7 @@ export function buildTicket(sale: SaleForReceipt, format: TicketFormat): Ticket 
     discountTotal: sale.discountTotal.toNumber(),
     total: sale.total.toNumber(),
     isReprint: false,
+    whatsappUrl: buildWhatsappUrlIfDelivery(sale),
   };
 }
 

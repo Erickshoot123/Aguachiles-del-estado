@@ -356,6 +356,15 @@ model Sale {
   discountTotal           Decimal             @default(0) @map("discount_total") @db.Decimal(12, 2)
   total                  Decimal              @db.Decimal(12, 2)
 
+  // Datos de entrega, solo para channel = 'delivery'. Se capturan al crear
+  // el pedido (antes de cobrarlo) y alimentan el mensaje de WhatsApp para el
+  // repartidor; no participan en el cálculo de subtotal/total/pagos.
+  customerName           String?              @map("customer_name")
+  customerPhone          String?              @map("customer_phone")
+  deliveryAddress        String?              @map("delivery_address")
+  deliveryReferences     String?              @map("delivery_references")
+  notes                  String?
+
   items    SaleItem[]
   payments SalePayment[]
   receipt  Receipt?

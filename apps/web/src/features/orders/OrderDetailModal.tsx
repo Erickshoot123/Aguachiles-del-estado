@@ -9,15 +9,18 @@ import { TicketModal } from '../receipts/TicketModal';
 import { ChargeOrderModal } from './ChargeOrderModal';
 import { CHANNEL_LABELS, formatCurrency, formatElapsedMinutes } from './channelLabels';
 import { useAdvanceOrder, useCancelOrder } from './hooks';
+import { WhatsAppModal } from './WhatsAppModal';
 
 const UI_TEXT = {
   total: 'Total',
   onBoardSince: 'Tiempo en tablero',
+  notesLabel: 'Notas',
   cancelAction: 'Cancelar pedido',
   chargeAction: 'Cobrar',
   noRegisterSelected: 'Selecciona la caja de esta terminal en "Caja y cierre"',
   ticketAction: 'Ticket',
   refundAction: 'Reembolsar',
+  whatsappAction: 'WhatsApp',
   statusPending: 'Pendiente de cobro',
   statusPaid: 'Pagado',
   statusPartiallyRefunded: 'Reembolso parcial',
@@ -51,6 +54,7 @@ export function OrderDetailModal({
   const [isTicketOpen, setIsTicketOpen] = useState(false);
   const [isRefundOpen, setIsRefundOpen] = useState(false);
   const [isChargeOpen, setIsChargeOpen] = useState(false);
+  const [isWhatsAppOpen, setIsWhatsAppOpen] = useState(false);
 
   const canCancelOrCharge = order.status === 'pending';
   const hasReceipt = order.status !== 'pending' && order.status !== 'cancelled';
@@ -89,6 +93,21 @@ export function OrderDetailModal({
           <span className="text-[13px] text-muted">
             {UI_TEXT.onBoardSince} {formatElapsedMinutes(order.createdAt)}
           </span>
+
+          {order.channel === 'delivery' && order.customerName ? (
+            <div className="flex flex-col gap-1 rounded-lg bg-bg px-3 py-2.5 text-[13px]">
+              <span className="font-medium text-text">
+                {order.customerName} · {order.customerPhone}
+              </span>
+              <span className="text-muted">{order.deliveryAddress}</span>
+              {order.deliveryReferences ? (
+                <span className="text-muted-2">{order.deliveryReferences}</span>
+              ) : null}
+              {order.notes ? (
+                <span className="text-muted-2">{UI_TEXT.notesLabel}: {order.notes}</span>
+              ) : null}
+            </div>
+          ) : null}
         </div>
 
         <div className="flex flex-wrap gap-2.5 bg-bg px-5 py-4">
@@ -131,6 +150,15 @@ export function OrderDetailModal({
               {UI_TEXT.refundAction}
             </button>
           ) : null}
+          {order.channel === 'delivery' ? (
+            <button
+              type="button"
+              onClick={() => setIsWhatsAppOpen(true)}
+              className="h-11 rounded-lg border border-border px-4 text-[14px] hover:border-border-hover"
+            >
+              {UI_TEXT.whatsappAction}
+            </button>
+          ) : null}
           {advanceLabel ? (
             <button
               type="button"
@@ -156,6 +184,9 @@ export function OrderDetailModal({
           cashRegisterId={cashRegisterId}
           onClose={() => setIsChargeOpen(false)}
         />
+      ) : null}
+      {isWhatsAppOpen ? (
+        <WhatsAppModal orderId={order.id} onClose={() => setIsWhatsAppOpen(false)} />
       ) : null}
     </>
   );

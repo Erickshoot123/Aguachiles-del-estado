@@ -2,7 +2,13 @@ import type { FastifyInstance } from 'fastify';
 import { afterAll, afterEach, beforeAll, beforeEach, describe, expect, it } from 'vitest';
 import { authHeader, buildTestApp, loginAs } from './testApp.js';
 import { disconnectTestDb, resetDatabase, testPrisma } from './testDb.js';
-import { createTestProduct, seedBaseFixtures, TEST_PASSWORD, type BaseFixtures } from './fixtures.js';
+import {
+  createTestProduct,
+  DELIVERY_ORDER_INFO,
+  seedBaseFixtures,
+  TEST_PASSWORD,
+  type BaseFixtures,
+} from './fixtures.js';
 
 describe('orders', () => {
   let app: FastifyInstance;
@@ -36,7 +42,7 @@ describe('orders', () => {
       method: 'POST',
       url: '/api/orders',
       headers: authHeader(token),
-      payload: { channel: 'delivery', items: [{ productId: product.id, quantity: 2 }] },
+      payload: { channel: 'delivery', ...DELIVERY_ORDER_INFO, items: [{ productId: product.id, quantity: 2 }] },
     });
 
     expect(response.statusCode).toBe(201);
@@ -53,7 +59,7 @@ describe('orders', () => {
       method: 'POST',
       url: '/api/orders',
       headers: authHeader(token),
-      payload: { channel: 'delivery', items: [{ productId: product.id, quantity: 5 }] },
+      payload: { channel: 'delivery', ...DELIVERY_ORDER_INFO, items: [{ productId: product.id, quantity: 5 }] },
     });
 
     expect(response.statusCode).toBe(201);
@@ -66,7 +72,7 @@ describe('orders', () => {
       method: 'POST',
       url: '/api/orders',
       headers: authHeader(token),
-      payload: { channel: 'delivery', items: [{ productId: product.id, quantity: 4 }] },
+      payload: { channel: 'delivery', ...DELIVERY_ORDER_INFO, items: [{ productId: product.id, quantity: 4 }] },
     });
 
     const stock = await testPrisma.inventory.findUnique({ where: { productId: product.id } });
@@ -80,7 +86,7 @@ describe('orders', () => {
       method: 'POST',
       url: '/api/orders',
       headers: authHeader(token),
-      payload: { channel: 'delivery', items: [{ productId: product.id, quantity: 1 }] },
+      payload: { channel: 'delivery', ...DELIVERY_ORDER_INFO, items: [{ productId: product.id, quantity: 1 }] },
     });
     const order = createResponse.json();
 
@@ -111,7 +117,7 @@ describe('orders', () => {
       method: 'POST',
       url: '/api/orders',
       headers: authHeader(token),
-      payload: { channel: 'delivery', items: [{ productId: product.id, quantity: 1 }] },
+      payload: { channel: 'delivery', ...DELIVERY_ORDER_INFO, items: [{ productId: product.id, quantity: 1 }] },
     });
     const order = orderResponse.json();
 
@@ -137,7 +143,7 @@ describe('orders', () => {
       method: 'POST',
       url: '/api/orders',
       headers: authHeader(token),
-      payload: { channel: 'delivery', items: [{ productId: product.id, quantity: 1 }] },
+      payload: { channel: 'delivery', ...DELIVERY_ORDER_INFO, items: [{ productId: product.id, quantity: 1 }] },
     });
     const order = orderResponse.json();
 
@@ -166,7 +172,7 @@ describe('orders', () => {
       method: 'POST',
       url: '/api/orders',
       headers: authHeader(token),
-      payload: { channel: 'delivery', items: [{ productId: product.id, quantity: 1 }] },
+      payload: { channel: 'delivery', ...DELIVERY_ORDER_INFO, items: [{ productId: product.id, quantity: 1 }] },
     });
     const order = orderResponse.json();
     await app.inject({
@@ -194,7 +200,7 @@ describe('orders', () => {
       method: 'POST',
       url: '/api/orders',
       headers: authHeader(token),
-      payload: { channel: 'delivery', items: [{ productId: product.id, quantity: 3 }] },
+      payload: { channel: 'delivery', ...DELIVERY_ORDER_INFO, items: [{ productId: product.id, quantity: 3 }] },
     });
     const order = orderResponse.json();
 
@@ -236,7 +242,7 @@ describe('orders', () => {
       method: 'POST',
       url: '/api/orders',
       headers: authHeader(token),
-      payload: { channel: 'delivery', items: [{ productId: product.id, quantity: 1 }] },
+      payload: { channel: 'delivery', ...DELIVERY_ORDER_INFO, items: [{ productId: product.id, quantity: 1 }] },
     });
     const order = orderResponse.json();
 
@@ -339,5 +345,168 @@ describe('orders', () => {
     });
 
     expect(response.statusCode).toBe(409);
+  });
+
+  describe('datos de entrega para delivery', () => {
+    it('rechaza un pedido delivery sin nombre, teléfono o dirección del cliente', async () => {
+      const product = await createTestProduct(testPrisma, { stock: 5 });
+
+      const response = await app.inject({
+        method: 'POST',
+        url: '/api/orders',
+        headers: authHeader(token),
+        payload: { channel: 'delivery', items: [{ productId: product.id, quantity: 1 }] },
+      });
+
+      expect(response.statusCode).toBe(400);
+      const body = response.json();
+      const paths = (body.issues as { path: string[] }[]).map((issue) => issue.path[0]);
+      expect(paths).toEqual(
+        expect.arrayContaining(['customerName', 'customerPhone', 'deliveryAddress']),
+      );
+    });
+
+    it('no exige datos de cliente para un pedido de mostrador', async () => {
+      const product = await createTestProduct(testPrisma, { stock: 5 });
+
+      const response = await app.inject({
+        method: 'POST',
+        url: '/api/orders',
+        headers: authHeader(token),
+        payload: { channel: 'counter', items: [{ productId: product.id, quantity: 1 }] },
+      });
+
+      expect(response.statusCode).toBe(201);
+    });
+
+    it('guarda y expone los datos de entrega de un pedido delivery', async () => {
+      const product = await createTestProduct(testPrisma, { stock: 5 });
+
+      const response = await app.inject({
+        method: 'POST',
+        url: '/api/orders',
+        headers: authHeader(token),
+        payload: {
+          channel: 'delivery',
+          items: [{ productId: product.id, quantity: 1 }],
+          customerName: 'María Muñoz',
+          customerPhone: '5512345678',
+          deliveryAddress: 'Av. Insurgentes 100',
+          deliveryReferences: 'Portón negro',
+          notes: 'Sin cebolla',
+        },
+      });
+
+      expect(response.statusCode).toBe(201);
+      const order = response.json();
+      expect(order.customerName).toBe('María Muñoz');
+      expect(order.customerPhone).toBe('5512345678');
+      expect(order.deliveryAddress).toBe('Av. Insurgentes 100');
+      expect(order.deliveryReferences).toBe('Portón negro');
+      expect(order.notes).toBe('Sin cebolla');
+    });
+
+    it('un pedido de mostrador no guarda datos de entrega aunque el schema los acepte', async () => {
+      const product = await createTestProduct(testPrisma, { stock: 5 });
+
+      const response = await app.inject({
+        method: 'POST',
+        url: '/api/orders',
+        headers: authHeader(token),
+        payload: { channel: 'counter', items: [{ productId: product.id, quantity: 1 }] },
+      });
+
+      const order = response.json();
+      expect(order.customerName).toBeNull();
+      expect(order.deliveryAddress).toBeNull();
+    });
+  });
+
+  describe('GET /api/orders/:id/whatsapp', () => {
+    async function createDeliveryOrder(
+      overrides: Record<string, unknown> = {},
+    ): Promise<{ id: string }> {
+      const product = await createTestProduct(testPrisma, { price: 100, stock: 5 });
+      const response = await app.inject({
+        method: 'POST',
+        url: '/api/orders',
+        headers: authHeader(token),
+        payload: {
+          channel: 'delivery',
+          items: [{ productId: product.id, quantity: 2 }],
+          ...DELIVERY_ORDER_INFO,
+          ...overrides,
+        },
+      });
+      return response.json();
+    }
+
+    it('arma el mensaje de WhatsApp de un pedido delivery recién creado (sin cobrar aún)', async () => {
+      const order = await createDeliveryOrder();
+
+      const response = await app.inject({
+        method: 'GET',
+        url: `/api/orders/${order.id}/whatsapp`,
+        headers: authHeader(token),
+      });
+
+      expect(response.statusCode).toBe(200);
+      const share = response.json();
+      expect(share.url).toMatch(/^https:\/\/wa\.me\/\?text=/);
+      expect(share.message).toContain(DELIVERY_ORDER_INFO.customerName);
+      expect(share.message).not.toContain('Método de pago');
+      expect(share.truncated).toBe(false);
+    });
+
+    it('sigue sin mencionar montos ni método de pago aunque el pedido ya se haya cobrado (dividido)', async () => {
+      const order = await createDeliveryOrder();
+      await app.inject({
+        method: 'POST',
+        url: '/api/cash-sessions',
+        headers: authHeader(token),
+        payload: { cashRegisterId: fixtures.cashRegisterId, openingAmount: 500 },
+      });
+      await app.inject({
+        method: 'PATCH',
+        url: `/api/orders/${order.id}/charge`,
+        headers: authHeader(token),
+        payload: {
+          cashRegisterId: fixtures.cashRegisterId,
+          payments: [
+            { paymentMethodId: fixtures.cashPaymentMethodId, amount: 120 },
+            { paymentMethodId: fixtures.cardPaymentMethodId, amount: 80 },
+          ],
+        },
+      });
+
+      const response = await app.inject({
+        method: 'GET',
+        url: `/api/orders/${order.id}/whatsapp`,
+        headers: authHeader(token),
+      });
+
+      const share = response.json();
+      expect(share.message).not.toContain('Método de pago');
+      expect(share.message).not.toContain('Total');
+    });
+
+    it('rechaza pedir el WhatsApp de un pedido de mostrador', async () => {
+      const product = await createTestProduct(testPrisma, { stock: 5 });
+      const orderResponse = await app.inject({
+        method: 'POST',
+        url: '/api/orders',
+        headers: authHeader(token),
+        payload: { channel: 'counter', items: [{ productId: product.id, quantity: 1 }] },
+      });
+      const order = orderResponse.json();
+
+      const response = await app.inject({
+        method: 'GET',
+        url: `/api/orders/${order.id}/whatsapp`,
+        headers: authHeader(token),
+      });
+
+      expect(response.statusCode).toBe(400);
+    });
   });
 });

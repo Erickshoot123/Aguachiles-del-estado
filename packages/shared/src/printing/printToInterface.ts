@@ -4,7 +4,7 @@ import {
   types as PrinterTypes,
 } from 'node-thermal-printer';
 import type { Ticket } from '../ticket.js';
-import { renderTicketCommands } from './renderTicketCommands.js';
+import { renderTicketCommands, type RenderTicketOptions } from './renderTicketCommands.js';
 
 export class PrintFailedError extends Error {
   constructor(cause: unknown) {
@@ -21,6 +21,8 @@ export interface PrintToInterfaceOptions {
   width: number;
   maxRetries?: number;
   retryDelayMs?: number;
+  /** Ver `RenderTicketOptions.qrMode`. Por defecto 'native'. */
+  qrMode?: RenderTicketOptions['qrMode'];
 }
 
 function wait(ms: number): Promise<void> {
@@ -35,7 +37,7 @@ function wait(ms: number): Promise<void> {
  * pasan por aquí para que el ticket resultante sea siempre el mismo.
  */
 export async function printTicketToInterface(options: PrintToInterfaceOptions): Promise<void> {
-  const { interfaceString, ticket, width, maxRetries = 3, retryDelayMs = 500 } = options;
+  const { interfaceString, ticket, width, maxRetries = 3, retryDelayMs = 500, qrMode } = options;
 
   let lastError: unknown;
   for (let attempt = 1; attempt <= maxRetries; attempt += 1) {
@@ -48,7 +50,7 @@ export async function printTicketToInterface(options: PrintToInterfaceOptions): 
         // tientas entre todas las tablas de códigos en cada carácter no-ASCII.
         characterSet: CharacterSet.WPC1252,
       });
-      renderTicketCommands(printer, ticket);
+      await renderTicketCommands(printer, ticket, { qrMode });
       await printer.execute();
       return;
     } catch (error) {
