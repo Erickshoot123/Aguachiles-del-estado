@@ -30,6 +30,7 @@ const UI_TEXT = {
   colDate: 'Fecha',
   colSupplier: 'Proveedor',
   colItems: 'Productos',
+  scrollHint: 'Desliza la tabla hacia la derecha para ver el botón de editar →',
 } as const;
 
 function formatDateTime(iso: string): string {
@@ -47,7 +48,9 @@ function SuppliersTable({
     return <p className="text-sm text-muted">{UI_TEXT.emptySuppliers}</p>;
   }
   return (
-    <table className="w-full border-collapse overflow-hidden rounded-2xl bg-surface text-left text-sm">
+    <>
+      <p className="mb-2 text-[12px] text-muted-2 lg:hidden">{UI_TEXT.scrollHint}</p>
+      <table className="w-full border-collapse overflow-hidden rounded-2xl bg-surface text-left text-sm">
       <thead>
         <tr className="border-b border-border text-[12px] uppercase tracking-wide text-muted-2">
           <th className="px-4 py-3">{UI_TEXT.colName}</th>
@@ -86,7 +89,8 @@ function SuppliersTable({
           </tr>
         ))}
       </tbody>
-    </table>
+      </table>
+    </>
   );
 }
 

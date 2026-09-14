@@ -18,6 +18,7 @@ const UI_TEXT = {
   active: 'Activo',
   inactive: 'Inactivo',
   edit: 'Editar',
+  scrollHint: 'Desliza la tabla hacia la derecha para ver el botón de editar →',
 } as const;
 
 export function CatalogPage(): JSX.Element {
@@ -47,7 +48,9 @@ export function CatalogPage(): JSX.Element {
           productsQuery.data.length === 0 ? (
             <p className="text-sm text-muted">{UI_TEXT.empty}</p>
           ) : (
-            <table className="w-full border-collapse overflow-hidden rounded-2xl bg-surface text-left text-sm">
+            <>
+              <p className="mb-2 text-[12px] text-muted-2 lg:hidden">{UI_TEXT.scrollHint}</p>
+              <table className="w-full border-collapse overflow-hidden rounded-2xl bg-surface text-left text-sm">
               <thead>
                 <tr className="border-b border-border text-[12px] uppercase tracking-wide text-muted-2">
                   <th className="px-4 py-3">{UI_TEXT.colName}</th>
@@ -96,7 +99,8 @@ export function CatalogPage(): JSX.Element {
                   </tr>
                 ))}
               </tbody>
-            </table>
+              </table>
+            </>
           )
         ) : null}
       </section>
