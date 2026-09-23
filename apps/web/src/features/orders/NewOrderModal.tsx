@@ -24,28 +24,76 @@ const UI_TEXT = {
   deliveryReferencesPlaceholder: 'Entre calles, color de fachada, piso, etc.',
   notes: 'Notas del pedido (opcional)',
   missingDeliveryInfo: 'Completa nombre, teléfono y dirección para pedidos de delivery',
+  total: 'Total',
+  decrease: 'Quitar uno',
+  increase: 'Agregar uno',
 } as const;
 
 const CHANNEL_OPTIONS: SaleChannel[] = ['counter', 'delivery'];
 
-interface ProductQuantityRowProps {
+// Grid táctil: tantas columnas como quepan sin bajar de 140px por tarjeta.
+const PRODUCT_GRID_CLASS =
+  'grid gap-2.5 [grid-template-columns:repeat(auto-fill,minmax(140px,1fr))]';
+
+interface ProductCardProps {
   product: ProductSummary;
   quantity: number;
-  onChange: (quantity: number) => void;
+  onIncrement: () => void;
+  onDecrement: () => void;
 }
 
-function ProductQuantityRow({ product, quantity, onChange }: ProductQuantityRowProps): JSX.Element {
+function ProductCard({ product, quantity, onIncrement, onDecrement }: ProductCardProps): JSX.Element {
+  const selected = quantity > 0;
   return (
-    <div className="flex items-center gap-3">
-      <span className="min-w-0 flex-1 text-sm">{product.name}</span>
-      <span className="font-mono text-xs text-muted">{formatCurrency(product.price)}</span>
-      <input
-        type="number"
-        min={0}
-        value={quantity}
-        onChange={(event) => onChange(Number(event.target.value))}
-        className="w-16 rounded-lg border border-border px-2 py-1 text-right"
-      />
+    <div
+      className={`relative flex flex-col overflow-hidden rounded-xl border transition-colors ${
+        selected
+          ? 'border-accent bg-accent-soft shadow-sm'
+          : 'border-border bg-surface hover:border-border-hover'
+      }`}
+    >
+      {selected ? (
+        <span className="absolute right-2 top-2 z-10 flex h-6 min-w-6 items-center justify-center rounded-full bg-accent px-1.5 font-mono text-xs font-semibold text-white">
+          {quantity}
+        </span>
+      ) : null}
+
+      {/* Tap directo en el cuerpo de la tarjeta = +1 */}
+      <button
+        type="button"
+        onClick={onIncrement}
+        aria-label={`${UI_TEXT.increase}: ${product.name}`}
+        className="flex min-h-[64px] flex-1 flex-col justify-between gap-2 p-3 text-left"
+      >
+        <span className="text-sm font-medium leading-snug text-text">{product.name}</span>
+        <span className="font-mono text-sm font-semibold text-accent">
+          {formatCurrency(product.price)}
+        </span>
+      </button>
+
+      {selected ? (
+        <div className="flex items-stretch border-t border-accent/30">
+          <button
+            type="button"
+            onClick={onDecrement}
+            aria-label={`${UI_TEXT.decrease}: ${product.name}`}
+            className="flex h-12 flex-1 items-center justify-center text-xl font-semibold text-accent active:bg-accent/10"
+          >
+            −
+          </button>
+          <span className="flex h-12 w-12 items-center justify-center border-x border-accent/30 font-mono text-base font-semibold text-text">
+            {quantity}
+          </span>
+          <button
+            type="button"
+            onClick={onIncrement}
+            aria-label={`${UI_TEXT.increase}: ${product.name}`}
+            className="flex h-12 flex-1 items-center justify-center text-xl font-semibold text-accent active:bg-accent/10"
+          >
+            +
+          </button>
+        </div>
+      ) : null}
     </div>
   );
 }
@@ -80,6 +128,12 @@ export function NewOrderModal({ onClose }: NewOrderModalProps): JSX.Element {
   const setQuantity = (productId: string, quantity: number): void => {
     setQuantities((prev) => ({ ...prev, [productId]: Math.max(0, quantity) }));
   };
+  const incrementProduct = (productId: string): void => {
+    setQuantity(productId, (quantities[productId] ?? 0) + 1);
+  };
+  const decrementProduct = (productId: string): void => {
+    setQuantity(productId, (quantities[productId] ?? 0) - 1);
+  };
 
   const setDeliveryField = <K extends keyof DeliveryFormState>(
     key: K,
@@ -100,6 +154,15 @@ export function NewOrderModal({ onClose }: NewOrderModalProps): JSX.Element {
   const items = Object.entries(quantities)
     .filter(([productId, quantity]) => quantity > 0 && orderableProductIds.has(productId))
     .map(([productId, quantity]) => ({ productId, quantity }));
+
+  const priceByProductId = new Map(
+    orderableProducts.map((product) => [product.id, product.price]),
+  );
+  const totalAmount = items.reduce(
+    (sum, item) => sum + (priceByProductId.get(item.productId) ?? 0) * item.quantity,
+    0,
+  );
+  const totalUnits = items.reduce((sum, item) => sum + item.quantity, 0);
 
   const isDelivery = channel === 'delivery';
   const hasRequiredDeliveryInfo =
@@ -129,29 +192,35 @@ export function NewOrderModal({ onClose }: NewOrderModalProps): JSX.Element {
   return (
     <ModalBackdrop
       onClose={onClose}
-      contentClassName="flex w-full max-w-md flex-col rounded-2xl bg-surface"
+      contentClassName="flex max-h-[90vh] w-full max-w-2xl flex-col rounded-2xl bg-surface"
     >
       <div className="border-b border-divider px-5 py-4">
         <h2 className="m-0 text-[17px] font-semibold">{UI_TEXT.title}</h2>
       </div>
 
-      <div className="flex max-h-[70vh] flex-col gap-4 overflow-y-auto px-5 py-4">
+      <div className="flex flex-1 flex-col gap-4 overflow-y-auto px-5 py-4">
         <div>
-          <label className="mb-1 block text-sm font-medium text-text" htmlFor="channel">
-            {UI_TEXT.channelLabel}
-          </label>
-          <select
-            id="channel"
-            value={channel}
-            onChange={(event) => setChannel(event.target.value as SaleChannel)}
-            className="w-full rounded-lg border border-border px-3 py-2"
-          >
-            {CHANNEL_OPTIONS.map((option) => (
-              <option key={option} value={option}>
-                {CHANNEL_LABELS[option]}
-              </option>
-            ))}
-          </select>
+          <span className="mb-1.5 block text-sm font-medium text-text">{UI_TEXT.channelLabel}</span>
+          <div role="group" aria-label={UI_TEXT.channelLabel} className="grid grid-cols-2 gap-2">
+            {CHANNEL_OPTIONS.map((option) => {
+              const active = channel === option;
+              return (
+                <button
+                  key={option}
+                  type="button"
+                  onClick={() => setChannel(option)}
+                  aria-pressed={active}
+                  className={`h-12 rounded-xl text-sm font-semibold transition-colors ${
+                    active
+                      ? 'bg-accent text-white shadow-sm'
+                      : 'border border-border bg-surface text-text hover:border-border-hover'
+                  }`}
+                >
+                  {CHANNEL_LABELS[option]}
+                </button>
+              );
+            })}
+          </div>
         </div>
 
         {isDelivery ? (
@@ -164,7 +233,7 @@ export function NewOrderModal({ onClose }: NewOrderModalProps): JSX.Element {
                 <input
                   value={deliveryInfo.customerName}
                   onChange={(event) => setDeliveryField('customerName', event.target.value)}
-                  className="rounded-lg border border-border px-3 py-2"
+                  className="h-11 rounded-lg border border-border px-3"
                 />
               </label>
               <label className="flex flex-col gap-1 text-sm">
@@ -173,7 +242,7 @@ export function NewOrderModal({ onClose }: NewOrderModalProps): JSX.Element {
                   type="tel"
                   value={deliveryInfo.customerPhone}
                   onChange={(event) => setDeliveryField('customerPhone', event.target.value)}
-                  className="rounded-lg border border-border px-3 py-2"
+                  className="h-11 rounded-lg border border-border px-3"
                 />
               </label>
             </div>
@@ -183,7 +252,7 @@ export function NewOrderModal({ onClose }: NewOrderModalProps): JSX.Element {
               <input
                 value={deliveryInfo.deliveryAddress}
                 onChange={(event) => setDeliveryField('deliveryAddress', event.target.value)}
-                className="rounded-lg border border-border px-3 py-2"
+                className="h-11 rounded-lg border border-border px-3"
               />
             </label>
 
@@ -193,7 +262,7 @@ export function NewOrderModal({ onClose }: NewOrderModalProps): JSX.Element {
                 value={deliveryInfo.deliveryReferences}
                 onChange={(event) => setDeliveryField('deliveryReferences', event.target.value)}
                 placeholder={UI_TEXT.deliveryReferencesPlaceholder}
-                className="rounded-lg border border-border px-3 py-2"
+                className="h-11 rounded-lg border border-border px-3"
               />
             </label>
 
@@ -210,17 +279,18 @@ export function NewOrderModal({ onClose }: NewOrderModalProps): JSX.Element {
         ) : null}
 
         <div>
-          <span className="mb-1 block text-sm font-medium text-text">{UI_TEXT.itemsLabel}</span>
+          <span className="mb-1.5 block text-sm font-medium text-text">{UI_TEXT.itemsLabel}</span>
           {productsQuery.isLoading ? (
             <p className="text-sm text-muted">{UI_TEXT.loadingProducts}</p>
           ) : (
-            <div className="flex max-h-64 flex-col gap-2 overflow-y-auto">
+            <div className={PRODUCT_GRID_CLASS}>
               {mainProducts.map((product) => (
-                <ProductQuantityRow
+                <ProductCard
                   key={product.id}
                   product={product}
                   quantity={quantities[product.id] ?? 0}
-                  onChange={(quantity) => setQuantity(product.id, quantity)}
+                  onIncrement={() => incrementProduct(product.id)}
+                  onDecrement={() => decrementProduct(product.id)}
                 />
               ))}
             </div>
@@ -229,14 +299,15 @@ export function NewOrderModal({ onClose }: NewOrderModalProps): JSX.Element {
 
         {hasMainItem && extraProducts.length > 0 ? (
           <div>
-            <span className="mb-1 block text-sm font-medium text-text">{UI_TEXT.extrasLabel}</span>
-            <div className="flex flex-col gap-2">
+            <span className="mb-1.5 block text-sm font-medium text-text">{UI_TEXT.extrasLabel}</span>
+            <div className={PRODUCT_GRID_CLASS}>
               {extraProducts.map((product) => (
-                <ProductQuantityRow
+                <ProductCard
                   key={product.id}
                   product={product}
                   quantity={quantities[product.id] ?? 0}
-                  onChange={(quantity) => setQuantity(product.id, quantity)}
+                  onIncrement={() => incrementProduct(product.id)}
+                  onDecrement={() => decrementProduct(product.id)}
                 />
               ))}
             </div>
@@ -246,11 +317,23 @@ export function NewOrderModal({ onClose }: NewOrderModalProps): JSX.Element {
         {createOrder.isError ? <p className="text-sm text-red-600">{UI_TEXT.error}</p> : null}
       </div>
 
-      <div className="flex gap-2.5 bg-bg px-5 py-4">
+      <div className="flex items-center gap-3 border-t border-divider bg-bg px-5 py-4">
+        <div className="flex flex-col">
+          <span className="text-xs uppercase tracking-wide text-muted">{UI_TEXT.total}</span>
+          <span className="font-mono text-xl font-semibold text-text">
+            {formatCurrency(totalAmount)}
+            {totalUnits > 0 ? (
+              <span className="ml-2 text-sm font-normal text-muted">
+                {totalUnits} {totalUnits === 1 ? 'artículo' : 'artículos'}
+              </span>
+            ) : null}
+          </span>
+        </div>
+
         <button
           type="button"
           onClick={onClose}
-          className="h-11 rounded-lg border border-border px-4 text-[14px]"
+          className="ml-auto h-14 rounded-xl border border-border px-5 text-[15px] font-medium"
         >
           {UI_TEXT.cancel}
         </button>
@@ -265,7 +348,7 @@ export function NewOrderModal({ onClose }: NewOrderModalProps): JSX.Element {
                 ? UI_TEXT.missingDeliveryInfo
                 : undefined
           }
-          className="ml-auto h-11 rounded-lg bg-accent px-4 text-[14px] font-semibold text-white hover:bg-accent-hover disabled:opacity-60"
+          className="h-14 rounded-xl bg-accent px-6 text-[15px] font-semibold text-white hover:bg-accent-hover disabled:opacity-60"
         >
           {createOrder.isPending ? UI_TEXT.submitting : UI_TEXT.submit}
         </button>
