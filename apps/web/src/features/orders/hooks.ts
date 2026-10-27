@@ -45,8 +45,9 @@ export function useCreateOrder() {
 
   return useMutation({
     mutationFn: async (input: CreateOrderRequest): Promise<Order | null> => {
+      const request = { ...input, clientRequestId: input.clientRequestId ?? crypto.randomUUID() };
       try {
-        return await createOrder(input);
+        return await createOrder(request);
       } catch (error) {
         // Sin respuesta del servidor (servidor local caído, red intermitente):
         // se guarda el pedido localmente para reintentarlo, en vez de perder
@@ -55,7 +56,7 @@ export function useCreateOrder() {
         if (error instanceof ApiError) {
           throw error;
         }
-        enqueue(input);
+        enqueue(request);
         return null;
       }
     },

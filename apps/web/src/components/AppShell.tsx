@@ -5,6 +5,7 @@ import { useAuthStore, usePermissions } from '../features/auth/authStore';
 import { useLogout } from '../features/auth/useLogout';
 import { OfflineQueueBanner } from '../features/orders/OfflineQueueBanner';
 import { useOfflineQueueSync } from '../features/orders/offlineQueueSync';
+import { SyncStatusBanner } from '../features/branches/SyncStatusBanner';
 
 interface NavItem {
   label: string;
@@ -112,6 +113,7 @@ export function AppShell({ children }: AppShellProps): JSX.Element {
       </aside>
 
       <main className="flex min-w-0 flex-1 flex-col">
+        <SyncStatusBanner />
         <OfflineQueueBanner />
         {children}
       </main>

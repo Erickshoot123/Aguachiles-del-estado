@@ -24,7 +24,8 @@ export const useOfflineQueueStore = create<OfflineQueueState>()(
         set((state) => ({
           queue: [
             ...state.queue,
-            { id: crypto.randomUUID(), input, queuedAt: new Date().toISOString(), lastError: null },
+            { id: crypto.randomUUID(), input: { ...input, clientRequestId: input.clientRequestId ?? crypto.randomUUID() },
+              queuedAt: new Date().toISOString(), lastError: null },
           ],
         })),
       dequeue: (id) => set((state) => ({ queue: state.queue.filter((item) => item.id !== id) })),

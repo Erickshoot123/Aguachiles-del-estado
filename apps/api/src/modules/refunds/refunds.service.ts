@@ -1,6 +1,8 @@
 import { Prisma, type PrismaClient } from '@prisma/client';
 import type { CreateRefundRequest, RefundableSale, RefundResult } from '@aguachiles/shared';
 import { recordAuditLog } from '../audit/audit.service.js';
+import { assertLocalRegister, assertLocalSale } from '../locations/localLocation.repository.js';
+import { ConflictError } from '../../lib/errors.js';
 import {
   EmptyRefundRequestError,
   RefundQuantityExceedsAvailableError,
@@ -24,6 +26,7 @@ function refundedQuantityOf(item: SaleItemWithRefunds): Prisma.Decimal {
 }
 
 export async function getRefundableSale(prisma: PrismaClient, saleId: string): Promise<RefundableSale> {
+  await assertLocalSale(prisma, saleId);
   const sale = await prisma.sale.findUnique({
     where: { id: saleId },
     include: { items: { include: { refundItems: true, product: true } } },
@@ -99,6 +102,12 @@ export async function createRefund(
   input: CreateRefundRequest,
 ): Promise<RefundResult> {
   const refund = await prisma.$transaction(async (tx) => {
+    await tx.$queryRaw`SELECT id FROM sales WHERE id = ${saleId} FOR UPDATE`;
+    await assertLocalSale(tx, saleId);
+    await tx.$queryRaw`SELECT id FROM cash_register_sessions WHERE id = ${cashSessionId} FOR UPDATE`;
+    const session = await tx.cashRegisterSession.findUnique({ where: { id: cashSessionId } });
+    if (!session || session.status !== 'open') throw new ConflictError('La caja debe estar abierta');
+    await assertLocalRegister(tx, session.cashRegisterId);
     // Bloquea las filas de sale_items de esta venta hasta que la transacción
     // termine. Sin esto, dos reembolsos casi simultáneos del mismo artículo
     // pueden leer ambos "0 reembolsado todavía" (READ COMMITTED no lo impide

@@ -101,6 +101,19 @@ jobs:
       - name: Ejecutar pruebas E2E (flujo completo de cajero)
         run: npm run test:e2e --workspace=@aguachiles/e2e
 
+      - name: Preparar base independiente del panel central
+        run: |
+          psql -h 127.0.0.1 -U postgres -d postgres -c 'CREATE DATABASE aguachiles_central_e2e;'
+          npx prisma migrate deploy --schema apps/api/prisma/schema.prisma
+        env:
+          PGPASSWORD: postgres
+          DATABASE_URL: postgresql://postgres:postgres@127.0.0.1:5432/aguachiles_central_e2e
+
+      - name: Probar panel central en escritorio y móvil
+        run: npm run test:central --workspace=@aguachiles/e2e
+        env:
+          E2E_CENTRAL_DATABASE_URL: postgresql://postgres:postgres@127.0.0.1:5432/aguachiles_central_e2e
+
       - name: Subir reporte de Playwright
         if: always()
         uses: actions/upload-artifact@v4

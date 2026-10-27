@@ -11,3 +11,4 @@ export * from './refunds.js';
 export * from './reports.js';
 export * from './suppliers.js';
 export * from './ticket.js';
+export * from './sync.js';

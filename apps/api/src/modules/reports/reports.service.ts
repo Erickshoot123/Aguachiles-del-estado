@@ -1,5 +1,6 @@
 import { Prisma, type CashRegisterSession, type PrismaClient, type User } from '@prisma/client';
 import type { CashSessionHistoryItem, SalesReport } from '@aguachiles/shared';
+import { getLocalLocation } from '../locations/localLocation.repository.js';
 import { fetchSalesForPeriod, refundedItemsOf, refundedTotalOf, type SaleWithRelations } from './salesPeriod.js';
 
 interface Accumulator {
@@ -158,7 +159,9 @@ const CASH_SESSION_HISTORY_LIMIT = 30;
 export async function getCashSessionHistory(
   prisma: PrismaClient,
 ): Promise<CashSessionHistoryItem[]> {
+  const location = await getLocalLocation(prisma);
   const sessions = await prisma.cashRegisterSession.findMany({
+    where: { cashRegister: { locationId: location.id } },
     include: { cashRegister: true, openedBy: true, closedBy: true },
     orderBy: { openedAt: 'desc' },
     take: CASH_SESSION_HISTORY_LIMIT,

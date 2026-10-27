@@ -1,7 +1,8 @@
 import { PrismaClient } from '@prisma/client';
 
 export const TEST_DATABASE_URL =
-  'postgresql://postgres:postgres@localhost:5432/aguachiles_pos_test';
+  process.env.TEST_DATABASE_URL ?? 'postgresql://postgres:postgres@localhost:5432/aguachiles_pos_test';
+if (new URL(TEST_DATABASE_URL).pathname !== '/aguachiles_pos_test') throw new Error('Base de prueba inválida');
 
 export const testPrisma = new PrismaClient({
   datasources: { db: { url: TEST_DATABASE_URL } },
@@ -11,6 +12,7 @@ export const testPrisma = new PrismaClient({
 // listada aquí, así que el orden de esta lista no importa para las FKs; solo
 // se listan las tablas "raíz" para que quede claro qué se está limpiando.
 const TABLES_TO_RESET = [
+  'sync_records', 'sync_installations', 'sync_outbox', 'local_nodes',
   'refresh_tokens',
   'audit_logs',
   'refunds',

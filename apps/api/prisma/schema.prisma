@@ -212,6 +212,7 @@ model Location {
 
   cashRegisters CashRegister[]
   sales         Sale[]
+  localNode     LocalNode?
 
   createdAt DateTime @default(now()) @map("created_at")
 
@@ -340,6 +341,8 @@ enum FulfillmentStatus {
 model Sale {
   id                     String               @id @default(uuid())
   ticketNumber           String               @unique @map("ticket_number")
+  clientRequestId        String?              @unique @map("client_request_id")
+  paidAt                 DateTime?            @map("paid_at")
   customerId             String?              @map("customer_id")
   customer               Customer?            @relation(fields: [customerId], references: [id])
   userId                 String               @map("user_id")
@@ -374,6 +377,61 @@ model Sale {
   updatedAt DateTime @updatedAt @map("updated_at")
 
   @@map("sales")
+}
+
+// Cada base operativa pertenece a una sola sucursal. La central usa proyecciones
+// separadas: nunca reproduce comandos de cobro ni comparte el inventario local.
+model LocalNode {
+  id             String   @id @default("local")
+  locationId     String   @unique @map("location_id")
+  location       Location @relation(fields: [locationId], references: [id], onDelete: Restrict, onUpdate: NoAction)
+  installationId String   @unique @map("installation_id")
+  lastSuccessAt  DateTime? @map("last_success_at")
+  lastError      String?  @map("last_error")
+  @@map("local_nodes")
+}
+
+model SyncOutbox {
+  sequence   BigInt    @id @default(autoincrement())
+  kind       String
+  entityId   String   @map("entity_id")
+  locationId String   @map("location_id")
+  payload    Json
+  deleted    Boolean  @default(false)
+  createdAt  DateTime @default(now()) @map("created_at")
+  sentAt     DateTime? @map("sent_at")
+  @@index([sentAt, sequence])
+  @@map("sync_outbox")
+}
+
+model SyncInstallation {
+  id               String   @id @default(uuid())
+  name             String
+  sourceLocationId String   @unique @map("source_location_id")
+  timeZone         String   @map("time_zone")
+  tokenHash        String   @map("token_hash")
+  isActive         Boolean  @default(true) @map("is_active")
+  lastSeenAt       DateTime? @map("last_seen_at")
+  pendingCount     Int?     @map("pending_count")
+  records          SyncRecord[]
+  @@map("sync_installations")
+}
+
+model SyncRecord {
+  installationId String           @map("installation_id")
+  installation   SyncInstallation @relation(fields: [installationId], references: [id], onDelete: Restrict, onUpdate: NoAction)
+  kind           String
+  entityId       String           @map("entity_id")
+  sequence       BigInt
+  payload        Json
+  deleted        Boolean          @default(false)
+  occurredAt     DateTime          @map("occurred_at")
+  amount         Decimal          @db.Decimal(12, 2)
+  status         String?
+  paymentType    String?          @map("payment_type")
+  @@id([installationId, kind, entityId])
+  @@index([installationId, occurredAt, kind])
+  @@map("sync_records")
 }
 
 model SaleItem {

@@ -44,6 +44,7 @@ const deliveryInfoFieldsSchema = z.object({
 
 export const createOrderRequestSchema = z
   .object({
+    clientRequestId: z.string().uuid().optional(),
     channel: saleChannelSchema,
     items: z.array(createOrderItemSchema).min(1),
   })

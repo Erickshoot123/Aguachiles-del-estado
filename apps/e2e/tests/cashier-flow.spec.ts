@@ -31,13 +31,11 @@ test('flujo completo de cajero: login, abrir caja, vender con pago dividido, imp
     await page.getByRole('button', { name: 'Nuevo pedido' }).click();
 
     const dialog = page.getByRole('dialog').last();
-    const productRow = dialog.getByText(PRODUCT_NAME, { exact: true }).locator('..');
-    await productRow.getByRole('spinbutton').fill('1');
+    await dialog.getByRole('button', { name: `Agregar uno: ${PRODUCT_NAME}`, exact: true }).click();
 
     // El aviso de "¿Quieres agregar algo extra?" solo aparece una vez que hay
     // al menos un producto principal con cantidad > 0.
-    const extraRow = dialog.getByText(EXTRA_PRODUCT_NAME, { exact: true }).locator('..');
-    await extraRow.getByRole('spinbutton').fill('1');
+    await dialog.getByRole('button', { name: `Agregar uno: ${EXTRA_PRODUCT_NAME}`, exact: true }).click();
 
     await dialog.getByRole('button', { name: 'Crear pedido' }).click();
     await expect(page.getByRole('dialog')).toHaveCount(0);
