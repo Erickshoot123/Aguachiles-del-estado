@@ -89,6 +89,11 @@ jobs:
         env:
           DATABASE_URL: ${{ env.E2E_DATABASE_URL }}
 
+      - name: Preparar dependencias del seed
+        run: |
+          npm run build --workspace=@aguachiles/shared
+          npx prisma generate --schema apps/api/prisma/schema.prisma
+
       - name: Sembrar datos base para E2E
         run: npx tsx apps/api/prisma/seed.ts
         env:
