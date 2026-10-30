@@ -31,14 +31,15 @@ export function PlateAvailabilityPanel(): JSX.Element {
     {query.isLoading ? <p>Cargando disponibilidad…</p> : null}
     {query.isError ? <p role="alert">No se pudo consultar la disponibilidad. Intenta actualizar.</p> : null}
     {query.data ? <>
-      {!initial ? <div className="my-2 grid gap-2 sm:grid-cols-2">
+      {!initial ? <div className="my-2 grid items-center gap-2 sm:grid-cols-[1fr_1fr_auto]">
         {query.data.buckets.map((bucket) => <div key={bucket.size} className="rounded-lg border border-border p-3">
           <strong>{bucket.size === 'kilo' ? '1 kilo' : '1/2 kilo'}: {bucket.available} disponibles</strong>
           <p className="text-sm text-muted">{bucket.sold} vendidos · {bucket.reserved} en pedidos pendientes · {bucket.limit} habilitados</p>
         </div>)}
-      </div> : <p className="my-2 text-sm">Antes de vender, registra cuántos platos de cada presentación tienes disponibles.</p>}
       {canAdjust && !initial && !editing ? <button type="button" className="rounded border border-border px-3 py-2"
         onClick={() => { setKilo('0'); setHalf('0'); setRequestId(crypto.randomUUID()); save.reset(); setEditing(true); }}>Ajustar platos</button> : null}
+      </div> : <p className="my-2 text-sm">Antes de vender, registra cuántos platos de cada presentación tienes disponibles.</p>}
+
       {showForm ? <form onSubmit={submit} className="mt-3 flex flex-wrap items-end gap-3">
         <label className="text-sm">{initial ? 'Platos iniciales de 1 kilo' : 'Agregar/quitar platos de 1 kilo'}
           <input type="number" min={initial ? 0 : -100000} max="100000" step="1" required value={kilo}

@@ -15,5 +15,9 @@ export async function getKitchenTicket(prisma: PrismaClient, saleId: string): Pr
     issuedAt: sale.createdAt.toISOString(),
     channelLabel: sale.channel === 'delivery' ? 'Entrega a domicilio' : 'Mostrador',
     notes: sale.notes, whatsappUrl: null,
+    customerName: sale.customerName,
+    customerPhone: sale.customerPhone,
+    deliveryAddress: sale.deliveryAddress,
+    deliveryReferences: sale.deliveryReferences,
   };
 }

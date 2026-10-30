@@ -125,12 +125,16 @@ try {
     await page.getByRole('heading', { name: 'Tablero de pedidos' }).waitFor();
     await page.getByRole('button', { name: 'Nuevo pedido' }).click();
     const dialog = page.getByRole('dialog').last();
+    await dialog.getByRole('button', { name: 'Sin ajo', exact: true }).click();
     await dialog.getByRole('button', { name: 'Mostrador', exact: true }).click();
     await dialog.getByRole('button', { name: 'Agregar uno: Aguachile Tradicional (medio kilo)', exact: true }).click();
     await dialog.getByRole('button', { name: 'Crear pedido', exact: true }).click();
     await page.getByRole('dialog').waitFor({ state: 'hidden' });
     const afterUi = await request('/api/plates/today', 'GET', undefined, token);
     assert.equal(afterUi.buckets.find((bucket) => bucket.size === 'half_kilo').available, 0);
+    const adjustBox = await page.getByRole('button', { name: 'Ajustar platos', exact: true }).boundingBox();
+    const stockBox = await page.getByText(/1 kilo: .* disponibles/, { exact: true }).boundingBox();
+    assert.ok(adjustBox && stockBox && Math.abs(adjustBox.y - stockBox.y) < 60, 'Ajustar platos debe estar junto a las cantidades');
     await page.screenshot({ path: join(buildRoot, 'packaged-pos.png'), fullPage: true });
     check('Interfaz compilada: login, pedido y comanda automática sin peticiones externas');
   } finally { await browser.close(); }

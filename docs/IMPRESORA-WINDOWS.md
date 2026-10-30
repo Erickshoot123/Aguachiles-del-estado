@@ -2,7 +2,8 @@
 
 Al confirmar Crear pedido, la terminal solicita la comanda del pedido guardado y la
 envía automáticamente al destino configurado. Incluye folio, hora de creación,
-canal, cantidades, productos y notas, sin precios ni total. No exige cobrar antes.
+canal, cantidades, productos, nombre y teléfono del cliente, dirección, referencias,
+preferencias, notas y total del pedido. Los datos opcionales vacíos se omiten. No exige cobrar antes.
 Los pedidos en cola por caída del servidor imprimen al confirmarse su creación.
 
 Si no se confirma la impresión, un aviso conserva el folio en esta terminal y

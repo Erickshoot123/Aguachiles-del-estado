@@ -92,6 +92,9 @@ await cp(join(packaging, 'runtime'), join(stage, 'desktop'), { recursive: true }
 await command('powershell.exe', ['-NoProfile', '-NonInteractive', '-ExecutionPolicy', 'Bypass', '-File', join(packaging, 'Extract-Vendor.ps1'), '-Archive', nodeZip, '-Destination', join(stage, 'node')]);
 await command('powershell.exe', ['-NoProfile', '-NonInteractive', '-ExecutionPolicy', 'Bypass', '-File', join(packaging, 'Extract-Vendor.ps1'), '-Archive', postgresZip, '-Destination', join(stage, 'postgres'), '-Postgres']);
 }
+await cp(join(root, 'apps/web/dist'), join(stage, 'web'), { recursive: true });
+await cp(join(root, 'packages/shared/dist'), join(stage, 'node_modules/@aguachiles/shared/dist'), { recursive: true });
+await cp(join(root, 'apps/print-agent/dist'), join(stage, 'print-agent'), { recursive: true });
 // Al reanudar una construcción se actualizan los módulos del lanzador, sin tocar la base local.
 await cp(join(root, 'apps/api/dist/src'), join(stage, 'api/src'), { recursive: true, filter: (path) => !/\.test\.js(?:\.map)?$/.test(path) });
 await cp(join(packaging, 'runtime'), join(stage, 'desktop'), { recursive: true });
@@ -106,7 +109,7 @@ for (const file of await filesBelow(join(stage, 'api'))) {
 }
 await compile(join(stage, 'AguachilesPOS.exe'), ['Common.cs', 'SetupForm.cs', 'Launcher.cs']);
 await compile(join(stage, 'Uninstall.exe'), ['Common.cs', 'Uninstall.cs']);
-const version = '0.2.0-preview-' + new Date().toISOString().replace(/[-:.TZ]/g, '');
+const version = '0.2.1-preview-' + new Date().toISOString().replace(/[-:.TZ]/g, '');
 const manifest = { product: 'AguachilesPOS', version, builtAt: new Date().toISOString(), vendors, files: {} };
 for (const file of await filesBelow(stage)) {
   const name = relative(stage, file).replaceAll('\\', '/');
@@ -120,7 +123,7 @@ const zip = join(buildRoot, `payload-${version}.zip`);
 console.warn('Comprimiendo paquete…');
 await command('powershell.exe', ['-NoProfile', '-NonInteractive', '-ExecutionPolicy', 'Bypass', '-File',
   join(packaging, 'Zip-Payload.ps1'), '-Source', stage, '-Output', zip]);
-const executable = join(output, 'AguachilesPOS-Instalador-0.2.0-preview.exe');
+const executable = join(output, 'AguachilesPOS-Instalador-0.2.1-preview.exe');
 await compile(executable, ['Common.cs', 'Installer.cs'], [`/resource:${zip},payload`]);
-await writeFile(executable + '.sha256.txt', `${await hash(executable)}  AguachilesPOS-Instalador-0.2.0-preview.exe\n`);
+await writeFile(executable + '.sha256.txt', `${await hash(executable)}  AguachilesPOS-Instalador-0.2.1-preview.exe\n`);
 console.warn(JSON.stringify({ executable, bytes: (await stat(executable)).size, stage, version }));

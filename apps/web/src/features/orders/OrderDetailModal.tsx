@@ -103,11 +103,11 @@ export function OrderDetailModal({
               {order.deliveryReferences ? (
                 <span className="text-muted-2">{order.deliveryReferences}</span>
               ) : null}
-              {order.notes ? (
-                <span className="text-muted-2">{UI_TEXT.notesLabel}: {order.notes}</span>
-              ) : null}
             </div>
           ) : null}
+          {order.notes ? <p className="whitespace-pre-line rounded-lg bg-bg px-3 py-2.5 text-[13px]">
+            {UI_TEXT.notesLabel}: {order.notes}
+          </p> : null}
         </div>
 
         <div className="flex flex-wrap gap-2.5 bg-bg px-5 py-4">

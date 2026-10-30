@@ -5,6 +5,7 @@ import { ModalBackdrop } from '../../components/ModalBackdrop';
 import { CHANNEL_LABELS, formatCurrency } from './channelLabels';
 import { useCreateOrder, useProducts } from './hooks';
 import { usePlateAvailability } from '../plates/hooks';
+import { OrderPreferences } from './OrderPreferences';
 import { ApiError } from '../../lib/apiClient';
 
 const UI_TEXT = {
@@ -24,7 +25,6 @@ const UI_TEXT = {
   deliveryAddress: 'Dirección',
   deliveryReferences: 'Referencias (opcional)',
   deliveryReferencesPlaceholder: 'Entre calles, color de fachada, piso, etc.',
-  notes: 'Notas del pedido (opcional)',
   missingDeliveryInfo: 'Completa nombre, teléfono y dirección para pedidos de delivery',
   total: 'Total',
   decrease: 'Quitar uno',
@@ -112,7 +112,6 @@ interface DeliveryFormState {
   customerPhone: string;
   deliveryAddress: string;
   deliveryReferences: string;
-  notes: string;
 }
 
 const EMPTY_DELIVERY_INFO: DeliveryFormState = {
@@ -120,7 +119,6 @@ const EMPTY_DELIVERY_INFO: DeliveryFormState = {
   customerPhone: '',
   deliveryAddress: '',
   deliveryReferences: '',
-  notes: '',
 };
 
 export function NewOrderModal({ onClose }: NewOrderModalProps): JSX.Element {
@@ -128,6 +126,8 @@ export function NewOrderModal({ onClose }: NewOrderModalProps): JSX.Element {
   const productsQuery = useProducts();
   const createOrder = useCreateOrder();
   const [channel, setChannel] = useState<SaleChannel>('delivery');
+  const [preferences, setPreferences] = useState<string[]>([]);
+  const [notes, setNotes] = useState('');
   const [quantities, setQuantities] = useState<Record<string, number>>({});
   const [deliveryInfo, setDeliveryInfo] = useState<DeliveryFormState>(EMPTY_DELIVERY_INFO);
 
@@ -196,10 +196,9 @@ export function NewOrderModal({ onClose }: NewOrderModalProps): JSX.Element {
             deliveryInfo.deliveryReferences.trim() === ''
               ? undefined
               : deliveryInfo.deliveryReferences.trim(),
-          notes: deliveryInfo.notes.trim() === '' ? undefined : deliveryInfo.notes.trim(),
         }
       : {};
-    createOrder.mutate({ channel, items, ...deliveryPayload }, { onSuccess: onClose });
+    createOrder.mutate({ channel, items, ...deliveryPayload, notes: [...preferences, notes.trim()].filter(Boolean).join('\n') || undefined }, { onSuccess: onClose });
   };
 
   return (
@@ -279,15 +278,6 @@ export function NewOrderModal({ onClose }: NewOrderModalProps): JSX.Element {
               />
             </label>
 
-            <label className="flex flex-col gap-1 text-sm">
-              {UI_TEXT.notes}
-              <textarea
-                value={deliveryInfo.notes}
-                onChange={(event) => setDeliveryField('notes', event.target.value)}
-                rows={2}
-                className="rounded-lg border border-border px-3 py-2"
-              />
-            </label>
           </div>
         ) : null}
 
@@ -327,6 +317,8 @@ export function NewOrderModal({ onClose }: NewOrderModalProps): JSX.Element {
             </div>
           </div>
         ) : null}
+
+        <OrderPreferences selected={preferences} onChange={setPreferences} notes={notes} onNotesChange={setNotes} />
 
         {!hasPlates ? <p role="alert" className="text-sm text-red-600">Revisa la disponibilidad de platos antes de crear el pedido.</p> : null}
         <p className="text-sm text-muted">Disponibles: {availablePlates('kilo')} de kilo · {availablePlates('half_kilo')} de medio kilo. Se comparten entre todos los sabores.</p>

@@ -26,6 +26,10 @@ export const ticketSchema = z.object({
   purpose: z.enum(['receipt', 'kitchen']).optional(),
   channelLabel: z.string().optional(),
   notes: z.string().nullable().optional(),
+  customerName: z.string().nullable().optional(),
+  customerPhone: z.string().nullable().optional(),
+  deliveryAddress: z.string().nullable().optional(),
+  deliveryReferences: z.string().nullable().optional(),
   // Liga wa.me del pedido, para imprimir su QR al final del ticket (solo
   // pedidos delivery con datos de cliente). `null`/ausente en cualquier
   // otro caso, incluyendo tickets impresos antes de esta funcionalidad.

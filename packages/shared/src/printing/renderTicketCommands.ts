@@ -44,6 +44,17 @@ export async function renderTicketCommands(
   printer.leftRight('Hora', new Date(ticket.issuedAt).toLocaleTimeString('es-MX'));
   printer.drawLine();
 
+  if (isKitchen) {
+    const customerDetails = [
+      ['Cliente', ticket.customerName], ['Telefono', ticket.customerPhone],
+      ['Direccion', ticket.deliveryAddress], ['Referencias', ticket.deliveryReferences],
+    ];
+    for (const [label, value] of customerDetails) {
+      if (value) printer.println(`${label}: ${value}`);
+    }
+    if (customerDetails.some(([, value]) => value)) printer.drawLine();
+  }
+
   for (const line of ticket.lines) {
     if (isKitchen) printer.println(`${line.quantity}x ${line.productName}`);
     else printer.leftRight(`${line.quantity}x ${line.productName}`, formatMoney(line.subtotal));
@@ -57,11 +68,9 @@ export async function renderTicketCommands(
     printer.println(ticket.notes);
     printer.drawLine();
   }
-  if (!isKitchen) {
-    printer.bold(true);
-    printer.leftRight('TOTAL', formatMoney(ticket.total));
-    printer.bold(false);
-  }
+  printer.bold(true);
+  printer.leftRight('TOTAL', formatMoney(ticket.total));
+  printer.bold(false);
 
   if (ticket.isReprint) {
     printer.newLine();
