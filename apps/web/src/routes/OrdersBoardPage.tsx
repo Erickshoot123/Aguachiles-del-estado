@@ -101,7 +101,7 @@ export function OrdersBoardPage(): JSX.Element {
         <p className="px-7 pt-3 text-[13px] text-red-600">{UI_TEXT.searchNotFound}</p>
       ) : null}
 
-      <section className="grid min-h-0 flex-1 grid-cols-1 items-start gap-3 p-3 sm:grid-cols-2 lg:grid-cols-3">
+      <section className="grid min-h-0 flex-1 grid-cols-1 items-stretch gap-3 p-3 sm:grid-cols-2 lg:grid-cols-3">
         {BOARD_COLUMNS.map((column) => {
           const columnOrders = orders.filter((order) => order.fulfillmentStatus === column.key);
           return (

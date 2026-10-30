@@ -114,7 +114,7 @@ for (const file of await filesBelow(join(stage, 'api'))) {
 }
 await compile(join(stage, 'AguachilesPOS.exe'), ['Common.cs', 'SetupForm.cs', 'Launcher.cs']);
 await compile(join(stage, 'Uninstall.exe'), ['Common.cs', 'Uninstall.cs']);
-const version = '0.2.2-preview-' + new Date().toISOString().replace(/[-:.TZ]/g, '');
+const version = '0.2.3-preview-' + new Date().toISOString().replace(/[-:.TZ]/g, '');
 const manifest = { product: 'AguachilesPOS', version, builtAt: new Date().toISOString(), vendors, files: {} };
 for (const file of await filesBelow(stage)) {
   const name = relative(stage, file).replaceAll('\\', '/');
@@ -128,7 +128,7 @@ const zip = join(buildRoot, `payload-${version}.zip`);
 console.warn('Comprimiendo paquete…');
 await command('powershell.exe', ['-NoProfile', '-NonInteractive', '-ExecutionPolicy', 'Bypass', '-File',
   join(packaging, 'Zip-Payload.ps1'), '-Source', stage, '-Output', zip]);
-const executable = join(output, 'AguachilesPOS-Instalador-0.2.2.exe');
+const executable = join(output, 'AguachilesPOS-Instalador-0.2.3.exe');
 await compile(executable, ['Common.cs', 'Installer.cs'], [`/resource:${zip},payload`]);
-await writeFile(executable + '.sha256.txt', `${await hash(executable)}  AguachilesPOS-Instalador-0.2.2.exe\n`);
+await writeFile(executable + '.sha256.txt', `${await hash(executable)}  AguachilesPOS-Instalador-0.2.3.exe\n`);
 console.warn(JSON.stringify({ executable, bytes: (await stat(executable)).size, stage, version }));

@@ -6,7 +6,7 @@ local; no necesita Docker, npm ni conexión a internet durante la instalación.
 
 ## Llevarlo a otra computadora
 
-1. Copia `AguachilesPOS-Instalador-0.2.2.exe` por USB a la otra PC.
+1. Copia `AguachilesPOS-Instalador-0.2.3.exe` por USB a la otra PC.
 2. Usa Windows 10/11 **de 64 bits con .NET Framework 4.8**, una unidad **NTFS** y al menos 2 GB libres.
    El instalador se puede transportar en USB; el programa y su base se instalan
    en Windows, de forma predeterminada dentro de tu perfil en C:.
@@ -90,7 +90,7 @@ Con poco espacio en C: se puede elegir otra carpeta temporal en una unidad NTFS:
 
 ```powershell
 npm run build:windows -- --build-root D:/AguachilesPOS-InstallerBuild --output C:/ruta/entregables
-node packaging/windows/smoke.mjs --installer C:/ruta/entregables/AguachilesPOS-Instalador-0.2.2.exe --build-root D:/AguachilesPOS-InstallerBuild --test-root C:/ruta/pruebas
+node packaging/windows/smoke.mjs --installer C:/ruta/entregables/AguachilesPOS-Instalador-0.2.3.exe --build-root D:/AguachilesPOS-InstallerBuild --test-root C:/ruta/pruebas
 ```
 
 La prueba crea una instalación y datos sintéticos, usa solo los runtimes
