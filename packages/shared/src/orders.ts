@@ -25,6 +25,7 @@ export type SaleStatus = z.infer<typeof saleStatusSchema>;
 export const createOrderItemSchema = z.object({
   productId: z.string().uuid(),
   quantity: z.number().positive(),
+  notes: z.string().trim().min(1).max(1000).optional(),
 });
 export type CreateOrderItem = z.infer<typeof createOrderItemSchema>;
 
@@ -95,6 +96,7 @@ export const orderItemSchema = z.object({
   quantity: z.number().positive(),
   unitPrice: z.number().nonnegative(),
   subtotal: z.number().nonnegative(),
+  notes: z.string().nullable().optional(),
 });
 export type OrderItem = z.infer<typeof orderItemSchema>;
 
@@ -105,6 +107,7 @@ export const orderSchema = z.object({
   fulfillmentStatus: fulfillmentStatusSchema,
   status: saleStatusSchema,
   createdAt: z.string().datetime(),
+  deliveryDueAt: z.string().datetime().nullable().optional(),
   items: z.array(orderItemSchema),
   subtotal: z.number().nonnegative(),
   taxTotal: z.number().nonnegative(),

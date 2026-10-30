@@ -8,6 +8,7 @@ test('fallar la impresión conserva el pedido y permite reimprimir sin duplicarl
   let savedNotes = '';
   let printedCustomer = '';
   let printedTotal = 0;
+  let printedPortions: string[] = [];
   page.on('response', async (response) => {
     if (response.request().method() === 'POST' && new URL(response.url()).pathname === '/api/orders' && response.ok()) {
       savedNotes = (await response.json()).notes;
@@ -22,6 +23,7 @@ test('fallar la impresión conserva el pedido y permite reimprimir sin duplicarl
     printedNotes = ticket.notes;
     printedCustomer = ticket.customerName;
     printedTotal = ticket.total;
+    printedPortions = ticket.lines.map((line: { notes: string }) => line.notes).sort();
     expect(ticket.customerPhone).toBe('6671234567');
     expect(ticket.deliveryAddress).toBe('Calle de prueba 123');
     expect(ticket.deliveryReferences).toBe('Casa azul');
@@ -34,13 +36,12 @@ test('fallar la impresión conserva el pedido y permite reimprimir sin duplicarl
   await page.getByLabel('Contraseña').fill('ChangeMe123!');
   await page.getByRole('button', { name: 'Ingresar' }).click();
   await ensurePlateAvailability(page);
+  await expect(page.getByText('Sincronización central sin configurar')).toHaveCount(0);
+  const plateBox = await page.getByRole('region', { name: 'Disponibilidad de platos' }).boundingBox();
+  expect(plateBox?.height).toBeLessThan(100);
   await page.getByRole('button', { name: 'Nuevo pedido' }).click();
   const dialog = page.getByRole('dialog').last();
-  await dialog.getByRole('button', { name: 'Sin pepino', exact: true }).click();
-  await dialog.getByRole('button', { name: 'Sin ajo', exact: true }).click();
-  await dialog.getByRole('button', { name: 'Sin pimienta', exact: true }).click();
-  await dialog.getByRole('button', { name: 'Sin ajo', exact: true }).click();
-  await dialog.getByLabel('Notas del pedido (opcional)').fill('Salsa aparte');
+  await dialog.getByLabel('Notas generales del pedido (opcional)').fill('Salsa aparte');
   await dialog.getByRole('button', { name: 'Mostrador', exact: true }).click();
   await dialog.getByRole('button', { name: 'Delivery', exact: true }).click();
   await dialog.getByLabel('Nombre del cliente').fill('Ana Prueba');
@@ -48,6 +49,14 @@ test('fallar la impresión conserva el pedido y permite reimprimir sin duplicarl
   await dialog.getByLabel('Dirección', { exact: true }).fill('Calle de prueba 123');
   await dialog.getByLabel('Referencias (opcional)').fill('Casa azul');
   await dialog.getByRole('button', { name: 'Agregar uno: Aguachile Tradicional (1 kilo)', exact: true }).click();
+  await dialog.getByRole('button', { name: 'Agregar uno: Aguachile Tradicional (1 kilo)', exact: true }).first().click();
+  const firstPortion = dialog.getByRole('group', { name: 'Aguachile Tradicional (1 kilo) · Porción 1', exact: true });
+  await firstPortion.getByLabel('Sin pepino').check();
+  await firstPortion.getByLabel('Ajo', { exact: true }).selectOption('Sin');
+  const secondPortion = dialog.getByRole('group', { name: 'Aguachile Tradicional (1 kilo) · Porción 2', exact: true });
+  await secondPortion.getByLabel('Sin cebolla').check();
+  await secondPortion.getByLabel('Sal', { exact: true }).selectOption('Poco');
+  await secondPortion.getByLabel('Extra picante').check();
   await dialog.getByRole('button', { name: 'Crear pedido', exact: true }).click();
   await expect(page.getByRole('dialog')).toHaveCount(0);
   await expect(page.getByText(/Impresión sin confirmar/)).toBeVisible();
@@ -61,8 +70,11 @@ test('fallar la impresión conserva el pedido y permite reimprimir sin duplicarl
   await expect(page.getByRole('button', { name: 'Reimprimir comanda' })).toHaveCount(0);
   expect(creates).toBe(1);
   expect(prints).toBe(2);
-  expect(savedNotes).toBe('Sin pepino\nSin pimienta\nSalsa aparte');
+  expect(savedNotes).toBe('Salsa aparte');
+  expect(printedPortions).toEqual(['Sin cebolla · Poco sal · Extra picante', 'Sin pepino · Sin ajo'].sort());
   expect(printedNotes).toBe(savedNotes);
   expect(printedCustomer).toBe('Ana Prueba');
   expect(printedTotal).toBeGreaterThan(0);
+  await expect(page.getByText('Sin cebolla · Poco sal · Extra picante', { exact: true })).toBeVisible();
+  await page.screenshot({ path: test.info().outputPath('tablero-compacto.png'), fullPage: true });
 });

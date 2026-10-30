@@ -16,7 +16,7 @@ async function priceOrder(tx: Prisma.TransactionClient, input: CreateOrderReques
     if (!product) throw new ProductNotAvailableError('desconocido');
     const quantity = new Prisma.Decimal(item.quantity);
     const subtotal = product.price.mul(quantity);
-    return { productId: product.id, quantity, unitPrice: product.price,
+    return { productId: product.id, quantity, notes: item.notes ?? null, unitPrice: product.price,
       taxAmount: subtotal.mul(product.taxRate).div(100), subtotal };
   });
   const subtotal = items.reduce((sum, item) => sum.add(item.subtotal), new Prisma.Decimal(0));

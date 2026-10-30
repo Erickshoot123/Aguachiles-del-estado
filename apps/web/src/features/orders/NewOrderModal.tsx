@@ -1,11 +1,12 @@
-import type { ProductSummary, SaleChannel } from '@aguachiles/shared';
+import type { SaleChannel } from '@aguachiles/shared';
 import type { JSX } from 'react';
 import { useState } from 'react';
 import { ModalBackdrop } from '../../components/ModalBackdrop';
 import { CHANNEL_LABELS, formatCurrency } from './channelLabels';
 import { useCreateOrder, useProducts } from './hooks';
 import { usePlateAvailability } from '../plates/hooks';
-import { OrderPreferences } from './OrderPreferences';
+import { ProductCard } from './ProductCard';
+import { PortionPreferences, describePortion, emptyPortionPreferences, type PortionPreferencesValue } from './PortionPreferences';
 import { ApiError } from '../../lib/apiClient';
 
 const UI_TEXT = {
@@ -27,8 +28,6 @@ const UI_TEXT = {
   deliveryReferencesPlaceholder: 'Entre calles, color de fachada, piso, etc.',
   missingDeliveryInfo: 'Completa nombre, teléfono y dirección para pedidos de delivery',
   total: 'Total',
-  decrease: 'Quitar uno',
-  increase: 'Agregar uno',
 } as const;
 
 const CHANNEL_OPTIONS: SaleChannel[] = ['delivery', 'counter'];
@@ -36,72 +35,6 @@ const CHANNEL_OPTIONS: SaleChannel[] = ['delivery', 'counter'];
 // Grid táctil: tantas columnas como quepan sin bajar de 140px por tarjeta.
 const PRODUCT_GRID_CLASS =
   'grid gap-2.5 [grid-template-columns:repeat(auto-fill,minmax(140px,1fr))]';
-
-interface ProductCardProps {
-  disabled?: boolean;
-  product: ProductSummary;
-  quantity: number;
-  onIncrement: () => void;
-  onDecrement: () => void;
-}
-
-function ProductCard({ product, quantity, onIncrement, onDecrement, disabled }: ProductCardProps): JSX.Element {
-  const selected = quantity > 0;
-  return (
-    <div
-      className={`relative flex flex-col overflow-hidden rounded-xl border transition-colors ${
-        selected
-          ? 'border-accent bg-accent-soft shadow-sm'
-          : 'border-border bg-surface hover:border-border-hover'
-      }`}
-    >
-      {selected ? (
-        <span className="absolute right-2 top-2 z-10 flex h-6 min-w-6 items-center justify-center rounded-full bg-accent px-1.5 font-mono text-xs font-semibold text-white">
-          {quantity}
-        </span>
-      ) : null}
-
-      {/* Tap directo en el cuerpo de la tarjeta = +1 */}
-      <button
-        type="button"
-        onClick={onIncrement}
-        disabled={disabled}
-        aria-label={`${UI_TEXT.increase}: ${product.name}`}
-        className="flex min-h-[64px] flex-1 flex-col justify-between gap-2 p-3 text-left"
-      >
-        <span className="text-sm font-medium leading-snug text-text">{product.name}</span>
-        <span className="font-mono text-sm font-semibold text-accent">
-          {formatCurrency(product.price)}
-        </span>
-      </button>
-
-      {selected ? (
-        <div className="flex items-stretch border-t border-accent/30">
-          <button
-            type="button"
-            onClick={onDecrement}
-            aria-label={`${UI_TEXT.decrease}: ${product.name}`}
-            className="flex h-12 flex-1 items-center justify-center text-xl font-semibold text-accent active:bg-accent/10"
-          >
-            −
-          </button>
-          <span className="flex h-12 w-12 items-center justify-center border-x border-accent/30 font-mono text-base font-semibold text-text">
-            {quantity}
-          </span>
-          <button
-            type="button"
-            onClick={onIncrement}
-            disabled={disabled}
-            aria-label={`${UI_TEXT.increase}: ${product.name}`}
-            className="flex h-12 flex-1 items-center justify-center text-xl font-semibold text-accent active:bg-accent/10"
-          >
-            +
-          </button>
-        </div>
-      ) : null}
-    </div>
-  );
-}
 
 interface NewOrderModalProps {
   onClose: () => void;
@@ -126,13 +59,15 @@ export function NewOrderModal({ onClose }: NewOrderModalProps): JSX.Element {
   const productsQuery = useProducts();
   const createOrder = useCreateOrder();
   const [channel, setChannel] = useState<SaleChannel>('delivery');
-  const [preferences, setPreferences] = useState<string[]>([]);
+  const [portionPreferences, setPortionPreferences] = useState<Record<string, PortionPreferencesValue[]>>({});
   const [notes, setNotes] = useState('');
   const [quantities, setQuantities] = useState<Record<string, number>>({});
   const [deliveryInfo, setDeliveryInfo] = useState<DeliveryFormState>(EMPTY_DELIVERY_INFO);
 
   const setQuantity = (productId: string, quantity: number): void => {
     setQuantities((prev) => ({ ...prev, [productId]: Math.max(0, quantity) }));
+    setPortionPreferences((prev) => ({ ...prev, [productId]: Array.from({ length: Math.max(0, quantity) },
+      (_, index) => prev[productId]?.[index] ?? emptyPortionPreferences()) }));
   };
   const incrementProduct = (productId: string): void => {
     setQuantity(productId, (quantities[productId] ?? 0) + 1);
@@ -159,7 +94,10 @@ export function NewOrderModal({ onClose }: NewOrderModalProps): JSX.Element {
   const orderableProductIds = new Set(orderableProducts.map((product) => product.id));
   const items = Object.entries(quantities)
     .filter(([productId, quantity]) => quantity > 0 && orderableProductIds.has(productId))
-    .map(([productId, quantity]) => ({ productId, quantity }));
+    .flatMap(([productId, quantity]) => mainProducts.find((product) => product.id === productId)?.plateSize
+      ? Array.from({ length: quantity }, (_, index) => ({ productId, quantity: 1,
+        notes: describePortion(portionPreferences[productId]?.[index] ?? emptyPortionPreferences()) }))
+      : [{ productId, quantity, notes: undefined }]);
 
   const priceByProductId = new Map(
     orderableProducts.map((product) => [product.id, product.price]),
@@ -198,7 +136,7 @@ export function NewOrderModal({ onClose }: NewOrderModalProps): JSX.Element {
               : deliveryInfo.deliveryReferences.trim(),
         }
       : {};
-    createOrder.mutate({ channel, items, ...deliveryPayload, notes: [...preferences, notes.trim()].filter(Boolean).join('\n') || undefined }, { onSuccess: onClose });
+    createOrder.mutate({ channel, items, ...deliveryPayload, notes: notes.trim() || undefined }, { onSuccess: onClose });
   };
 
   return (
@@ -318,7 +256,19 @@ export function NewOrderModal({ onClose }: NewOrderModalProps): JSX.Element {
           </div>
         ) : null}
 
-        <OrderPreferences selected={preferences} onChange={setPreferences} notes={notes} onNotesChange={setNotes} />
+        {mainProducts.filter((product) => product.plateSize && (quantities[product.id] ?? 0) > 0).map((product) =>
+          <div key={product.id} className="flex flex-col gap-2">
+            {Array.from({ length: quantities[product.id] ?? 0 }, (_, index) => <PortionPreferences
+              key={index} label={`${product.name} · Porción ${index + 1}`}
+              value={portionPreferences[product.id]?.[index] ?? emptyPortionPreferences()}
+              onChange={(value) => setPortionPreferences((prev) => ({ ...prev,
+                [product.id]: Array.from({ length: quantities[product.id] ?? 0 }, (_, position) =>
+                  position === index ? value : prev[product.id]?.[position] ?? emptyPortionPreferences()) }))} />)}
+          </div>)}
+        <label className="flex flex-col gap-1 text-sm">Notas generales del pedido (opcional)
+          <textarea value={notes} onChange={(event) => setNotes(event.target.value)} rows={2}
+            placeholder="Indicaciones generales de entrega…" className="rounded-lg border border-border px-3 py-2" />
+        </label>
 
         {!hasPlates ? <p role="alert" className="text-sm text-red-600">Revisa la disponibilidad de platos antes de crear el pedido.</p> : null}
         <p className="text-sm text-muted">Disponibles: {availablePlates('kilo')} de kilo · {availablePlates('half_kilo')} de medio kilo. Se comparten entre todos los sabores.</p>

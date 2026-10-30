@@ -126,9 +126,9 @@ try {
     await page.getByRole('heading', { name: 'Tablero de pedidos' }).waitFor();
     await page.getByRole('button', { name: 'Nuevo pedido' }).click();
     const dialog = page.getByRole('dialog').last();
-    await dialog.getByRole('button', { name: 'Sin ajo', exact: true }).click();
     await dialog.getByRole('button', { name: 'Mostrador', exact: true }).click();
     await dialog.getByRole('button', { name: 'Agregar uno: Aguachile Tradicional (medio kilo)', exact: true }).click();
+    await dialog.getByRole('group', { name: 'Aguachile Tradicional (medio kilo) · Porción 1', exact: true }).getByLabel('Ajo', { exact: true }).selectOption('Sin');
     await dialog.getByRole('button', { name: 'Crear pedido', exact: true }).click();
     await page.getByRole('dialog').waitFor({ state: 'hidden' });
     const afterUi = await request('/api/plates/today', 'GET', undefined, token);
@@ -139,6 +139,17 @@ try {
     await page.screenshot({ path: join(buildRoot, 'packaged-pos.png'), fullPage: true });
     check('Interfaz compilada: login, pedido y comanda automática sin peticiones externas');
   } finally { await browser.close(); }
+  await new LocalDatabase(appDir, config).sql(`UPDATE sales SET fulfillment_status = 'in_delivery', delivery_due_at = CURRENT_TIMESTAMP - INTERVAL '1 second' WHERE id = '${order.id}';`, 'aguachiles_pos');
+  let autoDelivered;
+  const deliveryTimeout = Date.now() + 25000;
+  do {
+    autoDelivered = await request(`/api/orders/lookup?ticketNumber=${encodeURIComponent(order.ticketNumber)}`, 'GET', undefined, token);
+    if (autoDelivered.fulfillmentStatus === 'delivered') break;
+    await new Promise((ready) => setTimeout(ready, 1000));
+  } while (Date.now() < deliveryTimeout);
+  assert.equal(autoDelivered.fulfillmentStatus, 'delivered');
+  assert.equal(autoDelivered.status, 'pending');
+  check('Entrega automática persistente ejecutada por el servidor sin registrar cobros');
   session.child.stdin.write('BACKUP\n');
   const backup = await session.event('backup');
   assert.ok((await stat(backup.message)).size > 0);

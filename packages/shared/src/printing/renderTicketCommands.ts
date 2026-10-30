@@ -58,6 +58,11 @@ export async function renderTicketCommands(
   for (const line of ticket.lines) {
     if (isKitchen) printer.println(`${line.quantity}x ${line.productName}`);
     else printer.leftRight(`${line.quantity}x ${line.productName}`, formatMoney(line.subtotal));
+    if (line.notes) {
+      printer.bold(true);
+      printer.println(`  ${line.notes}`);
+      printer.bold(false);
+    }
   }
   printer.drawLine();
 

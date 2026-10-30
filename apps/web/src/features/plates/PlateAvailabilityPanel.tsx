@@ -26,17 +26,17 @@ export function PlateAvailabilityPanel(): JSX.Element {
       onSuccess: () => { setEditing(false); setKilo(''); setHalf(''); setReason(''); },
     });
   };
-  return <section className="border-b border-border bg-surface px-5 py-4" aria-label="Disponibilidad de platos">
-    <h2 className="font-semibold">Platos de hoy {query.data?.date}</h2>
+  return <section className="border-b border-border bg-surface px-5 py-2" aria-label="Disponibilidad de platos">
+    <h2 className="text-sm font-semibold">Platos de hoy {query.data?.date}</h2>
     {query.isLoading ? <p>Cargando disponibilidad…</p> : null}
     {query.isError ? <p role="alert">No se pudo consultar la disponibilidad. Intenta actualizar.</p> : null}
     {query.data ? <>
-      {!initial ? <div className="my-2 grid items-center gap-2 sm:grid-cols-[1fr_1fr_auto]">
-        {query.data.buckets.map((bucket) => <div key={bucket.size} className="rounded-lg border border-border p-3">
-          <strong>{bucket.size === 'kilo' ? '1 kilo' : '1/2 kilo'}: {bucket.available} disponibles</strong>
-          <p className="text-sm text-muted">{bucket.sold} vendidos · {bucket.reserved} en pedidos pendientes · {bucket.limit} habilitados</p>
+      {!initial ? <div className="mt-1 grid items-center gap-2 sm:grid-cols-[1fr_1fr_auto]">
+        {query.data.buckets.map((bucket) => <div key={bucket.size} className="rounded-lg border border-border px-3 py-1.5">
+          <strong className="text-sm">{bucket.size === 'kilo' ? '1 kilo' : '1/2 kilo'}: {bucket.available} disponibles</strong>
+          <p className="text-xs text-muted">{bucket.sold} vendidos · {bucket.reserved} en pedidos pendientes · {bucket.limit} habilitados</p>
         </div>)}
-      {canAdjust && !initial && !editing ? <button type="button" className="rounded bg-accent px-3 py-2 font-semibold text-white hover:bg-accent-hover"
+      {canAdjust && !initial && !editing ? <button type="button" className="rounded bg-accent px-3 py-2 text-sm font-semibold text-white hover:bg-accent-hover"
         onClick={() => { setKilo('0'); setHalf('0'); setRequestId(crypto.randomUUID()); save.reset(); setEditing(true); }}>Ajustar platos</button> : null}
       </div> : <p className="my-2 text-sm">Antes de vender, registra cuántos platos de cada presentación tienes disponibles.</p>}
 

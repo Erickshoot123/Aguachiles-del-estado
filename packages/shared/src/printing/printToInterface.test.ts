@@ -58,12 +58,15 @@ describe('printTicketToInterface', () => {
     const outputPath = join(tmpdir(), `aguachiles-kitchen-${Date.now()}.bin`);
     try {
       await printTicketToInterface({ interfaceString: outputPath, width: 32,
-        ticket: sampleTicket({ purpose: 'kitchen', notes: 'Sin cebolla',
+        ticket: sampleTicket({ purpose: 'kitchen', notes: 'Salsa aparte',
+          lines: [{ productName: 'Aguachile verde', quantity: 1, unitPrice: 120, subtotal: 120, notes: 'Sin cebolla' },
+            { productName: 'Aguachile verde', quantity: 1, unitPrice: 120, subtotal: 120, notes: 'Sin ajo; Extra picante' }],
           customerName: 'Ana Perez', customerPhone: '6671234567', deliveryAddress: 'Calle principal 123 casa azul',
           deliveryReferences: 'Frente al parque', channelLabel: 'Entrega a domicilio', whatsappUrl: 'https://wa.me/521234567890' }) });
       const payload = await readFile(outputPath, 'latin1');
       expect(payload).toContain('COMANDA DE COCINA');
-      expect(payload).toContain('2x Aguachile verde');
+      expect(payload.match(/1x Aguachile verde/g)).toHaveLength(2);
+      expect(payload).toMatch(/1x Aguachile verde[\s\S]*Sin cebolla[\s\S]*1x Aguachile verde[\s\S]*Sin ajo; Extra picante/);
       expect(payload).toContain('Sin cebolla');
       expect(payload).toContain('Cliente: Ana Perez');
       expect(payload).toContain('Telefono: 6671234567');

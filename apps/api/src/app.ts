@@ -10,6 +10,7 @@ import auditRoutes from './modules/audit/audit.routes.js';
 import authRoutes from './modules/auth/auth.routes.js';
 import cashRoutes from './modules/cash/cash.routes.js';
 import categoriesRoutes from './modules/categories/categories.routes.js';
+import { registerDeliveryCompletion } from './modules/orders/deliveryCompletion.service.js';
 import ordersRoutes from './modules/orders/orders.routes.js';
 import paymentMethodsRoutes from './modules/payment-methods/payment-methods.routes.js';
 import productsRoutes from './modules/products/products.routes.js';
@@ -52,6 +53,7 @@ export async function buildApp(env: Env): Promise<FastifyInstance> {
   await app.register(auditRoutes);
   await app.register(analyticsRoutes);
   registerSyncWorker(app, env);
+  if (env.NODE_ENV !== 'test') registerDeliveryCompletion(app);
 
   app.get('/health', async () => ({ status: 'ok' }));
 

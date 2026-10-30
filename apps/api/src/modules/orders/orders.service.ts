@@ -4,6 +4,7 @@ import { assertLocalSale, getLocalLocation } from '../locations/localLocation.re
 import { CannotCancelPaidOrderError, InvalidFulfillmentTransitionError, OrderNotFoundError, OrderNotDeliveryError, OrderMissingDeliveryInfoError } from './orders.errors.js';
 import { buildWhatsAppMessage } from './whatsapp.js';
 import { toOrderDto } from './orderDto.js';
+import { deliveryDeadline } from './deliveryCompletion.service.js';
 import { settlePlateReservation } from '../plates/plateReservation.service.js';
 export { createOrder } from './orderCreation.service.js';
 export { chargeOrder } from './orderCharge.service.js';
@@ -47,6 +48,7 @@ export async function findOrderByTicketNumber(
 export async function advanceOrder(prisma: PrismaClient, orderId: string): Promise<Order> {
   await assertLocalSale(prisma, orderId);
   const updated = await prisma.$transaction(async (tx) => {
+    await tx.$queryRaw`SELECT id FROM sales WHERE id = ${orderId} FOR UPDATE`;
     const sale = await tx.sale.findUnique({ where: { id: orderId } });
     if (!sale) {
       throw new OrderNotFoundError();
@@ -76,7 +78,7 @@ export async function advanceOrder(prisma: PrismaClient, orderId: string): Promi
 
     return tx.sale.update({
       where: { id: orderId },
-      data: { fulfillmentStatus: nextStatus },
+      data: { fulfillmentStatus: nextStatus, deliveryDueAt: nextStatus === 'in_delivery' ? deliveryDeadline() : null },
       include: { items: { include: { product: true } } },
     });
   });
@@ -140,6 +142,7 @@ export async function getWhatsAppShareForOrder(
     items: sale.items.map((item) => ({
       productName: item.product.name,
       quantity: item.quantity.toNumber(),
+      notes: item.notes,
     })),
     notes: sale.notes,
   });

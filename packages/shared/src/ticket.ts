@@ -6,6 +6,7 @@ export type TicketFormat = z.infer<typeof ticketFormatSchema>;
 
 export const ticketLineSchema = z.object({
   productName: z.string(),
+  notes: z.string().nullable().optional(),
   quantity: z.number().positive(),
   unitPrice: z.number().nonnegative(),
   subtotal: z.number().nonnegative(),

@@ -5,10 +5,9 @@ import { assertLocalSale } from '../locations/localLocation.repository.js';
 import type { SaleWithItems } from './orderDto.js';
 
 function matchesRequest(sale: SaleWithItems, userId: string, input: CreateOrderRequest): boolean {
-  const sameItems = sale.items.length === input.items.length &&
-    sale.items.every((item) => input.items.filter((line) => line.productId === item.productId &&
-      item.quantity.equals(line.quantity)).length === sale.items.filter((line) =>
-      line.productId === item.productId && line.quantity.equals(item.quantity)).length);
+  const requestItems = input.items.map((item) => JSON.stringify([item.productId, String(item.quantity), item.notes ?? null])).sort();
+  const storedItems = sale.items.map((item) => JSON.stringify([item.productId, item.quantity.toString(), item.notes])).sort();
+  const sameItems = JSON.stringify(requestItems) === JSON.stringify(storedItems);
   return sameItems && sale.userId === userId && sale.channel === input.channel &&
     sale.customerName === (input.customerName ?? null) && sale.customerPhone === (input.customerPhone ?? null) &&
     sale.deliveryAddress === (input.deliveryAddress ?? null) &&

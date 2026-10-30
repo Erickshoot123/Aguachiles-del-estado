@@ -24,6 +24,7 @@ function buildWhatsappUrlIfDelivery(sale: SaleForReceipt): string | null {
     items: sale.items.map((item) => ({
       productName: item.product.name,
       quantity: item.quantity.toNumber(),
+      notes: item.notes,
     })),
     notes: sale.notes,
   }).url;
@@ -39,6 +40,7 @@ export function buildTicket(sale: SaleForReceipt, format: TicketFormat): Ticket 
     lines: sale.items.map((item) => ({
       productName: item.product.name,
       quantity: item.quantity.toNumber(),
+      notes: item.notes,
       unitPrice: item.unitPrice.toNumber(),
       subtotal: item.subtotal.toNumber(),
     })),
