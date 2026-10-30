@@ -12,8 +12,11 @@ async function main(): Promise<void> {
   };
   process.once('SIGINT', shutdown);
   process.once('SIGTERM', shutdown);
+  process.on('message', (message) => {
+    if (message === 'shutdown') { shutdown(); process.disconnect?.(); }
+  });
 
-  await app.listen({ port: env.PORT, host: '0.0.0.0' });
+  await app.listen({ port: env.PORT, host: env.HOST });
 }
 
 main().catch((error: unknown) => {

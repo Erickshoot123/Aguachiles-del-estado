@@ -8,6 +8,7 @@
     "packages/*"
   ],
   "scripts": {
+    "build:windows": "node packaging/windows/build.mjs",
     "build": "npm run build --workspace=@aguachiles/shared && npm run build --workspaces --if-present",
     "lint": "eslint .",
     "typecheck": "npm run typecheck --workspaces --if-present",
