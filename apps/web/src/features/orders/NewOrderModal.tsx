@@ -4,6 +4,8 @@ import { useState } from 'react';
 import { ModalBackdrop } from '../../components/ModalBackdrop';
 import { CHANNEL_LABELS, formatCurrency } from './channelLabels';
 import { useCreateOrder, useProducts } from './hooks';
+import { usePlateAvailability } from '../plates/hooks';
+import { ApiError } from '../../lib/apiClient';
 
 const UI_TEXT = {
   title: 'Nuevo pedido',
@@ -36,13 +38,14 @@ const PRODUCT_GRID_CLASS =
   'grid gap-2.5 [grid-template-columns:repeat(auto-fill,minmax(140px,1fr))]';
 
 interface ProductCardProps {
+  disabled?: boolean;
   product: ProductSummary;
   quantity: number;
   onIncrement: () => void;
   onDecrement: () => void;
 }
 
-function ProductCard({ product, quantity, onIncrement, onDecrement }: ProductCardProps): JSX.Element {
+function ProductCard({ product, quantity, onIncrement, onDecrement, disabled }: ProductCardProps): JSX.Element {
   const selected = quantity > 0;
   return (
     <div
@@ -62,6 +65,7 @@ function ProductCard({ product, quantity, onIncrement, onDecrement }: ProductCar
       <button
         type="button"
         onClick={onIncrement}
+        disabled={disabled}
         aria-label={`${UI_TEXT.increase}: ${product.name}`}
         className="flex min-h-[64px] flex-1 flex-col justify-between gap-2 p-3 text-left"
       >
@@ -87,6 +91,7 @@ function ProductCard({ product, quantity, onIncrement, onDecrement }: ProductCar
           <button
             type="button"
             onClick={onIncrement}
+            disabled={disabled}
             aria-label={`${UI_TEXT.increase}: ${product.name}`}
             className="flex h-12 flex-1 items-center justify-center text-xl font-semibold text-accent active:bg-accent/10"
           >
@@ -119,6 +124,7 @@ const EMPTY_DELIVERY_INFO: DeliveryFormState = {
 };
 
 export function NewOrderModal({ onClose }: NewOrderModalProps): JSX.Element {
+  const platesQuery = usePlateAvailability();
   const productsQuery = useProducts();
   const createOrder = useCreateOrder();
   const [channel, setChannel] = useState<SaleChannel>('delivery');
@@ -170,7 +176,14 @@ export function NewOrderModal({ onClose }: NewOrderModalProps): JSX.Element {
     (deliveryInfo.customerName.trim() !== '' &&
       deliveryInfo.customerPhone.trim() !== '' &&
       deliveryInfo.deliveryAddress.trim() !== '');
-  const canSubmit = items.length > 0 && hasRequiredDeliveryInfo;
+  const selectedPlates = { kilo: 0, half_kilo: 0 };
+  for (const product of mainProducts) {
+    if (product.plateSize) selectedPlates[product.plateSize] += quantities[product.id] ?? 0;
+  }
+  const availablePlates = (size: 'kilo' | 'half_kilo') => platesQuery.data?.buckets.find((bucket) => bucket.size === size)?.available ?? 0;
+  const hasPlates = Boolean(platesQuery.data?.initialized) && selectedPlates.kilo <= availablePlates('kilo')
+    && selectedPlates.half_kilo <= availablePlates('half_kilo');
+  const canSubmit = items.length > 0 && hasRequiredDeliveryInfo && hasPlates;
 
   const handleSubmit = (): void => {
     if (!canSubmit) return;
@@ -288,6 +301,7 @@ export function NewOrderModal({ onClose }: NewOrderModalProps): JSX.Element {
                 <ProductCard
                   key={product.id}
                   product={product}
+                  disabled={Boolean(product.plateSize && selectedPlates[product.plateSize] >= availablePlates(product.plateSize))}
                   quantity={quantities[product.id] ?? 0}
                   onIncrement={() => incrementProduct(product.id)}
                   onDecrement={() => decrementProduct(product.id)}
@@ -314,7 +328,9 @@ export function NewOrderModal({ onClose }: NewOrderModalProps): JSX.Element {
           </div>
         ) : null}
 
-        {createOrder.isError ? <p className="text-sm text-red-600">{UI_TEXT.error}</p> : null}
+        {!hasPlates ? <p role="alert" className="text-sm text-red-600">Revisa la disponibilidad de platos antes de crear el pedido.</p> : null}
+        <p className="text-sm text-muted">Disponibles: {availablePlates('kilo')} de kilo · {availablePlates('half_kilo')} de medio kilo. Se comparten entre todos los sabores.</p>
+        {createOrder.isError ? <p className="text-sm text-red-600">{createOrder.error instanceof ApiError ? createOrder.error.message : UI_TEXT.error}</p> : null}
       </div>
 
       <div className="flex items-center gap-3 border-t border-divider bg-bg px-5 py-4">

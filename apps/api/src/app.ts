@@ -15,6 +15,7 @@ import paymentMethodsRoutes from './modules/payment-methods/payment-methods.rout
 import productsRoutes from './modules/products/products.routes.js';
 import purchasesRoutes from './modules/purchases/purchases.routes.js';
 import receiptsRoutes from './modules/receipts/receipts.routes.js';
+import platesRoutes from './modules/plates/plates.routes.js';
 import refundsRoutes from './modules/refunds/refunds.routes.js';
 import reportsRoutes from './modules/reports/reports.routes.js';
 import suppliersRoutes from './modules/suppliers/suppliers.routes.js';
@@ -40,6 +41,7 @@ export async function buildApp(env: Env): Promise<FastifyInstance> {
   await app.register(categoriesRoutes);
   await app.register(productsRoutes);
   await app.register(ordersRoutes);
+  await app.register(platesRoutes);
   await app.register(paymentMethodsRoutes);
   await app.register(cashRoutes);
   await app.register(receiptsRoutes);

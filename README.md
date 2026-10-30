@@ -267,3 +267,5 @@ indirectamente como dependencias de las pruebas de pedidos/caja/reembolsos.
 
 La carpeta `referencia/` contiene el mockup de diseño original del negocio; es material de
 referencia visual, no código de producción.
+Control de platos diarios: consulta [Disponibilidad de kilo y medio kilo](docs/PLATOS-DIARIOS.md).
+

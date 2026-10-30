@@ -1,4 +1,5 @@
 import { expect, test } from '@playwright/test';
+import { ensurePlateAvailability } from './plateSetup';
 
 test('fallar la impresión conserva el pedido y permite reimprimir sin duplicarlo', async ({ page }) => {
   let creates = 0;
@@ -16,6 +17,7 @@ test('fallar la impresión conserva el pedido y permite reimprimir sin duplicarl
   await page.getByLabel('Usuario').fill('cajero');
   await page.getByLabel('Contraseña').fill('ChangeMe123!');
   await page.getByRole('button', { name: 'Ingresar' }).click();
+  await ensurePlateAvailability(page);
   await page.getByRole('button', { name: 'Nuevo pedido' }).click();
   const dialog = page.getByRole('dialog').last();
   await dialog.getByRole('button', { name: 'Mostrador', exact: true }).click();

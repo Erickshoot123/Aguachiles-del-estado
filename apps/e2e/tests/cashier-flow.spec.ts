@@ -1,5 +1,6 @@
 import { expect, test } from '@playwright/test';
 import { readFile } from 'node:fs/promises';
+import { ensurePlateAvailability } from './plateSetup';
 
 const CAJERO_USERNAME = 'cajero';
 const CAJERO_PASSWORD = 'ChangeMe123!';
@@ -15,6 +16,7 @@ test('flujo completo de cajero: login, abrir caja, vender con pago dividido, imp
     await page.getByLabel('Contraseña').fill(CAJERO_PASSWORD);
     await page.getByRole('button', { name: 'Ingresar' }).click();
     await expect(page.getByRole('heading', { name: 'Tablero de pedidos' })).toBeVisible();
+    await ensurePlateAvailability(page);
   });
 
   await test.step('abrir caja', async () => {

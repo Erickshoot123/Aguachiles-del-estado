@@ -43,6 +43,7 @@ function toProductDto(product: ProductWithRelations): Product {
     unit: product.unit,
     isActive: product.isActive,
     isComplement: product.isComplement,
+    plateSize: product.plateSize,
     stock: product.inventory ? product.inventory.quantity.toNumber() : 0,
   };
 }
@@ -59,6 +60,7 @@ export async function listActiveProductSummaries(prisma: PrismaClient): Promise<
     price: product.price.toNumber(),
     unit: product.unit,
     isComplement: product.isComplement,
+    plateSize: product.plateSize,
   }));
 }
 
@@ -110,6 +112,7 @@ export async function createProduct(
           taxRate: input.taxRate,
           unit: input.unit,
           isComplement: input.isComplement,
+          plateSize: input.isComplement ? null : input.plateSize ?? null,
         },
         include: { category: true },
       });
@@ -229,7 +232,7 @@ export async function updateProduct(
   try {
     const updated = await prisma.product.update({
       where: { id: productId },
-      data: input,
+      data: { ...input, ...((input.isComplement ?? existing.isComplement) ? { plateSize: null } : {}) },
       include: { category: true, inventory: true },
     });
 

@@ -4,6 +4,7 @@ import { getLocalLocation } from '../locations/localLocation.repository.js';
 import { ProductNotAvailableError } from './orders.errors.js';
 import { toOrderDto } from './orderDto.js';
 import { findRetriedOrder } from './orderIdempotency.repository.js';
+import { reservePlates } from '../plates/plateReservation.service.js';
 
 async function priceOrder(tx: Prisma.TransactionClient, input: CreateOrderRequest) {
   const products = await tx.product.findMany({
@@ -29,13 +30,14 @@ export async function createOrder(db: PrismaClient, userId: string, input: Creat
     if (existing) return existing;
     const { items, ...totals } = await priceOrder(tx, input);
     const location = await getLocalLocation(tx);
+    const allocation = await reservePlates(tx, location.id, input);
     const [sequence] = await tx.$queryRaw<[{ nextval: bigint }]>`SELECT nextval('sale_ticket_number_seq')`;
     return tx.sale.create({ data: {
       ticketNumber: `#${sequence.nextval}`, clientRequestId: input.clientRequestId,
       userId, locationId: location.id, channel: input.channel, status: 'pending', fulfillmentStatus: 'in_prep',
       ...totals, customerName: input.customerName ?? null, customerPhone: input.customerPhone ?? null,
       deliveryAddress: input.deliveryAddress ?? null, deliveryReferences: input.deliveryReferences ?? null,
-      notes: input.notes ?? null, items: { create: items },
+      notes: input.notes ?? null, items: { create: items }, plateAllocation: { create: allocation },
     }, include: { items: { include: { product: true } } } });
   });
   return toOrderDto(sale);

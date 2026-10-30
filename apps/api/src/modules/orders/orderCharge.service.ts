@@ -5,6 +5,7 @@ import { createReceiptForSale } from '../receipts/receipts.service.js';
 import { assertLocalSale, assertLocalRegister } from '../locations/localLocation.repository.js';
 import { OrderNotFoundError, OrderAlreadyChargedError, PaymentAmountMismatchError, PaymentMethodNotFoundError } from './orders.errors.js';
 import { toOrderDto } from './orderDto.js';
+import { settlePlateReservation } from '../plates/plateReservation.service.js';
 
 async function applyChargePayments(
   tx: Prisma.TransactionClient,
@@ -76,6 +77,7 @@ export async function chargeOrder(
     });
 
     await createReceiptForSale(tx, updatedSale);
+    await settlePlateReservation(tx, sale.id, 'sold');
 
     return updatedSale;
   });

@@ -11,6 +11,9 @@ const envSchema = z.object({
   LOGIN_RATE_LIMIT_MAX: z.coerce.number().int().positive().default(20),
   LOGIN_RATE_LIMIT_WINDOW_MS: z.coerce.number().int().positive().default(60_000),
   POS_MODE: z.enum(['local', 'central']).default('local'),
+  POS_TIME_ZONE: z.string().default('America/Mazatlan').refine((zone) => {
+    try { new Intl.DateTimeFormat('en', { timeZone: zone }); return true; } catch { return false; }
+  }, 'POS_TIME_ZONE debe ser una zona horaria IANA válida'),
   SYNC_CENTRAL_URL: z.string().url().optional(),
   SYNC_TOKEN: z.string().min(32).optional(),
   SYNC_INTERVAL_MS: z.coerce.number().int().min(1000).max(300000).default(15000),

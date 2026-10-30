@@ -7,6 +7,8 @@ import { useAdvanceOrder, useOrderLookup, useOrders } from '../features/orders/h
 import { NewOrderModal } from '../features/orders/NewOrderModal';
 import { OrderCard } from '../features/orders/OrderCard';
 import { OrderDetailModal } from '../features/orders/OrderDetailModal';
+import { PlateAvailabilityPanel } from '../features/plates/PlateAvailabilityPanel';
+import { usePlateAvailability } from '../features/plates/hooks';
 
 const UI_TEXT = {
   title: 'Tablero de pedidos',
@@ -28,6 +30,7 @@ function summarize(orders: Order[]): string {
 
 export function OrdersBoardPage(): JSX.Element {
   const ordersQuery = useOrders();
+  const platesQuery = usePlateAvailability();
   const advanceOrder = useAdvanceOrder();
   const [isCreating, setIsCreating] = useState(false);
   const [detailOrderId, setDetailOrderId] = useState<string | null>(null);
@@ -86,11 +89,14 @@ export function OrdersBoardPage(): JSX.Element {
         <button
           type="button"
           onClick={() => setIsCreating(true)}
+          disabled={!platesQuery.data?.initialized}
+          title={!platesQuery.data?.initialized ? 'Registra los platos iniciales de hoy para empezar' : undefined}
           className="h-11 rounded-lg bg-accent px-4 text-[14px] font-semibold text-white hover:bg-accent-hover"
         >
           {UI_TEXT.newOrder}
         </button>
       </header>
+      <PlateAvailabilityPanel />
       {submittedTicketNumber !== '' && orderLookup.isError ? (
         <p className="px-7 pt-3 text-[13px] text-red-600">{UI_TEXT.searchNotFound}</p>
       ) : null}

@@ -150,6 +150,7 @@ async function seedCategoryProducts(
         cost: item.cost,
         unit: item.unit,
         isComplement,
+        plateSize: isComplement ? null : item.unit === 'medio kilo' ? 'half_kilo' : item.unit === 'kilo' ? 'kilo' : null,
       },
     });
 

@@ -15,6 +15,7 @@ import {
 } from './api';
 import { useOfflineQueueStore } from './offlineQueue';
 import { printNewOrderKitchen } from '../receipts/kitchenPrinting';
+import { PLATES_QUERY_KEY } from '../plates/hooks';
 
 export const ORDERS_QUERY_KEY = ['orders'] as const;
 const PRODUCTS_QUERY_KEY = ['products'] as const;
@@ -63,6 +64,7 @@ export function useCreateOrder() {
     },
     onSuccess: async (order) => {
       void queryClient.invalidateQueries({ queryKey: ORDERS_QUERY_KEY });
+      void queryClient.invalidateQueries({ queryKey: PLATES_QUERY_KEY });
       if (order) await printNewOrderKitchen(order);
     },
   });
@@ -86,6 +88,7 @@ export function useCancelOrder() {
     mutationFn: (orderId: string) => cancelOrder(orderId),
     onSuccess: () => {
       void queryClient.invalidateQueries({ queryKey: ORDERS_QUERY_KEY });
+      void queryClient.invalidateQueries({ queryKey: PLATES_QUERY_KEY });
     },
   });
 }
@@ -98,6 +101,7 @@ export function useChargeOrder() {
       chargeOrder(orderId, input),
     onSuccess: () => {
       void queryClient.invalidateQueries({ queryKey: ORDERS_QUERY_KEY });
+      void queryClient.invalidateQueries({ queryKey: PLATES_QUERY_KEY });
       void queryClient.invalidateQueries({ queryKey: CASH_SESSION_QUERY_KEY });
     },
   });

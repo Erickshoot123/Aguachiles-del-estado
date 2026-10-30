@@ -12,6 +12,7 @@ export const testPrisma = new PrismaClient({
 // listada aquí, así que el orden de esta lista no importa para las FKs; solo
 // se listan las tablas "raíz" para que quede claro qué se está limpiando.
 const TABLES_TO_RESET = [
+  'plate_allocations', 'plate_days',
   'sync_records', 'sync_installations', 'sync_outbox', 'local_nodes',
   'refresh_tokens',
   'audit_logs',

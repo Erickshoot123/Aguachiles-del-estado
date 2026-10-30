@@ -39,6 +39,7 @@ model Product {
   unit        String
   isActive    Boolean  @default(true) @map("is_active")
   isComplement Boolean @default(false) @map("is_complement")
+  plateSize    PlateSize? @map("plate_size")
 
   inventory          Inventory?
   inventoryMovements InventoryMovement[]
@@ -213,6 +214,7 @@ model Location {
   cashRegisters CashRegister[]
   sales         Sale[]
   localNode     LocalNode?
+  plateDays     PlateDay[]
 
   createdAt DateTime @default(now()) @map("created_at")
 
@@ -339,6 +341,7 @@ enum FulfillmentStatus {
 }
 
 model Sale {
+  plateAllocation PlateAllocation?
   id                     String               @id @default(uuid())
   ticketNumber           String               @unique @map("ticket_number")
   clientRequestId        String?              @unique @map("client_request_id")
@@ -377,6 +380,49 @@ model Sale {
   updatedAt DateTime @updatedAt @map("updated_at")
 
   @@map("sales")
+}
+
+enum PlateSize {
+  kilo
+  half_kilo
+}
+
+model PlateDay {
+  id             String @id @default(uuid())
+  locationId     String @map("location_id")
+  location       Location @relation(fields: [locationId], references: [id], onDelete: Restrict)
+  businessDate   String @map("business_date") @db.VarChar(10)
+  initialKilo    Int @map("initial_kilo")
+  initialHalf    Int @map("initial_half")
+  kiloLimit      Int @map("kilo_limit")
+  halfLimit      Int @map("half_limit")
+  kiloReserved   Int @default(0) @map("kilo_reserved")
+  halfReserved   Int @default(0) @map("half_reserved")
+  kiloSold       Int @default(0) @map("kilo_sold")
+  halfSold       Int @default(0) @map("half_sold")
+  createdAt      DateTime @default(now()) @map("created_at")
+  updatedAt      DateTime @updatedAt @map("updated_at")
+  allocations    PlateAllocation[]
+  @@unique([locationId, businessDate])
+  @@map("plate_days")
+}
+
+enum PlateAllocationState {
+  reserved
+  sold
+  released
+}
+
+model PlateAllocation {
+  saleId    String @id @map("sale_id")
+  sale      Sale @relation(fields: [saleId], references: [id], onDelete: Restrict)
+  dayId     String @map("day_id")
+  day       PlateDay @relation(fields: [dayId], references: [id], onDelete: Restrict)
+  kilo      Int
+  halfKilo  Int @map("half_kilo")
+  state     PlateAllocationState @default(reserved)
+  @@index([dayId])
+  @@map("plate_allocations")
 }
 
 // Cada base operativa pertenece a una sola sucursal. La central usa proyecciones

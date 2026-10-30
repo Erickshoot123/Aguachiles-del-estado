@@ -4,6 +4,7 @@ import { assertLocalSale, getLocalLocation } from '../locations/localLocation.re
 import { CannotCancelPaidOrderError, InvalidFulfillmentTransitionError, OrderNotFoundError, OrderNotDeliveryError, OrderMissingDeliveryInfoError } from './orders.errors.js';
 import { buildWhatsAppMessage } from './whatsapp.js';
 import { toOrderDto } from './orderDto.js';
+import { settlePlateReservation } from '../plates/plateReservation.service.js';
 export { createOrder } from './orderCreation.service.js';
 export { chargeOrder } from './orderCharge.service.js';
 
@@ -98,6 +99,7 @@ export async function cancelOrder(prisma: PrismaClient, orderId: string): Promis
     if (sale.status !== 'pending') {
       throw new CannotCancelPaidOrderError();
     }
+    await settlePlateReservation(tx, orderId, 'released');
 
     return tx.sale.update({
       where: { id: orderId },
