@@ -1,19 +1,19 @@
 import { Prisma, type CashRegister as PrismaCashRegister, type PrismaClient } from '@prisma/client';
-import type { CashMovement, CashRegister, CashSession, CreateCashMovementRequest } from '@aguachiles/shared';
+import type { CashMovement, CashRegister, CashSession } from '@aguachiles/shared';
 import { recordAuditLog } from '../audit/audit.service.js';
+import { assertLocalRegister, getLocalLocation } from '../locations/localLocation.repository.js';
 import {
-  CashSessionAlreadyClosedError,
   CashSessionAlreadyOpenError,
   CashSessionNotFoundError,
   NoCashRegisterConfiguredError,
   NoOpenCashSessionError,
 } from './cash.errors.js';
 
-type SessionWithRegister = Prisma.CashRegisterSessionGetPayload<{
-  include: { cashRegister: true };
-}>;
+import { toCashSessionDto } from './cashDto.js';
 
-export type MovementWithMethod = Prisma.CashMovementGetPayload<{ include: { paymentMethod: true } }>;
+import { cashMovementsDelta } from './cashMath.js';
+export { cashMovementsDelta, type MovementWithMethod } from './cashMath.js';
+export { closeSession } from './cashClose.service.js';
 
 type MovementWithUser = Prisma.CashMovementGetPayload<{ include: { user: true } }>;
 
@@ -37,41 +37,6 @@ function toCashRegisterDto(cashRegister: PrismaCashRegister): CashRegister {
   };
 }
 
-function toCashSessionDto(session: SessionWithRegister): CashSession {
-  return {
-    id: session.id,
-    cashRegisterId: session.cashRegisterId,
-    cashRegisterName: session.cashRegister.name,
-    status: session.status,
-    openedAt: session.openedAt.toISOString(),
-    closedAt: session.closedAt ? session.closedAt.toISOString() : null,
-    openingAmount: session.openingAmount.toNumber(),
-    expectedClosingAmount: session.expectedClosingAmount
-      ? session.expectedClosingAmount.toNumber()
-      : null,
-    actualClosingAmount: session.actualClosingAmount ? session.actualClosingAmount.toNumber() : null,
-    difference: session.difference ? session.difference.toNumber() : null,
-  };
-}
-
-export function cashMovementsDelta(movements: MovementWithMethod[]): Prisma.Decimal {
-  return movements.reduce((total, movement) => {
-    if (movement.type === 'withdrawal' || movement.type === 'expense') {
-      return total.sub(movement.amount);
-    }
-    if (movement.type === 'deposit') {
-      return total.add(movement.amount);
-    }
-    if (movement.type === 'sale_income' && movement.paymentMethod?.type === 'cash') {
-      return total.add(movement.amount);
-    }
-    if (movement.type === 'refund' && movement.paymentMethod?.type === 'cash') {
-      return total.sub(movement.amount);
-    }
-    return total;
-  }, new Prisma.Decimal(0));
-}
-
 async function computeExpectedClosingAmount(
   prisma: PrismaClient,
   sessionId: string,
@@ -85,8 +50,9 @@ async function computeExpectedClosingAmount(
 }
 
 export async function listCashRegisters(prisma: PrismaClient): Promise<CashRegister[]> {
+  const location = await getLocalLocation(prisma);
   const cashRegisters = await prisma.cashRegister.findMany({
-    where: { isActive: true },
+    where: { isActive: true, locationId: location.id },
     orderBy: { name: 'asc' },
   });
   return cashRegisters.map(toCashRegisterDto);
@@ -96,6 +62,7 @@ export async function getCurrentSession(
   prisma: PrismaClient,
   cashRegisterId: string,
 ): Promise<CashSession | null> {
+  await assertLocalRegister(prisma, cashRegisterId);
   const session = await prisma.cashRegisterSession.findFirst({
     where: { status: 'open', cashRegisterId },
     include: { cashRegister: true },
@@ -116,6 +83,7 @@ export async function openSession(
   cashRegisterId: string,
   openingAmount: number,
 ): Promise<CashSession> {
+  await assertLocalRegister(prisma, cashRegisterId);
   const cashRegister = await prisma.cashRegister.findFirst({
     where: { id: cashRegisterId, isActive: true },
   });
@@ -164,53 +132,11 @@ export async function openSession(
   return toCashSessionDto(session);
 }
 
-export async function closeSession(
-  prisma: PrismaClient,
-  sessionId: string,
-  userId: string,
-  actualClosingAmount: number,
-): Promise<CashSession> {
-  const session = await prisma.cashRegisterSession.findUnique({ where: { id: sessionId } });
-  if (!session) {
-    throw new CashSessionNotFoundError();
-  }
-  if (session.status === 'closed') {
-    throw new CashSessionAlreadyClosedError();
-  }
-
-  const expected = await computeExpectedClosingAmount(prisma, sessionId, session.openingAmount);
-  const actual = new Prisma.Decimal(actualClosingAmount);
-
-  const difference = actual.sub(expected);
-  const updated = await prisma.cashRegisterSession.update({
-    where: { id: sessionId },
-    data: {
-      status: 'closed',
-      closedByUserId: userId,
-      closedAt: new Date(),
-      expectedClosingAmount: expected,
-      actualClosingAmount: actual,
-      difference,
-    },
-    include: { cashRegister: true },
-  });
-
-  await recordAuditLog(prisma, {
-    userId,
-    action: 'cash_session_closed',
-    entity: 'cash_session',
-    entityId: sessionId,
-    oldValue: { expectedClosingAmount: expected.toNumber() },
-    newValue: { actualClosingAmount: actual.toNumber(), difference: difference.toNumber() },
-  });
-
-  return toCashSessionDto(updated);
-}
-
 export async function requireOpenSession(
   prisma: PrismaClient,
   cashRegisterId: string,
 ): Promise<{ id: string }> {
+  await assertLocalRegister(prisma, cashRegisterId);
   const session = await prisma.cashRegisterSession.findFirst({
     where: { status: 'open', cashRegisterId },
   });
@@ -218,32 +144,6 @@ export async function requireOpenSession(
     throw new NoOpenCashSessionError();
   }
   return { id: session.id };
-}
-
-export async function createCashMovement(
-  prisma: PrismaClient,
-  sessionId: string,
-  userId: string,
-  input: CreateCashMovementRequest,
-): Promise<CashMovement> {
-  const session = await prisma.cashRegisterSession.findUnique({ where: { id: sessionId } });
-  if (!session) {
-    throw new CashSessionNotFoundError();
-  }
-  if (session.status !== 'open') {
-    throw new CashSessionAlreadyClosedError();
-  }
-  const movement = await prisma.cashMovement.create({
-    data: {
-      sessionId,
-      type: input.type,
-      amount: new Prisma.Decimal(input.amount),
-      description: input.description,
-      userId,
-    },
-    include: { user: true },
-  });
-  return toCashMovementDto(movement);
 }
 
 export async function listCashMovements(
@@ -254,6 +154,7 @@ export async function listCashMovements(
   if (!session) {
     throw new CashSessionNotFoundError();
   }
+  await assertLocalRegister(prisma, session.cashRegisterId);
   const movements = await prisma.cashMovement.findMany({
     where: { sessionId },
     include: { user: true },
@@ -261,3 +162,5 @@ export async function listCashMovements(
   });
   return movements.map(toCashMovementDto);
 }
+
+export { createCashMovement } from './cashMovement.service.js';

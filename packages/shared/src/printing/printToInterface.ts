@@ -5,6 +5,7 @@ import {
 } from 'node-thermal-printer';
 import type { Ticket } from '../ticket.js';
 import { renderTicketCommands, type RenderTicketOptions } from './renderTicketCommands.js';
+import { sendToWindowsPrinter } from './windowsSpooler.js';
 
 export class PrintFailedError extends Error {
   constructor(cause: unknown) {
@@ -38,6 +39,13 @@ function wait(ms: number): Promise<void> {
  */
 export async function printTicketToInterface(options: PrintToInterfaceOptions): Promise<void> {
   const { interfaceString, ticket, width, maxRetries = 3, retryDelayMs = 500, qrMode } = options;
+  if (interfaceString.startsWith('printer:') && process.platform === 'win32') {
+    const printer = new ThermalPrinter({ type: PrinterTypes.EPSON, interface: '', width, characterSet: CharacterSet.WPC1252 });
+    await renderTicketCommands(printer, ticket, { qrMode });
+    // No reintentar automáticamente: un acuse perdido podría duplicar el ticket físico.
+    await sendToWindowsPrinter(interfaceString.slice('printer:'.length), printer.getBuffer());
+    return;
+  }
 
   let lastError: unknown;
   for (let attempt = 1; attempt <= maxRetries; attempt += 1) {

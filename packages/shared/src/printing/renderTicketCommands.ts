@@ -34,7 +34,9 @@ export async function renderTicketCommands(
   printer.bold(true);
   printer.println(ticket.businessName.toUpperCase());
   printer.bold(false);
-  printer.println('Cocina · solo delivery');
+  const isKitchen = ticket.purpose === 'kitchen';
+  printer.println(isKitchen ? 'COMANDA DE COCINA' : 'Comprobante de pedido');
+  if (isKitchen && ticket.channelLabel) printer.println(ticket.channelLabel);
   printer.drawLine();
 
   printer.alignLeft();
@@ -42,11 +44,35 @@ export async function renderTicketCommands(
   printer.leftRight('Hora', new Date(ticket.issuedAt).toLocaleTimeString('es-MX'));
   printer.drawLine();
 
+  if (isKitchen) {
+    const customerDetails = [
+      ['Cliente', ticket.customerName], ['Telefono', ticket.customerPhone],
+      ['Direccion', ticket.deliveryAddress], ['Referencias', ticket.deliveryReferences],
+    ];
+    for (const [label, value] of customerDetails) {
+      if (value) printer.println(`${label}: ${value}`);
+    }
+    if (customerDetails.some(([, value]) => value)) printer.drawLine();
+  }
+
   for (const line of ticket.lines) {
-    printer.leftRight(`${line.quantity}x ${line.productName}`, formatMoney(line.subtotal));
+    if (isKitchen) printer.println(`${line.quantity}x ${line.productName}`);
+    else printer.leftRight(`${line.quantity}x ${line.productName}`, formatMoney(line.subtotal));
+    if (line.notes) {
+      printer.bold(true);
+      printer.println(`  ${line.notes}`);
+      printer.bold(false);
+    }
   }
   printer.drawLine();
 
+  if (isKitchen && ticket.notes) {
+    printer.bold(true);
+    printer.println('NOTAS:');
+    printer.bold(false);
+    printer.println(ticket.notes);
+    printer.drawLine();
+  }
   printer.bold(true);
   printer.leftRight('TOTAL', formatMoney(ticket.total));
   printer.bold(false);
@@ -58,7 +84,7 @@ export async function renderTicketCommands(
   }
 
   const qrMode = options.qrMode ?? 'native';
-  if (ticket.whatsappUrl && qrMode !== 'off') {
+  if (!isKitchen && ticket.whatsappUrl && qrMode !== 'off') {
     printer.newLine();
     printer.alignCenter();
     printer.println('Pedido por WhatsApp');

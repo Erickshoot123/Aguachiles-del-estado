@@ -27,7 +27,7 @@ interface PrintSettingsState {
 export const usePrintSettingsStore = create<PrintSettingsState>()(
   persist(
     (set) => ({
-      ticketFormat: 'thermal_80',
+      ticketFormat: 'thermal_58',
       printerId: null,
       // Cada terminal (navegador) guarda su propio modo: las tablets que no
       // pueden correr el Print Agent eligen "red" u "otra_terminal" aquí.

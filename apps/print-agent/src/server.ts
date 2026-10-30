@@ -38,6 +38,12 @@ async function main(): Promise<void> {
     );
   }
   await app.listen({ port: env.PORT, host: env.HOST });
+  const shutdown = (): void => { void app.close(); };
+  process.once('SIGINT', shutdown);
+  process.once('SIGTERM', shutdown);
+  process.on('message', (message) => {
+    if (message === 'shutdown') { shutdown(); process.disconnect?.(); }
+  });
 }
 
 main().catch((error: unknown) => {

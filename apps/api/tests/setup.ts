@@ -3,7 +3,13 @@
 // lee `process.env` (el plugin de Prisma de la app, loadEnv) apunta a la base
 // de datos de pruebas, no a la de desarrollo.
 process.env.NODE_ENV = 'test';
-process.env.DATABASE_URL = 'postgresql://postgres:postgres@localhost:5432/aguachiles_pos_test';
+process.env.DATABASE_URL = process.env.TEST_DATABASE_URL ?? 'postgresql://postgres:postgres@localhost:5432/aguachiles_pos_test';
+if (new URL(process.env.DATABASE_URL).pathname !== '/aguachiles_pos_test') {
+  throw new Error('Las pruebas solo pueden usar la base aguachiles_pos_test');
+}
+process.env.POS_MODE = 'local';
+delete process.env.SYNC_CENTRAL_URL;
+delete process.env.SYNC_TOKEN;
 process.env.JWT_SECRET = 'test-secret-para-pruebas-minimo-32-caracteres';
 process.env.JWT_ACCESS_EXPIRES_IN = '15m';
 process.env.CORS_ORIGIN = 'http://localhost:5173';

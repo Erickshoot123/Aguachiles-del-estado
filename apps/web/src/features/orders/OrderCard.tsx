@@ -35,11 +35,14 @@ export function OrderCard({ order, advanceLabel, onOpenDetail, onAdvance }: Orde
         {order.items.map((item) => (
           <div key={item.id} className="flex gap-2 text-[13px] text-text">
             <span className="font-mono text-muted-2">{item.quantity}x</span>
-            <span>{item.productName}</span>
+            <span>{item.productName}{item.notes ? <small className="block font-semibold text-accent-hover">{item.notes}</small> : null}</span>
           </div>
         ))}
       </div>
 
+      {order.fulfillmentStatus === 'in_delivery' && order.deliveryDueAt ? <p className="text-xs text-muted">
+        Entrega automática en {Math.max(0, Math.ceil((Date.parse(order.deliveryDueAt) - Date.now()) / 60000))} min
+      </p> : null}
       <div className="flex flex-wrap items-center gap-2 border-t border-divider pt-2.5">
         <span className="font-mono text-[14px] font-semibold">{formatCurrency(order.total)}</span>
         {order.status === 'pending' ? (

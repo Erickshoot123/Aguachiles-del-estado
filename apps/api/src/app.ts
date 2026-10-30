@@ -10,14 +10,19 @@ import auditRoutes from './modules/audit/audit.routes.js';
 import authRoutes from './modules/auth/auth.routes.js';
 import cashRoutes from './modules/cash/cash.routes.js';
 import categoriesRoutes from './modules/categories/categories.routes.js';
+import { registerDeliveryCompletion } from './modules/orders/deliveryCompletion.service.js';
 import ordersRoutes from './modules/orders/orders.routes.js';
 import paymentMethodsRoutes from './modules/payment-methods/payment-methods.routes.js';
 import productsRoutes from './modules/products/products.routes.js';
 import purchasesRoutes from './modules/purchases/purchases.routes.js';
 import receiptsRoutes from './modules/receipts/receipts.routes.js';
+import platesRoutes from './modules/plates/plates.routes.js';
 import refundsRoutes from './modules/refunds/refunds.routes.js';
 import reportsRoutes from './modules/reports/reports.routes.js';
 import suppliersRoutes from './modules/suppliers/suppliers.routes.js';
+import { registerSyncRoutes } from './modules/sync/sync.routes.js';
+import { registerSyncWorker } from './modules/sync/syncWorker.js';
+import { registerBranchReportRoutes } from './modules/branches/branches.routes.js';
 
 export async function buildApp(env: Env): Promise<FastifyInstance> {
   const app = Fastify({ logger: env.NODE_ENV !== 'test' });
@@ -28,9 +33,16 @@ export async function buildApp(env: Env): Promise<FastifyInstance> {
   await app.register(prismaPlugin);
   await app.register(authPlugin, { env });
   await app.register(authRoutes, { env });
+  await registerSyncRoutes(app, env);
+  if (env.POS_MODE === 'central') {
+    await registerBranchReportRoutes(app);
+    app.get('/health', async () => ({ status: 'ok', mode: 'central' }));
+    return app;
+  }
   await app.register(categoriesRoutes);
   await app.register(productsRoutes);
   await app.register(ordersRoutes);
+  await app.register(platesRoutes);
   await app.register(paymentMethodsRoutes);
   await app.register(cashRoutes);
   await app.register(receiptsRoutes);
@@ -40,6 +52,8 @@ export async function buildApp(env: Env): Promise<FastifyInstance> {
   await app.register(purchasesRoutes);
   await app.register(auditRoutes);
   await app.register(analyticsRoutes);
+  registerSyncWorker(app, env);
+  if (env.NODE_ENV !== 'test') registerDeliveryCompletion(app);
 
   app.get('/health', async () => ({ status: 'ok' }));
 

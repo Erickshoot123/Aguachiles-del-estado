@@ -11,6 +11,7 @@ const NOTES_TRIM_STEP = 40;
 export interface WhatsAppOrderItem {
   productName: string;
   quantity: number;
+  notes?: string | null;
 }
 
 export interface WhatsAppOrderInput {
@@ -43,6 +44,7 @@ function buildMessage(order: WhatsAppOrderInput, notes: string | null): string {
   lines.push('');
   for (const item of order.items) {
     lines.push(`${item.quantity}x ${item.productName}`);
+    if (item.notes) lines.push(`  ${item.notes}`);
   }
 
   if (notes) {

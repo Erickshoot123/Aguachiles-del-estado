@@ -80,7 +80,7 @@ export function OrderDetailModal({
           {order.items.map((item) => (
             <div key={item.id} className="flex items-baseline gap-2.5 text-[15px]">
               <span className="font-mono text-muted-2">{item.quantity}x</span>
-              <span className="min-w-0 flex-1">{item.productName}</span>
+              <span className="min-w-0 flex-1">{item.productName}{item.notes ? <small className="block whitespace-pre-line font-semibold text-accent-hover">{item.notes}</small> : null}</span>
               <span className="font-mono text-muted">{formatCurrency(item.subtotal)}</span>
             </div>
           ))}
@@ -103,15 +103,15 @@ export function OrderDetailModal({
               {order.deliveryReferences ? (
                 <span className="text-muted-2">{order.deliveryReferences}</span>
               ) : null}
-              {order.notes ? (
-                <span className="text-muted-2">{UI_TEXT.notesLabel}: {order.notes}</span>
-              ) : null}
             </div>
           ) : null}
+          {order.notes ? <p className="whitespace-pre-line rounded-lg bg-bg px-3 py-2.5 text-[13px]">
+            {UI_TEXT.notesLabel}: {order.notes}
+          </p> : null}
         </div>
 
         <div className="flex flex-wrap gap-2.5 bg-bg px-5 py-4">
-          {canCancelOrCharge ? (
+          {canCancelOrCharge && order.fulfillmentStatus !== 'delivered' && order.fulfillmentStatus !== 'cancelled' ? (
             <button
               type="button"
               onClick={() => cancelOrder.mutate(order.id, { onSuccess: onClose })}

@@ -39,6 +39,7 @@ model Product {
   unit        String
   isActive    Boolean  @default(true) @map("is_active")
   isComplement Boolean @default(false) @map("is_complement")
+  plateSize    PlateSize? @map("plate_size")
 
   inventory          Inventory?
   inventoryMovements InventoryMovement[]
@@ -212,6 +213,8 @@ model Location {
 
   cashRegisters CashRegister[]
   sales         Sale[]
+  localNode     LocalNode?
+  plateDays     PlateDay[]
 
   createdAt DateTime @default(now()) @map("created_at")
 
@@ -338,8 +341,11 @@ enum FulfillmentStatus {
 }
 
 model Sale {
+  plateAllocation PlateAllocation?
   id                     String               @id @default(uuid())
   ticketNumber           String               @unique @map("ticket_number")
+  clientRequestId        String?              @unique @map("client_request_id")
+  paidAt                 DateTime?            @map("paid_at")
   customerId             String?              @map("customer_id")
   customer               Customer?            @relation(fields: [customerId], references: [id])
   userId                 String               @map("user_id")
@@ -350,6 +356,7 @@ model Sale {
   location               Location             @relation(fields: [locationId], references: [id], onDelete: Restrict)
   status                 SaleStatus           @default(pending)
   channel                SaleChannel          @default(counter)
+  deliveryDueAt          DateTime?            @map("delivery_due_at")
   fulfillmentStatus      FulfillmentStatus    @default(in_prep) @map("fulfillment_status")
   subtotal               Decimal              @db.Decimal(12, 2)
   taxTotal               Decimal              @map("tax_total") @db.Decimal(12, 2)
@@ -376,7 +383,106 @@ model Sale {
   @@map("sales")
 }
 
+enum PlateSize {
+  kilo
+  half_kilo
+}
+
+model PlateDay {
+  id             String @id @default(uuid())
+  locationId     String @map("location_id")
+  location       Location @relation(fields: [locationId], references: [id], onDelete: Restrict)
+  businessDate   String @map("business_date") @db.VarChar(10)
+  initialKilo    Int @map("initial_kilo")
+  initialHalf    Int @map("initial_half")
+  kiloLimit      Int @map("kilo_limit")
+  halfLimit      Int @map("half_limit")
+  kiloReserved   Int @default(0) @map("kilo_reserved")
+  halfReserved   Int @default(0) @map("half_reserved")
+  kiloSold       Int @default(0) @map("kilo_sold")
+  halfSold       Int @default(0) @map("half_sold")
+  createdAt      DateTime @default(now()) @map("created_at")
+  updatedAt      DateTime @updatedAt @map("updated_at")
+  allocations    PlateAllocation[]
+  @@unique([locationId, businessDate])
+  @@map("plate_days")
+}
+
+enum PlateAllocationState {
+  reserved
+  sold
+  released
+}
+
+model PlateAllocation {
+  saleId    String @id @map("sale_id")
+  sale      Sale @relation(fields: [saleId], references: [id], onDelete: Restrict)
+  dayId     String @map("day_id")
+  day       PlateDay @relation(fields: [dayId], references: [id], onDelete: Restrict)
+  kilo      Int
+  halfKilo  Int @map("half_kilo")
+  state     PlateAllocationState @default(reserved)
+  @@index([dayId])
+  @@map("plate_allocations")
+}
+
+// Cada base operativa pertenece a una sola sucursal. La central usa proyecciones
+// separadas: nunca reproduce comandos de cobro ni comparte el inventario local.
+model LocalNode {
+  id             String   @id @default("local")
+  locationId     String   @unique @map("location_id")
+  location       Location @relation(fields: [locationId], references: [id], onDelete: Restrict, onUpdate: NoAction)
+  installationId String   @unique @map("installation_id")
+  lastSuccessAt  DateTime? @map("last_success_at")
+  lastError      String?  @map("last_error")
+  @@map("local_nodes")
+}
+
+model SyncOutbox {
+  sequence   BigInt    @id @default(autoincrement())
+  kind       String
+  entityId   String   @map("entity_id")
+  locationId String   @map("location_id")
+  payload    Json
+  deleted    Boolean  @default(false)
+  createdAt  DateTime @default(now()) @map("created_at")
+  sentAt     DateTime? @map("sent_at")
+  @@index([sentAt, sequence])
+  @@map("sync_outbox")
+}
+
+model SyncInstallation {
+  id               String   @id @default(uuid())
+  name             String
+  sourceLocationId String   @unique @map("source_location_id")
+  timeZone         String   @map("time_zone")
+  tokenHash        String   @map("token_hash")
+  isActive         Boolean  @default(true) @map("is_active")
+  lastSeenAt       DateTime? @map("last_seen_at")
+  pendingCount     Int?     @map("pending_count")
+  records          SyncRecord[]
+  @@map("sync_installations")
+}
+
+model SyncRecord {
+  installationId String           @map("installation_id")
+  installation   SyncInstallation @relation(fields: [installationId], references: [id], onDelete: Restrict, onUpdate: NoAction)
+  kind           String
+  entityId       String           @map("entity_id")
+  sequence       BigInt
+  payload        Json
+  deleted        Boolean          @default(false)
+  occurredAt     DateTime          @map("occurred_at")
+  amount         Decimal          @db.Decimal(12, 2)
+  status         String?
+  paymentType    String?          @map("payment_type")
+  @@id([installationId, kind, entityId])
+  @@index([installationId, occurredAt, kind])
+  @@map("sync_records")
+}
+
 model SaleItem {
+  notes      String?
   id         String   @id @default(uuid())
   saleId     String   @map("sale_id")
   sale       Sale     @relation(fields: [saleId], references: [id], onDelete: Restrict)

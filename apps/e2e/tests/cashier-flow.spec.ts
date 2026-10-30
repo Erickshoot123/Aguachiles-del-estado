@@ -1,4 +1,6 @@
 import { expect, test } from '@playwright/test';
+import { readFile } from 'node:fs/promises';
+import { ensurePlateAvailability } from './plateSetup';
 
 const CAJERO_USERNAME = 'cajero';
 const CAJERO_PASSWORD = 'ChangeMe123!';
@@ -14,6 +16,7 @@ test('flujo completo de cajero: login, abrir caja, vender con pago dividido, imp
     await page.getByLabel('Contraseña').fill(CAJERO_PASSWORD);
     await page.getByRole('button', { name: 'Ingresar' }).click();
     await expect(page.getByRole('heading', { name: 'Tablero de pedidos' })).toBeVisible();
+    await ensurePlateAvailability(page);
   });
 
   await test.step('abrir caja', async () => {
@@ -31,13 +34,13 @@ test('flujo completo de cajero: login, abrir caja, vender con pago dividido, imp
     await page.getByRole('button', { name: 'Nuevo pedido' }).click();
 
     const dialog = page.getByRole('dialog').last();
-    const productRow = dialog.getByText(PRODUCT_NAME, { exact: true }).locator('..');
-    await productRow.getByRole('spinbutton').fill('1');
+    await expect(dialog.getByRole('button', { name: 'Delivery', exact: true })).toHaveAttribute('aria-pressed', 'true');
+    await dialog.getByRole('button', { name: 'Mostrador', exact: true }).click();
+    await dialog.getByRole('button', { name: `Agregar uno: ${PRODUCT_NAME}`, exact: true }).click();
 
     // El aviso de "¿Quieres agregar algo extra?" solo aparece una vez que hay
     // al menos un producto principal con cantidad > 0.
-    const extraRow = dialog.getByText(EXTRA_PRODUCT_NAME, { exact: true }).locator('..');
-    await extraRow.getByRole('spinbutton').fill('1');
+    await dialog.getByRole('button', { name: `Agregar uno: ${EXTRA_PRODUCT_NAME}`, exact: true }).click();
 
     await dialog.getByRole('button', { name: 'Crear pedido' }).click();
     await expect(page.getByRole('dialog')).toHaveCount(0);
@@ -45,6 +48,13 @@ test('flujo completo de cajero: login, abrir caja, vender con pago dividido, imp
     const lastCard = page.locator('article').last();
     ticketNumber = (await lastCard.locator('span').first().innerText()).trim();
     expect(ticketNumber).toMatch(/^#\d+$/);
+    const comanda = (await readFile('../print-agent/print-output/e2e-ticket.bin', 'latin1')).replace(/\s+/g, ' ');
+    expect(comanda).toContain('COMANDA DE COCINA');
+    expect(comanda).toContain(ticketNumber);
+    expect(comanda).toContain(PRODUCT_NAME);
+    expect(comanda).toContain(EXTRA_PRODUCT_NAME);
+    expect(comanda).not.toContain('TOTAL');
+    expect(comanda).not.toContain('$');
   });
 
   await test.step('cobrar con pago dividido (efectivo + tarjeta)', async () => {

@@ -1,6 +1,8 @@
 import { z } from 'zod';
+import { plateSizeSchema } from './plates.js';
 
 export const productSummarySchema = z.object({
+  plateSize: plateSizeSchema.nullable().optional(),
   id: z.string().uuid(),
   name: z.string(),
   price: z.number().nonnegative(),
@@ -13,6 +15,7 @@ export type ProductSummary = z.infer<typeof productSummarySchema>;
 export const productListResponseSchema = z.array(productSummarySchema);
 
 export const productSchema = z.object({
+  plateSize: plateSizeSchema.nullable().optional(),
   id: z.string().uuid(),
   sku: z.string(),
   barcode: z.string().nullable(),
@@ -31,6 +34,7 @@ export const productSchema = z.object({
 export type Product = z.infer<typeof productSchema>;
 
 export const createProductRequestSchema = z.object({
+  plateSize: plateSizeSchema.nullable().optional(),
   sku: z.string().min(1),
   barcode: z.string().min(1).nullable().optional(),
   name: z.string().min(1),
@@ -46,6 +50,7 @@ export const createProductRequestSchema = z.object({
 export type CreateProductRequest = z.infer<typeof createProductRequestSchema>;
 
 export const updateProductRequestSchema = z.object({
+  plateSize: plateSizeSchema.nullable().optional(),
   sku: z.string().min(1).optional(),
   barcode: z.string().min(1).nullable().optional(),
   name: z.string().min(1).optional(),

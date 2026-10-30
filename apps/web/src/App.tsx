@@ -11,6 +11,8 @@ import { OrdersBoardPage } from './routes/OrdersBoardPage';
 import { ReportsPage } from './routes/ReportsPage';
 import { SuppliersPage } from './routes/SuppliersPage';
 import { UsersPage } from './routes/UsersPage';
+import { BranchesPage } from './routes/BranchesPage';
+import { env } from './lib/env';
 
 export function App(): JSX.Element {
   return (
@@ -22,7 +24,7 @@ export function App(): JSX.Element {
             path="/"
             element={
               <ProtectedRoute>
-                <OrdersBoardPage />
+                {env.VITE_POS_MODE === 'central' ? <BranchesPage /> : <OrdersBoardPage />}
               </ProtectedRoute>
             }
           />

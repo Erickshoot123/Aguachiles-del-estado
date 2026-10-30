@@ -5,8 +5,26 @@ import { idParamSchema } from '../../lib/paramsSchemas.js';
 import { dispatchPrint } from './printDispatch.service.js';
 import { PrintDispatchFailedError } from './receipts.errors.js';
 import { getReceiptTicket, recordPrinted } from './receipts.service.js';
+import { getKitchenTicket } from './kitchenTicket.service.js';
 
 export default async function receiptsRoutes(fastify: FastifyInstance): Promise<void> {
+  fastify.get('/api/orders/:id/comanda', { preHandler: fastify.authenticate }, async (request) => {
+    const { id } = idParamSchema.parse(request.params);
+    return { ticket: await getKitchenTicket(fastify.prisma, id) };
+  });
+  fastify.post('/api/orders/:id/comanda/print', { preHandler: fastify.authenticate }, async (request) => {
+    const { id } = idParamSchema.parse(request.params);
+    const { target, printerId, format } = printDispatchRequestSchema.parse(request.body);
+    if (target.mode === 'agente_local') throw new ValidationError('Usa el agente local desde esta terminal');
+    const ticket = await getKitchenTicket(fastify.prisma, id);
+    try {
+      await dispatchPrint({ ...ticket, format: format ?? ticket.format }, target, printerId);
+    } catch (error) {
+      request.log.error({ err: error, saleId: id }, 'Fallo al imprimir comanda');
+      throw new PrintDispatchFailedError();
+    }
+    return { status: 'printed' };
+  });
   fastify.get(
     '/api/orders/:id/receipt',
     { preHandler: fastify.authenticate },
