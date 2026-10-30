@@ -123,7 +123,7 @@ const zip = join(buildRoot, `payload-${version}.zip`);
 console.warn('Comprimiendo paquete…');
 await command('powershell.exe', ['-NoProfile', '-NonInteractive', '-ExecutionPolicy', 'Bypass', '-File',
   join(packaging, 'Zip-Payload.ps1'), '-Source', stage, '-Output', zip]);
-const executable = join(output, 'AguachilesPOS-Instalador-0.2.1-preview.exe');
+const executable = join(output, 'AguachilesPOS-Instalador-0.2.1.exe');
 await compile(executable, ['Common.cs', 'Installer.cs'], [`/resource:${zip},payload`]);
-await writeFile(executable + '.sha256.txt', `${await hash(executable)}  AguachilesPOS-Instalador-0.2.1-preview.exe\n`);
+await writeFile(executable + '.sha256.txt', `${await hash(executable)}  AguachilesPOS-Instalador-0.2.1.exe\n`);
 console.warn(JSON.stringify({ executable, bytes: (await stat(executable)).size, stage, version }));
