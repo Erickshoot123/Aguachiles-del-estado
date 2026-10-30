@@ -36,7 +36,7 @@ export function PlateAvailabilityPanel(): JSX.Element {
           <strong>{bucket.size === 'kilo' ? '1 kilo' : '1/2 kilo'}: {bucket.available} disponibles</strong>
           <p className="text-sm text-muted">{bucket.sold} vendidos · {bucket.reserved} en pedidos pendientes · {bucket.limit} habilitados</p>
         </div>)}
-      {canAdjust && !initial && !editing ? <button type="button" className="rounded border border-border px-3 py-2"
+      {canAdjust && !initial && !editing ? <button type="button" className="rounded bg-accent px-3 py-2 font-semibold text-white hover:bg-accent-hover"
         onClick={() => { setKilo('0'); setHalf('0'); setRequestId(crypto.randomUUID()); save.reset(); setEditing(true); }}>Ajustar platos</button> : null}
       </div> : <p className="my-2 text-sm">Antes de vender, registra cuántos platos de cada presentación tienes disponibles.</p>}
 
