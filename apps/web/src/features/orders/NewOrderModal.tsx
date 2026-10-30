@@ -29,7 +29,7 @@ const UI_TEXT = {
   increase: 'Agregar uno',
 } as const;
 
-const CHANNEL_OPTIONS: SaleChannel[] = ['counter', 'delivery'];
+const CHANNEL_OPTIONS: SaleChannel[] = ['delivery', 'counter'];
 
 // Grid táctil: tantas columnas como quepan sin bajar de 140px por tarjeta.
 const PRODUCT_GRID_CLASS =
@@ -121,7 +121,7 @@ const EMPTY_DELIVERY_INFO: DeliveryFormState = {
 export function NewOrderModal({ onClose }: NewOrderModalProps): JSX.Element {
   const productsQuery = useProducts();
   const createOrder = useCreateOrder();
-  const [channel, setChannel] = useState<SaleChannel>('counter');
+  const [channel, setChannel] = useState<SaleChannel>('delivery');
   const [quantities, setQuantities] = useState<Record<string, number>>({});
   const [deliveryInfo, setDeliveryInfo] = useState<DeliveryFormState>(EMPTY_DELIVERY_INFO);
 

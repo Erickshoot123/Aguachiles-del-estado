@@ -32,6 +32,8 @@ test('flujo completo de cajero: login, abrir caja, vender con pago dividido, imp
     await page.getByRole('button', { name: 'Nuevo pedido' }).click();
 
     const dialog = page.getByRole('dialog').last();
+    await expect(dialog.getByRole('button', { name: 'Delivery', exact: true })).toHaveAttribute('aria-pressed', 'true');
+    await dialog.getByRole('button', { name: 'Mostrador', exact: true }).click();
     await dialog.getByRole('button', { name: `Agregar uno: ${PRODUCT_NAME}`, exact: true }).click();
 
     // El aviso de "¿Quieres agregar algo extra?" solo aparece una vez que hay

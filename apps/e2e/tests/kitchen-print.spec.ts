@@ -18,6 +18,7 @@ test('fallar la impresión conserva el pedido y permite reimprimir sin duplicarl
   await page.getByRole('button', { name: 'Ingresar' }).click();
   await page.getByRole('button', { name: 'Nuevo pedido' }).click();
   const dialog = page.getByRole('dialog').last();
+  await dialog.getByRole('button', { name: 'Mostrador', exact: true }).click();
   await dialog.getByRole('button', { name: 'Agregar uno: Aguachile Tradicional (medio kilo)', exact: true }).click();
   await dialog.getByRole('button', { name: 'Crear pedido', exact: true }).click();
   await expect(page.getByRole('dialog')).toHaveCount(0);
