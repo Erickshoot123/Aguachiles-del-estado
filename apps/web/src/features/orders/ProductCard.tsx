@@ -67,4 +67,3 @@ export function ProductCard({ product, quantity, onIncrement, onDecrement, disab
     </div>
   );
 }
-
