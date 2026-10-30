@@ -11,6 +11,7 @@ export default defineConfig({
   testDir: './tests',
   timeout: 30_000,
   fullyParallel: false,
+  workers: 1,
   retries: process.env.CI ? 1 : 0,
   reporter: process.env.CI ? [['github'], ['html', { open: 'never' }]] : 'list',
   use: {
@@ -36,7 +37,10 @@ export default defineConfig({
       url: `${PRINT_AGENT_URL}/printers`,
       cwd: '../..',
       reuseExistingServer: !process.env.CI,
-      env: { PORT: '4100' },
+      env: {
+        PORT: '4100',
+        PRINTERS: JSON.stringify([{ id: 'default', name: 'Impresora de pruebas', interface: './print-output/e2e-ticket.bin' }]),
+      },
     },
     {
       command: 'npm run dev --workspace=@aguachiles/web',

@@ -6,6 +6,7 @@ import { createOrder } from './api';
 import { ORDERS_QUERY_KEY } from './hooks';
 import { type QueuedOrder, useOfflineQueueStore } from './offlineQueue';
 import { env } from '../../lib/env';
+import { printNewOrderKitchen } from '../receipts/kitchenPrinting';
 
 const RETRY_INTERVAL_MS = 30_000;
 
@@ -22,9 +23,10 @@ async function flushQueueOnce(queue: QueuedOrder[], onOrderSynced: () => void): 
     if (item.lastError) continue;
 
     try {
-      await createOrder({ ...item.input, clientRequestId: item.input.clientRequestId ?? item.id });
+      const order = await createOrder({ ...item.input, clientRequestId: item.input.clientRequestId ?? item.id });
       dequeue(item.id);
       onOrderSynced();
+      await printNewOrderKitchen(order);
     } catch (error) {
       if (!(error instanceof ApiError)) {
         return;

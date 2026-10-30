@@ -34,7 +34,9 @@ export async function renderTicketCommands(
   printer.bold(true);
   printer.println(ticket.businessName.toUpperCase());
   printer.bold(false);
-  printer.println('Cocina · solo delivery');
+  const isKitchen = ticket.purpose === 'kitchen';
+  printer.println(isKitchen ? 'COMANDA DE COCINA' : 'Comprobante de pedido');
+  if (isKitchen && ticket.channelLabel) printer.println(ticket.channelLabel);
   printer.drawLine();
 
   printer.alignLeft();
@@ -43,13 +45,23 @@ export async function renderTicketCommands(
   printer.drawLine();
 
   for (const line of ticket.lines) {
-    printer.leftRight(`${line.quantity}x ${line.productName}`, formatMoney(line.subtotal));
+    if (isKitchen) printer.println(`${line.quantity}x ${line.productName}`);
+    else printer.leftRight(`${line.quantity}x ${line.productName}`, formatMoney(line.subtotal));
   }
   printer.drawLine();
 
-  printer.bold(true);
-  printer.leftRight('TOTAL', formatMoney(ticket.total));
-  printer.bold(false);
+  if (isKitchen && ticket.notes) {
+    printer.bold(true);
+    printer.println('NOTAS:');
+    printer.bold(false);
+    printer.println(ticket.notes);
+    printer.drawLine();
+  }
+  if (!isKitchen) {
+    printer.bold(true);
+    printer.leftRight('TOTAL', formatMoney(ticket.total));
+    printer.bold(false);
+  }
 
   if (ticket.isReprint) {
     printer.newLine();
@@ -58,7 +70,7 @@ export async function renderTicketCommands(
   }
 
   const qrMode = options.qrMode ?? 'native';
-  if (ticket.whatsappUrl && qrMode !== 'off') {
+  if (!isKitchen && ticket.whatsappUrl && qrMode !== 'off') {
     printer.newLine();
     printer.alignCenter();
     printer.println('Pedido por WhatsApp');

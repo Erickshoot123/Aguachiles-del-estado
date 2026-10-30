@@ -4,6 +4,7 @@ import { Link, useLocation } from 'react-router-dom';
 import { useAuthStore, usePermissions } from '../features/auth/authStore';
 import { useLogout } from '../features/auth/useLogout';
 import { OfflineQueueBanner } from '../features/orders/OfflineQueueBanner';
+import { KitchenPrintBanner } from '../features/receipts/KitchenPrintBanner';
 import { useOfflineQueueSync } from '../features/orders/offlineQueueSync';
 import { SyncStatusBanner } from '../features/branches/SyncStatusBanner';
 
@@ -115,6 +116,7 @@ export function AppShell({ children }: AppShellProps): JSX.Element {
       <main className="flex min-w-0 flex-1 flex-col">
         <SyncStatusBanner />
         <OfflineQueueBanner />
+        <KitchenPrintBanner />
         {children}
       </main>
     </div>

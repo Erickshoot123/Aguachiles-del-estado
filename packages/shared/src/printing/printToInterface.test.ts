@@ -54,6 +54,21 @@ function createTcpSink(): { server: Server; received: Buffer[]; closed: Promise<
 }
 
 describe('printTicketToInterface', () => {
+  it('imprime comanda con cantidades y notas, sin precios ni QR de cliente', async () => {
+    const outputPath = join(tmpdir(), `aguachiles-kitchen-${Date.now()}.bin`);
+    try {
+      await printTicketToInterface({ interfaceString: outputPath, width: 32,
+        ticket: sampleTicket({ purpose: 'kitchen', notes: 'Sin cebolla',
+          channelLabel: 'Mostrador', whatsappUrl: 'https://wa.me/521234567890' }) });
+      const payload = await readFile(outputPath, 'latin1');
+      expect(payload).toContain('COMANDA DE COCINA');
+      expect(payload).toContain('2x Aguachile verde');
+      expect(payload).toContain('Sin cebolla');
+      expect(payload).not.toContain('TOTAL');
+      expect(payload).not.toContain('$240');
+      expect(payload).not.toContain('WhatsApp');
+    } finally { await unlink(outputPath).catch(() => undefined); }
+  });
   let server: Server | undefined;
 
   afterEach(async () => {

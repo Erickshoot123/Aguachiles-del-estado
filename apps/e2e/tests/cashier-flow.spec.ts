@@ -1,4 +1,5 @@
 import { expect, test } from '@playwright/test';
+import { readFile } from 'node:fs/promises';
 
 const CAJERO_USERNAME = 'cajero';
 const CAJERO_PASSWORD = 'ChangeMe123!';
@@ -43,6 +44,13 @@ test('flujo completo de cajero: login, abrir caja, vender con pago dividido, imp
     const lastCard = page.locator('article').last();
     ticketNumber = (await lastCard.locator('span').first().innerText()).trim();
     expect(ticketNumber).toMatch(/^#\d+$/);
+    const comanda = (await readFile('../print-agent/print-output/e2e-ticket.bin', 'latin1')).replace(/\s+/g, ' ');
+    expect(comanda).toContain('COMANDA DE COCINA');
+    expect(comanda).toContain(ticketNumber);
+    expect(comanda).toContain(PRODUCT_NAME);
+    expect(comanda).toContain(EXTRA_PRODUCT_NAME);
+    expect(comanda).not.toContain('TOTAL');
+    expect(comanda).not.toContain('$');
   });
 
   await test.step('cobrar con pago dividido (efectivo + tarjeta)', async () => {

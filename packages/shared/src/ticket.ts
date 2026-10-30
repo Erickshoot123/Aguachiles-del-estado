@@ -23,6 +23,9 @@ export const ticketSchema = z.object({
   discountTotal: z.number().nonnegative(),
   total: z.number().nonnegative(),
   isReprint: z.boolean().default(false),
+  purpose: z.enum(['receipt', 'kitchen']).optional(),
+  channelLabel: z.string().optional(),
+  notes: z.string().nullable().optional(),
   // Liga wa.me del pedido, para imprimir su QR al final del ticket (solo
   // pedidos delivery con datos de cliente). `null`/ausente en cualquier
   // otro caso, incluyendo tickets impresos antes de esta funcionalidad.
@@ -71,6 +74,7 @@ export const printTargetSchema = z.discriminatedUnion('mode', [
 export type PrintTarget = z.infer<typeof printTargetSchema>;
 
 export const printDispatchRequestSchema = z.object({
+  format: ticketFormatSchema.optional(),
   target: printTargetSchema,
   printerId: z.string().min(1).optional(),
 });

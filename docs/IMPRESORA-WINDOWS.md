@@ -1,5 +1,15 @@
 # Impresora térmica USB en Windows
 
+Al confirmar Crear pedido, la terminal solicita la comanda del pedido guardado y la
+envía automáticamente al destino configurado. Incluye folio, hora de creación,
+canal, cantidades, productos y notas, sin precios ni total. No exige cobrar antes.
+Los pedidos en cola por caída del servidor imprimen al confirmarse su creación.
+
+Si no se confirma la impresión, un aviso conserva el folio en esta terminal y
+permite Reimprimir comanda o Ya salió. Recargar no reenvía automáticamente el
+trabajo. Comprueba el papel antes de reimprimir para evitar duplicados. La comanda
+no modifica el registro de impresión del comprobante de cobro.
+
 Instala la impresora en Windows y comprueba su nombre en Impresoras y escáneres.
 El agente envía comandos ESC/POS en modo RAW a la cola local usando la API de
 Windows; no requiere módulos nativos de Node ni compartir la impresora en la red.

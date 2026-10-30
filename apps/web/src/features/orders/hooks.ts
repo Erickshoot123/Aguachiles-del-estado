@@ -14,6 +14,7 @@ import {
   lookupOrderByTicketNumber,
 } from './api';
 import { useOfflineQueueStore } from './offlineQueue';
+import { printNewOrderKitchen } from '../receipts/kitchenPrinting';
 
 export const ORDERS_QUERY_KEY = ['orders'] as const;
 const PRODUCTS_QUERY_KEY = ['products'] as const;
@@ -60,8 +61,9 @@ export function useCreateOrder() {
         return null;
       }
     },
-    onSuccess: () => {
+    onSuccess: async (order) => {
       void queryClient.invalidateQueries({ queryKey: ORDERS_QUERY_KEY });
+      if (order) await printNewOrderKitchen(order);
     },
   });
 }
