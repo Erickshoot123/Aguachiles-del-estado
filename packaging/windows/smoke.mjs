@@ -100,7 +100,7 @@ try {
   await request('/api/plates/today', 'POST', { kilo: 1, halfKilo: 2 }, token);
   const products = await request('/api/products', 'GET', undefined, token);
   const product = products.find((item) => item.name === 'Aguachile Tradicional (medio kilo)');
-  const input = { clientRequestId: randomUUID(), channel: 'counter', items: [{ productId: product.id, quantity: 1 }] };
+  const input = { clientRequestId: randomUUID(), channel: 'delivery', customerName: 'Cliente Prueba', customerPhone: '6671234567', deliveryAddress: 'Calle de prueba 123', deliveryReferences: 'Casa azul', notes: 'Sin pepino', items: [{ productId: product.id, quantity: 1 }] };
   const order = await request('/api/orders', 'POST', input, token);
   const repeated = await request('/api/orders', 'POST', input, token);
   assert.equal(repeated.id, order.id);
@@ -109,7 +109,8 @@ try {
     body: JSON.stringify({ ticket, printerId: 'default' }) });
   assert.ok(printed.ok);
   const bytes = await readFile(join(root, 'data/print-output/last-ticket.bin'), 'latin1');
-  assert.ok(bytes.includes('COMANDA DE COCINA') && !bytes.includes('TOTAL'));
+  assert.ok(bytes.includes('COMANDA DE COCINA') && bytes.includes('TOTAL') && bytes.includes('$' + ticket.total.toFixed(2)));
+  assert.ok(bytes.includes('Cliente: Cliente Prueba') && bytes.includes('6671234567') && bytes.includes('Casa azul') && bytes.includes('Sin pepino'));
   check('Pedido idempotente, reserva de platos y comanda de 58 mm a archivo');
   const browser = await chromium.launch({ headless: true });
   try {
