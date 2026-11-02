@@ -106,7 +106,7 @@ internal sealed class PosContext : ApplicationContext {
     if (url == null) { openWhenReady = true; return; }
     if (window == null || window.IsDisposed) {
       window = new PosWindow(url, root);
-      window.FormClosed += (s, e) => { if (!closing) ClosePos(); };
+      window.FormClosed += (s, e) => { window = null; if (!closing) ClosePos(); };
       window.Show();
     } else {
       if (window.WindowState == FormWindowState.Minimized) window.WindowState = FormWindowState.Normal;

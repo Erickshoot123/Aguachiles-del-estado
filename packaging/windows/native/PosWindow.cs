@@ -34,8 +34,11 @@ internal sealed class PosWindow : Form {
         };
         view.CoreWebView2.NewWindowRequested += (s, e) => { e.Handled = true; OpenWhatsApp(e.Uri); };
         view.CoreWebView2.NavigationCompleted += (s, e) => {
-          loading.Visible = !e.IsSuccess;
-          if (!e.IsSuccess) loading.Text = "No se pudo cargar el POS. Cierra la aplicación y vuelve a abrirla.";
+          if (e.IsSuccess) loading.Visible = false;
+          else if (e.WebErrorStatus != CoreWebView2WebErrorStatus.OperationCanceled) {
+            loading.Visible = true;
+            loading.Text = "No se pudo cargar el POS. Cierra la aplicación y vuelve a abrirla.";
+          }
         };
         view.CoreWebView2.Navigate(address.AbsoluteUri);
       } catch (Exception error) {
