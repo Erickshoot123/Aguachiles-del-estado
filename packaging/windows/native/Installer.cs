@@ -83,6 +83,9 @@ internal static class PosInstaller {
         }
       }
       EnsureVisualCpp(destination, progress);
+      EnsureWebView2(destination, progress);
+      foreach (string library in new[] { "Microsoft.Web.WebView2.Core.dll", "Microsoft.Web.WebView2.WinForms.dll", "WebView2Loader.dll" })
+        File.Copy(Path.Combine(destination, library), Path.Combine(root, library), true);
       File.Copy(Path.Combine(destination, "AguachilesPOS.exe"), Path.Combine(root, "AguachilesPOS.exe"), true);
       File.Copy(Path.Combine(destination, "Uninstall.exe"), Path.Combine(root, "Uninstall.exe"), true);
       File.WriteAllText(Path.Combine(root, "current-version"), version, new UTF8Encoding(false));
@@ -99,6 +102,26 @@ internal static class PosInstaller {
         }
         PosCommon.AutoStart(root, startup);
       }
+    }
+  }
+  static bool HasWebView2() {
+    const string client = "Software\\Microsoft\\EdgeUpdate\\Clients\\{F3017226-FE2A-4295-8BDF-00C3A9A7E4C5}";
+    foreach (RegistryHive hive in new[] { RegistryHive.LocalMachine, RegistryHive.CurrentUser })
+    using (var registry = RegistryKey.OpenBaseKey(hive, RegistryView.Registry32))
+    using (var key = registry.OpenSubKey(client)) {
+      Version version;
+      if (key != null && Version.TryParse(Convert.ToString(key.GetValue("pv", "")), out version) && version >= new Version(109, 0, 0, 0)) return true;
+    }
+    return false;
+  }
+  static void EnsureWebView2(string destination, Action<string> progress) {
+    if (HasWebView2()) return;
+    progress("Preparando el componente de la ventana de Aguachiles POS…");
+    using (var process = Process.Start(new ProcessStartInfo(Path.Combine(destination, "prerequisites", "MicrosoftEdgeWebView2RuntimeInstallerX64.exe"), "/silent /install") {
+      UseShellExecute = false, CreateNoWindow = true
+    })) {
+      process.WaitForExit();
+      if (!HasWebView2()) throw new Exception("No se pudo preparar WebView2. Vuelve a ejecutar el instalador. Código " + process.ExitCode);
     }
   }
   static void EnsureVisualCpp(string destination, Action<string> progress) {

@@ -52,6 +52,7 @@ internal sealed class PosContext : ApplicationContext {
   readonly EventWaitHandle stopSignal, openSignal;
   readonly System.Windows.Forms.Timer timer = new System.Windows.Forms.Timer();
   Process node;
+  PosWindow window;
   string url;
   bool openWhenReady, closing, restartPrinter;
   internal PosContext(string rootPath, string application, Dictionary<string, object> settings, bool showBrowser) {
@@ -100,10 +101,22 @@ internal sealed class PosContext : ApplicationContext {
       }
     } catch (ArgumentException) { }
   }
-  void Open() { if (url != null && !closing) Process.Start(new ProcessStartInfo(url) { UseShellExecute = true }); else openWhenReady = true; }
-  void Send(string command) { try { if (!node.HasExited) { byte[] data = Encoding.UTF8.GetBytes(command + "\n"); node.StandardInput.BaseStream.Write(data, 0, data.Length); node.StandardInput.BaseStream.Flush(); } } catch (IOException) { } }
-  void ClosePos() { if (closing) return; closing = true; label.Text = "Cerrando servicios y base de datos…"; status.Show(); Send("STOP"); }
+  void Open() {
+    if (closing) return;
+    if (url == null) { openWhenReady = true; return; }
+    if (window == null || window.IsDisposed) {
+      window = new PosWindow(url, root);
+      window.FormClosed += (s, e) => { if (!closing) ClosePos(); };
+      window.Show();
+    } else {
+      if (window.WindowState == FormWindowState.Minimized) window.WindowState = FormWindowState.Normal;
+      window.Show(); window.Activate();
+    }
+  }
+  void Send(string command) { try { if (!node.HasExited) { byte[] data = Encoding.UTF8.GetBytes(command + "\n"); node.StandardInput.BaseStream.Write(data, 0, data.Length); node.StandardInput.BaseStream.Flush(); } } catch (IOException) { } catch (InvalidOperationException) { } }
+  void ClosePos() { if (closing) return; closing = true; if (window != null && !window.IsDisposed) window.Close(); label.Text = "Cerrando servicios y base de datos…"; status.Show(); Send("STOP"); }
   void Finish() {
+    closing = true; if (window != null && !window.IsDisposed) window.Close();
     timer.Stop(); tray.Dispose(); stopSignal.Dispose(); openSignal.Dispose(); status.Close();
     if (restartPrinter) Process.Start(new ProcessStartInfo(Path.Combine(root, "AguachilesPOS.exe"), "/printer /wait") { UseShellExecute = true });
     ExitThread();

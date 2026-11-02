@@ -1,12 +1,12 @@
 # Instalador de Aguachiles POS para Windows
 
 Esta edición preliminar incluye Node.js 22, PostgreSQL 16, la interfaz, la API,
-el agente de impresión y el requisito de Microsoft Visual C++. Funciona de forma
+el agente de impresión, Microsoft Visual C++ y el componente WebView2 para la ventana integrada. Funciona de forma
 local; no necesita Docker, npm ni conexión a internet durante la instalación.
 
 ## Llevarlo a otra computadora
 
-1. Copia `AguachilesPOS-Instalador-0.2.3.exe` por USB a la otra PC.
+1. Copia `AguachilesPOS-Instalador-0.2.4.exe` por USB a la otra PC.
 2. Usa Windows 10/11 **de 64 bits con .NET Framework 4.8**, una unidad **NTFS** y al menos 2 GB libres.
    El instalador se puede transportar en USB; el programa y su base se instalan
    en Windows, de forma predeterminada dentro de tu perfil en C:.
@@ -18,20 +18,28 @@ local; no necesita Docker, npm ni conexión a internet durante la instalación.
 5. Selecciona la impresora instalada en Windows. Para la Ofichido POS5890Z-L usa
    la cola correspondiente y papel de 58 mm. Si eliges "archivo de prueba", las
    comandas se guardan en un archivo y no salen en papel.
-6. Espera a que se prepare la base y se abra el navegador. Inicia sesión con las
+6. Espera a que se prepare la base y se abra la ventana de Aguachiles POS. Inicia sesión con las
    credenciales que acabas de elegir y registra los platos disponibles del día.
 
 No se crean usuarios `cajero`/`gerente` de demostración ni ventas de ejemplo. El
 administrador puede crear las cuentas del personal desde Usuarios. El menú inicial
 se puede editar; no se precargan platos disponibles ni existencias de insumos.
 
+## Datos del administrador
+
+El formulario indica debajo de cada campo qué falta o qué debe corregirse: sucursal,
+usuario inválido, contraseña de menos de 12 caracteres, confirmación vacía o contraseñas
+que no coinciden. Los mensajes desaparecen al corregirlos. Al intentar continuar se
+selecciona el primer campo con error. La casilla Mostrar contraseñas permite comprobar
+lo escrito; las contraseñas comienzan ocultas y no se escriben en los registros.
+
 ## Uso diario, impresora y respaldo
 
-- El acceso **Aguachiles POS** inicia los servicios y abre el navegador.
+- El acceso **Aguachiles POS** inicia los servicios y abre su propia ventana, sin pestañas ni barra de direcciones.
 - El icono de la bandeja de Windows permite abrir el POS, cambiar de impresora,
   crear un respaldo y cerrar la aplicación con su base de datos.
-- Cerrar la pestaña del navegador mantiene los servicios activos. Para detenerlos,
-  usa **Cerrar POS** en la bandeja.
+- Cerrar la ventana del POS también cierra sus servicios y la base de datos.
+  Puedes abrirla de nuevo con su acceso directo.
 - **Configurar impresora** cierra los servicios, permite elegir otra cola de
   Windows y los reinicia. Instala primero el controlador en Windows si la
   impresora no aparece. El instalador no incorpora controladores de la Ofichido.
@@ -39,7 +47,7 @@ se puede editar; no se precargan platos disponibles ni existencias de insumos.
   periódicamente a otra unidad; guardarlos solo en la misma PC no protege ante
   una falla del disco.
 
-El navegador usa `http://127.0.0.1:48880`; la API usa 48881, el agente 48882 y
+Internamente, la interfaz usa `http://127.0.0.1:48880` (no se muestra en la ventana); la API usa 48881, el agente 48882 y
 PostgreSQL 54329. Todos escuchan solo en esta PC. Esta edición corresponde a una
 terminal local; conectar otras terminales por LAN requiere configuración adicional.
 
@@ -90,7 +98,7 @@ Con poco espacio en C: se puede elegir otra carpeta temporal en una unidad NTFS:
 
 ```powershell
 npm run build:windows -- --build-root D:/AguachilesPOS-InstallerBuild --output C:/ruta/entregables
-node packaging/windows/smoke.mjs --installer C:/ruta/entregables/AguachilesPOS-Instalador-0.2.3.exe --build-root D:/AguachilesPOS-InstallerBuild --test-root C:/ruta/pruebas
+node packaging/windows/smoke.mjs --installer C:/ruta/entregables/AguachilesPOS-Instalador-0.2.4.exe --build-root D:/AguachilesPOS-InstallerBuild --test-root C:/ruta/pruebas
 ```
 
 La prueba crea una instalación y datos sintéticos, usa solo los runtimes

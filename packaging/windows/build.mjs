@@ -53,6 +53,7 @@ async function compile(name, sources, resources = []) {
   await command(compiler, ['/nologo', '/target:winexe', '/platform:x64', '/optimize+', '/codepage:65001',
     `/out:${name}`, `/win32manifest:${join(packaging, 'native', 'app.manifest')}`,
     ...['System.Windows.Forms.dll', 'System.Drawing.dll', 'System.Security.dll', 'System.Web.Extensions.dll', 'Microsoft.CSharp.dll', 'System.IO.Compression.dll', 'System.IO.Compression.FileSystem.dll'].map((item) => `/reference:${item}`),
+    ...(sources.includes('PosWindow.cs') ? ['Microsoft.Web.WebView2.Core.dll', 'Microsoft.Web.WebView2.WinForms.dll'].map((item) => `/reference:${join(stage, item)}`) : []),
     ...resources, ...sources.map((item) => join(packaging, 'native', item))]);
 }
 
@@ -112,9 +113,15 @@ if (vendors.vcRedist) {
 for (const file of await filesBelow(join(stage, 'api'))) {
   if (/\.test\.js(?:\.map)?$/.test(file) || /[\\/]prisma[\\/]seed\.js(?:\.map)?$/.test(file)) await unlink(file);
 }
-await compile(join(stage, 'AguachilesPOS.exe'), ['Common.cs', 'SetupForm.cs', 'Launcher.cs']);
+const sdkPackage = await download(vendors.webview2Sdk);
+await command('powershell.exe', ['-NoProfile', '-NonInteractive', '-ExecutionPolicy', 'Bypass', '-File',
+  join(packaging, 'Prepare-WebView2.ps1'), '-Archive', sdkPackage, '-Destination', stage]);
+const webviewRuntime = await download(vendors.webview2Runtime);
+await mkdir(join(stage, 'prerequisites'), { recursive: true });
+await cp(webviewRuntime, join(stage, 'prerequisites', vendors.webview2Runtime.file));
+await compile(join(stage, 'AguachilesPOS.exe'), ['Common.cs', 'SetupValidation.cs', 'SetupForm.cs', 'PosWindow.cs', 'Launcher.cs']);
 await compile(join(stage, 'Uninstall.exe'), ['Common.cs', 'Uninstall.cs']);
-const version = '0.2.3-preview-' + new Date().toISOString().replace(/[-:.TZ]/g, '');
+const version = '0.2.4-preview-' + new Date().toISOString().replace(/[-:.TZ]/g, '');
 const manifest = { product: 'AguachilesPOS', version, builtAt: new Date().toISOString(), vendors, files: {} };
 for (const file of await filesBelow(stage)) {
   const name = relative(stage, file).replaceAll('\\', '/');
@@ -128,7 +135,7 @@ const zip = join(buildRoot, `payload-${version}.zip`);
 console.warn('Comprimiendo paquete…');
 await command('powershell.exe', ['-NoProfile', '-NonInteractive', '-ExecutionPolicy', 'Bypass', '-File',
   join(packaging, 'Zip-Payload.ps1'), '-Source', stage, '-Output', zip]);
-const executable = join(output, 'AguachilesPOS-Instalador-0.2.3.exe');
+const executable = join(output, 'AguachilesPOS-Instalador-0.2.4.exe');
 await compile(executable, ['Common.cs', 'Installer.cs'], [`/resource:${zip},payload`]);
-await writeFile(executable + '.sha256.txt', `${await hash(executable)}  AguachilesPOS-Instalador-0.2.3.exe\n`);
+await writeFile(executable + '.sha256.txt', `${await hash(executable)}  AguachilesPOS-Instalador-0.2.4.exe\n`);
 console.warn(JSON.stringify({ executable, bytes: (await stat(executable)).size, stage, version }));

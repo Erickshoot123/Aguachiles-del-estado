@@ -23,7 +23,7 @@ internal static class PosUninstall {
       string versions = Path.GetFullPath(Path.Combine(root, "versions"));
       if (!versions.StartsWith(Path.GetFullPath(root).TrimEnd('\\') + "\\", StringComparison.OrdinalIgnoreCase)) throw new Exception("Ruta de programa inválida.");
       if (Directory.Exists(versions)) Directory.Delete(PosCommon.FilePath(versions), true);
-      foreach (string name in new[] { "AguachilesPOS.exe", "Uninstall.exe", "current-version" }) File.Delete(Path.Combine(root, name));
+      foreach (string name in new[] { "AguachilesPOS.exe", "Uninstall.exe", "current-version", "Microsoft.Web.WebView2.Core.dll", "Microsoft.Web.WebView2.WinForms.dll", "WebView2Loader.dll" }) File.Delete(Path.Combine(root, name));
       string desktop = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.DesktopDirectory), "Aguachiles POS.lnk");
       // Solo se registran accesos del directorio estándar del usuario.
       if (root.Equals(PosCommon.DefaultRoot, StringComparison.OrdinalIgnoreCase)) {

@@ -13,5 +13,15 @@
     "file": "postgresql-16.15-5-windows-x64-binaries.zip",
     "url": "https://get.enterprisedb.com/postgresql/postgresql-16.15-5-windows-x64-binaries.zip",
     "sha256": "43bb45f173a6f08cf1d29a97a6d8deb119e8e8093a24c00d2d1001a0ccaa8281"
+  },
+  "webview2Sdk": {
+    "file": "microsoft.web.webview2.1.0.2903.40.nupkg",
+    "url": "https://api.nuget.org/v3-flatcontainer/microsoft.web.webview2/1.0.2903.40/microsoft.web.webview2.1.0.2903.40.nupkg",
+    "sha256": "ef128016dd1e51c59178c827ed5b8aa3322c57afa8675d930f8109505542ad74"
+  },
+  "webview2Runtime": {
+    "file": "MicrosoftEdgeWebView2RuntimeInstallerX64.exe",
+    "url": "https://go.microsoft.com/fwlink/?linkid=2124701",
+    "sha256": "62863f0f0611a16ccf124b4f15650c3b66624504eba74d7cde1e2ae5d951249b"
   }
 }

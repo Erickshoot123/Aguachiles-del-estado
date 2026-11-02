@@ -1,5 +1,5 @@
 import assert from 'node:assert/strict';
-import { readFile, writeFile, mkdir, stat, readdir } from 'node:fs/promises';
+import { readFile, writeFile, mkdir, stat, readdir, unlink } from 'node:fs/promises';
 import { join, dirname, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { randomBytes, randomUUID } from 'node:crypto';
@@ -85,6 +85,15 @@ try {
   session = await boot(appDir);
   await session.event('ready');
   check('PostgreSQL, migraciones, API, agente e interfaz empaquetados');
+  const nativeUiProbe = join(root, 'native-ui-probe.exe');
+  await run(join(process.env.WINDIR, 'Microsoft.NET/Framework64/v4.0.30319/csc.exe'), ['/nologo', '/target:exe', '/platform:x64', '/codepage:65001',
+    `/out:${nativeUiProbe}`, '/reference:System.Windows.Forms.dll', '/reference:System.Drawing.dll',
+    `/reference:${join(root, 'Microsoft.Web.WebView2.Core.dll')}`, `/reference:${join(root, 'Microsoft.Web.WebView2.WinForms.dll')}`,
+    join(packaging, 'native/NativeUiProbe.cs')]);
+  const nativeResult = await run(nativeUiProbe, [root, 'http://127.0.0.1:48880/login']);
+  assert.ok(nativeResult.output.includes('Ventana WebView2:') && nativeResult.output.includes('Formulario:'), 'La prueba debe completar tanto el formulario como la ventana integrada');
+  await unlink(nativeUiProbe);
+  check('Formulario real con errores por campo y ventana WebView2 con login sin barra de direcciones');
   const html = await fetch('http://127.0.0.1:48880/login');
   assert.equal(html.status, 200);
   assert.ok((await html.text()).includes('id="root"'));
