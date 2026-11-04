@@ -134,6 +134,7 @@ export async function getWhatsAppShareForOrder(
 
   return buildWhatsAppMessage({
     ticketNumber: sale.ticketNumber,
+    total: sale.total.toNumber(),
     createdAt: sale.createdAt.toISOString(),
     customerName: sale.customerName ?? 'Sin nombre',
     customerPhone: sale.customerPhone,

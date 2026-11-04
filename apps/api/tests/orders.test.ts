@@ -1,3 +1,4 @@
+import type { Prisma } from '@prisma/client';
 import type { FastifyInstance } from 'fastify';
 import { afterAll, afterEach, beforeAll, beforeEach, describe, expect, it } from 'vitest';
 import { authHeader, buildTestApp, loginAs } from './testApp.js';
@@ -425,7 +426,7 @@ describe('orders', () => {
   describe('GET /api/orders/:id/whatsapp', () => {
     async function createDeliveryOrder(
       overrides: Record<string, unknown> = {},
-    ): Promise<{ id: string }> {
+    ): Promise<{ id: string; total: number }> {
       const product = await createTestProduct(testPrisma, { price: 100, stock: 5 });
       const response = await app.inject({
         method: 'POST',
@@ -454,11 +455,12 @@ describe('orders', () => {
       const share = response.json();
       expect(share.url).toMatch(/^https:\/\/wa\.me\/\?text=/);
       expect(share.message).toContain(DELIVERY_ORDER_INFO.customerName);
+      expect(share.message).toContain(`Total: $${order.total.toFixed(2)}`);
       expect(share.message).not.toContain('Método de pago');
       expect(share.truncated).toBe(false);
     });
 
-    it('sigue sin mencionar montos ni método de pago aunque el pedido ya se haya cobrado (dividido)', async () => {
+    it('incluye el total original también después de un cobro dividido', async () => {
       const order = await createDeliveryOrder();
       await app.inject({
         method: 'POST',
@@ -487,7 +489,21 @@ describe('orders', () => {
 
       const share = response.json();
       expect(share.message).not.toContain('Método de pago');
-      expect(share.message).not.toContain('Total');
+      expect(share.message).toContain('Total: $200.00');
+      expect(new URL(share.url).searchParams.get('text')).toContain('Total: $200.00');
+      // Un comprobante guardado antes del cambio también recibe el total en su QR.
+      const receipt = await testPrisma.receipt.findUniqueOrThrow({ where: { saleId: order.id } });
+      const snapshot = receipt.contentSnapshot as Prisma.JsonObject;
+      const legacyUrl = new URL(String(snapshot.whatsappUrl));
+      legacyUrl.searchParams.set('text', legacyUrl.searchParams.get('text')!.split('\n').filter((line) => !line.startsWith('Total: ')).join('\n'));
+      await testPrisma.receipt.update({ where: { saleId: order.id }, data: {
+        contentSnapshot: { ...snapshot, whatsappUrl: legacyUrl.toString() } as Prisma.InputJsonValue,
+      } });
+      const reprint = await app.inject({ method: 'GET', url: `/api/orders/${order.id}/receipt`, headers: authHeader(token) });
+      expect(reprint.statusCode).toBe(200);
+      expect(new URL(reprint.json().ticket.whatsappUrl).searchParams.get('text')).toContain('Total: $200.00');
+      const preserved = await testPrisma.receipt.findUniqueOrThrow({ where: { saleId: order.id } });
+      expect((preserved.contentSnapshot as Prisma.JsonObject).whatsappUrl).toBe(legacyUrl.toString());
     });
 
     it('rechaza pedir el WhatsApp de un pedido de mostrador', async () => {

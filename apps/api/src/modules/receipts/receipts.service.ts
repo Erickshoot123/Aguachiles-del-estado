@@ -1,3 +1,4 @@
+import { addTotalToWhatsAppUrl } from '../orders/whatsappTotal.js';
 import type { Prisma, PrismaClient } from '@prisma/client';
 import type { Ticket, TicketFormat } from '@aguachiles/shared';
 import { buildWhatsAppMessage } from '../orders/whatsapp.js';
@@ -16,6 +17,7 @@ function buildWhatsappUrlIfDelivery(sale: SaleForReceipt): string | null {
 
   return buildWhatsAppMessage({
     ticketNumber: sale.ticketNumber,
+    total: sale.total.toNumber(),
     createdAt: sale.createdAt.toISOString(),
     customerName: sale.customerName ?? 'Sin nombre',
     customerPhone: sale.customerPhone,
@@ -79,7 +81,7 @@ export async function getReceiptTicket(
 
   const ticket = receipt.contentSnapshot as unknown as Ticket;
   return {
-    ticket: { ...ticket, isReprint: receipt.printedAt !== null },
+    ticket: { ...ticket, whatsappUrl: addTotalToWhatsAppUrl(ticket.whatsappUrl, ticket.total), isReprint: receipt.printedAt !== null },
     reprintCount: receipt.reprintCount,
   };
 }
