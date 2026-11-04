@@ -16,10 +16,26 @@ const testBase = process.argv.includes('--test-root') ? resolve(getArg('--test-r
 const root = join(testBase, `prueba con espacios-${Date.now()}`);
 const packaging = dirname(fileURLToPath(import.meta.url));
 const report = { installer, root, checks: [], success: false };
+const isolatedPorts = process.argv.includes('--isolated-ports');
 const config = { root, locationName: 'Sucursal de prueba de instalación', adminUsername: 'admin_prueba',
   adminPassword: 'Prueba-' + randomUUID(), dbPassword: randomBytes(32).toString('hex'),
   appPassword: randomBytes(32).toString('hex'), jwtSecret: randomBytes(32).toString('hex'),
-  timeZone: 'America/Mazatlan', printerName: '', dbPort: 54329, webPort: 48880, apiPort: 48881, printPort: 48882 };
+  timeZone: 'America/Mazatlan', printerName: '', dbPort: isolatedPorts ? 54429 : 54329, webPort: isolatedPorts ? 48980 : 48880, apiPort: isolatedPorts ? 48981 : 48881, printPort: isolatedPorts ? 48982 : 48882 };
+const webUrl = `http://127.0.0.1:${config.webPort}`;
+const apiUrl = `http://127.0.0.1:${config.apiPort}`;
+const printUrl = `http://127.0.0.1:${config.printPort}`;
+// Solo en la copia de prueba, después de verificar el paquete: cambia los destinos
+// compilados para no usar los servicios de una instalación real abierta.
+async function isolateFrontend(appDir) {
+  if (!isolatedPorts) return;
+  const assets = join(appDir, 'web/assets');
+  for (const file of await readdir(assets)) {
+    if (!file.endsWith('.js')) continue;
+    const path = join(assets, file);
+    const content = await readFile(path, 'utf8');
+    await writeFile(path, content.replaceAll('http://127.0.0.1:48881', apiUrl).replaceAll('http://127.0.0.1:48882', printUrl));
+  }
+}
 const check = (name) => { report.checks.push(name); console.warn(name); };
 let session;
 async function boot(appDir) {
@@ -63,7 +79,7 @@ async function stop() {
   assert.equal(code, 0, 'El supervisor debe cerrar sin error.');
 }
 async function request(path, method = 'GET', body, token) {
-  const response = await fetch(`http://127.0.0.1:48881${path}`, { method,
+  const response = await fetch(`${apiUrl}${path}`, { method,
     headers: { ...(body ? { 'Content-Type': 'application/json' } : {}), ...(token ? { Authorization: `Bearer ${token}` } : {}) },
     body: body ? JSON.stringify(body) : undefined, signal: AbortSignal.timeout(10000) });
   assert.ok(response.ok, `La API respondió ${response.status} en ${path}`);
@@ -75,6 +91,7 @@ try {
   check('Extracción e integridad del instalador EXE');
   const version = (await readFile(join(root, 'current-version'), 'utf8')).trim();
   const appDir = join(root, 'versions', version);
+  await isolateFrontend(appDir);
   // Se prueba el mismo almacenamiento DPAPI que usa el lanzador nativo.
   const probe = join(buildRoot, 'config-probe.exe');
   await run(join(process.env.WINDIR, 'Microsoft.NET/Framework64/v4.0.30319/csc.exe'), ['/nologo', '/target:exe', '/platform:x64',
@@ -90,11 +107,11 @@ try {
     `/out:${nativeUiProbe}`, '/reference:System.Windows.Forms.dll', '/reference:System.Drawing.dll',
     `/reference:${join(root, 'Microsoft.Web.WebView2.Core.dll')}`, `/reference:${join(root, 'Microsoft.Web.WebView2.WinForms.dll')}`,
     join(packaging, 'native/NativeUiProbe.cs')]);
-  const nativeResult = await run(nativeUiProbe, [root, 'http://127.0.0.1:48880/login']);
+  const nativeResult = await run(nativeUiProbe, [root, `${webUrl}/login`]);
   assert.ok(nativeResult.output.includes('Ventana WebView2:') && nativeResult.output.includes('Formulario:'), 'La prueba debe completar tanto el formulario como la ventana integrada');
   await unlink(nativeUiProbe);
   check('Formulario real con errores por campo y ventana WebView2 con login sin barra de direcciones');
-  const html = await fetch('http://127.0.0.1:48880/login');
+  const html = await fetch(`${webUrl}/login`);
   assert.equal(html.status, 200);
   assert.ok((await html.text()).includes('id="root"'));
   const auth = await request('/api/auth/login', 'POST', { username: config.adminUsername, password: config.adminPassword });
@@ -114,7 +131,7 @@ try {
   const repeated = await request('/api/orders', 'POST', input, token);
   assert.equal(repeated.id, order.id);
   const { ticket } = await request(`/api/orders/${order.id}/comanda`, 'GET', undefined, token);
-  const printed = await fetch('http://127.0.0.1:48882/print', { method: 'POST', headers: { 'Content-Type': 'application/json' },
+  const printed = await fetch(`${printUrl}/print`, { method: 'POST', headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({ ticket, printerId: 'default' }) });
   assert.ok(printed.ok);
   const bytes = await readFile(join(root, 'data/print-output/last-ticket.bin'), 'latin1');
@@ -125,10 +142,11 @@ try {
   try {
     const page = await browser.newPage();
     await page.route('**/*', (route) => {
-      const host = new URL(route.request().url()).hostname;
-      return ['127.0.0.1', 'localhost'].includes(host) ? route.continue() : route.abort();
+      const address = new URL(route.request().url());
+      const allowedPorts = [config.webPort, config.apiPort, config.printPort];
+      return ['127.0.0.1', 'localhost'].includes(address.hostname) && allowedPorts.includes(Number(address.port)) ? route.continue() : route.abort();
     });
-    await page.goto('http://127.0.0.1:48880/login');
+    await page.goto(`${webUrl}/login`);
     await page.getByLabel('Usuario').fill(config.adminUsername);
     await page.getByLabel('Contraseña').fill(config.adminPassword);
     await page.getByRole('button', { name: 'Ingresar' }).click();
@@ -167,6 +185,7 @@ try {
   const before = await readFile(join(root, 'data/config.dat'));
   await run(installer, ['/silent', `/dir=${root}`]);
   assert.deepEqual(await readFile(join(root, 'data/config.dat')), before);
+  await isolateFrontend(appDir);
   await writeFile(join(root, 'data/schema-version'), 'version-anterior-simulada');
   session = await boot(appDir);
   await session.event('ready');

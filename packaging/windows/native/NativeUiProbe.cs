@@ -7,6 +7,7 @@ using System.Threading.Tasks;
 using System.Text;
 using System.Windows.Forms;
 using Microsoft.Web.WebView2.WinForms;
+using Microsoft.Web.WebView2.Core;
 
 internal static class NativeUiProbe {
   [DllImport("kernel32.dll", CharSet = CharSet.Unicode)] static extern bool SetDllDirectory(string path);
@@ -51,6 +52,17 @@ internal static class NativeUiProbe {
     using (var form = (Form)Activator.CreateInstance(type, Hidden, null, new object[] { url, root }, null)) {
       form.Opacity = 0; form.ShowInTaskbar = false; form.WindowState = FormWindowState.Normal;
       var view = (WebView2)type.GetField("view", Hidden).GetValue(form);
+      var testAddress = new Uri(url);
+      view.CoreWebView2InitializationCompleted += (sender, args) => {
+        if (!args.IsSuccess) return;
+        view.CoreWebView2.AddWebResourceRequestedFilter("*", CoreWebView2WebResourceContext.All);
+        view.CoreWebView2.WebResourceRequested += (s, e) => {
+          Uri request;
+          if (Uri.TryCreate(e.Request.Uri, UriKind.Absolute, out request) && request.IsLoopback
+            && request.Port >= testAddress.Port && request.Port <= testAddress.Port + 2) return;
+          e.Response = view.CoreWebView2.Environment.CreateWebResourceResponse(new MemoryStream(new byte[0]), 403, "Blocked by isolated test", "");
+        };
+      };
       Exception failure = null;
       form.Shown += async (sender, args) => {
         try {
