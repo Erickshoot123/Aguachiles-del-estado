@@ -348,7 +348,7 @@ describe('orders', () => {
   });
 
   describe('datos de entrega para delivery', () => {
-    it('rechaza un pedido delivery sin nombre, teléfono o dirección del cliente', async () => {
+    it('rechaza un pedido delivery sin teléfono o dirección del cliente', async () => {
       const product = await createTestProduct(testPrisma, { stock: 5 });
 
       const response = await app.inject({
@@ -362,7 +362,7 @@ describe('orders', () => {
       const body = response.json();
       const paths = (body.issues as { path: string[] }[]).map((issue) => issue.path[0]);
       expect(paths).toEqual(
-        expect.arrayContaining(['customerName', 'customerPhone', 'deliveryAddress']),
+        expect.arrayContaining(['customerPhone', 'deliveryAddress']),
       );
     });
 

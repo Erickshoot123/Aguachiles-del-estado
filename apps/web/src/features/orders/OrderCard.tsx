@@ -1,5 +1,6 @@
+import { productVariant } from './productVariant';
 import type { Order } from '@aguachiles/shared';
-import type { JSX } from 'react';
+import type { JSX, DragEventHandler } from 'react';
 import { useState } from 'react';
 import { CHANNEL_LABELS, formatCurrency, formatElapsedMinutes } from './channelLabels';
 import { WhatsAppModal } from './WhatsAppModal';
@@ -10,16 +11,21 @@ const UI_TEXT = {
 
 interface OrderCardProps {
   order: Order;
+  draggable?: boolean;
+  onDragStart?: DragEventHandler<HTMLElement>;
+  onDragEnd?: DragEventHandler<HTMLElement>;
   advanceLabel: string;
   onOpenDetail: (order: Order) => void;
   onAdvance: (orderId: string) => void;
 }
 
-export function OrderCard({ order, advanceLabel, onOpenDetail, onAdvance }: OrderCardProps): JSX.Element {
+export function OrderCard({ order, advanceLabel, onOpenDetail, onAdvance, draggable, onDragStart, onDragEnd }: OrderCardProps): JSX.Element {
   const [isWhatsAppOpen, setIsWhatsAppOpen] = useState(false);
 
   return (
     <article
+      draggable={draggable} onDragStart={onDragStart} onDragEnd={onDragEnd}
+      aria-label={`Pedido ${order.ticketNumber}`}
       onClick={() => onOpenDetail(order)}
       className="flex cursor-pointer flex-col gap-2.5 rounded-[11px] border border-border bg-surface p-2.5 hover:border-accent"
     >
@@ -35,7 +41,7 @@ export function OrderCard({ order, advanceLabel, onOpenDetail, onAdvance }: Orde
         {order.items.map((item) => (
           <div key={item.id} className="flex gap-2 text-[13px] text-text">
             <span className="font-mono text-muted-2">{item.quantity}x</span>
-            <span>{item.productName}{item.notes ? <small className="block font-semibold text-accent-hover">{item.notes}</small> : null}</span>
+            <span><span className={`rounded px-1.5 py-0.5 ${productVariant(item.productName).badge}`}>{item.productName}</span>{item.notes ? <small className="block font-semibold text-accent-hover">{item.notes}</small> : null}</span>
           </div>
         ))}
       </div>

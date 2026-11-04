@@ -137,7 +137,6 @@ try {
     const dialog = page.getByRole('dialog').last();
     await dialog.getByRole('button', { name: 'Mostrador', exact: true }).click();
     await dialog.getByRole('button', { name: 'Agregar uno: Aguachile Tradicional (medio kilo)', exact: true }).click();
-    await dialog.getByRole('group', { name: 'Aguachile Tradicional (medio kilo) · Porción 1', exact: true }).getByLabel('Ajo', { exact: true }).selectOption('Sin');
     await dialog.getByRole('button', { name: 'Crear pedido', exact: true }).click();
     await page.getByRole('dialog').waitFor({ state: 'hidden' });
     const afterUi = await request('/api/plates/today', 'GET', undefined, token);

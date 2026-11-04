@@ -18,6 +18,7 @@ internal sealed class PosSetupForm : Form {
     Text = first ? "Aguachiles POS · Primera instalación" : "Aguachiles POS · Impresora";
     ClientSize = new Size(590, first ? Math.Min(710, Screen.PrimaryScreen.WorkingArea.Height - 90) : 300);
     StartPosition = FormStartPosition.CenterScreen; FormBorderStyle = FormBorderStyle.FixedDialog;
+    KeyPreview = true; KeyDown += (sender, e) => { if (e.KeyCode == Keys.Escape) { e.SuppressKeyPress = true; DialogResult = DialogResult.Cancel; Close(); } };
     MaximizeBox = false; MinimizeBox = false; Font = new Font("Segoe UI", 10);
     var panel = new TableLayoutPanel { Dock = DockStyle.Fill, Padding = new Padding(24), ColumnCount = 1, AutoScroll = true };
     panel.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 100)); Controls.Add(panel);

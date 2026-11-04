@@ -1,3 +1,4 @@
+import { EscapeNavigation } from './components/EscapeNavigation';
 import type { JSX } from 'react';
 import { BrowserRouter, Route, Routes } from 'react-router-dom';
 import { AuthBootstrap } from './features/auth/AuthBootstrap';
@@ -17,6 +18,7 @@ import { env } from './lib/env';
 export function App(): JSX.Element {
   return (
     <BrowserRouter>
+      <EscapeNavigation />
       <AuthBootstrap>
         <Routes>
           <Route path="/login" element={<LoginPage />} />

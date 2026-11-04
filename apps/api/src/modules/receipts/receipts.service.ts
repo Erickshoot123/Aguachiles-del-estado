@@ -12,12 +12,12 @@ type SaleForReceipt = Prisma.SaleGetPayload<{
 
 function buildWhatsappUrlIfDelivery(sale: SaleForReceipt): string | null {
   if (sale.channel !== 'delivery') return null;
-  if (!sale.customerName || !sale.customerPhone || !sale.deliveryAddress) return null;
+  if (!sale.customerPhone || !sale.deliveryAddress) return null;
 
   return buildWhatsAppMessage({
     ticketNumber: sale.ticketNumber,
     createdAt: sale.createdAt.toISOString(),
-    customerName: sale.customerName,
+    customerName: sale.customerName ?? 'Sin nombre',
     customerPhone: sale.customerPhone,
     deliveryAddress: sale.deliveryAddress,
     deliveryReferences: sale.deliveryReferences,

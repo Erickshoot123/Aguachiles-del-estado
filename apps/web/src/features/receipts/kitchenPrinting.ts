@@ -21,20 +21,20 @@ export const useKitchenQueue = create<KitchenQueue>()(persist((set) => ({
 }), { name: 'aguachiles-kitchen-queue', partialize: (state) => ({ jobs: state.jobs }) }));
 
 /** Solo se reintenta por acción explícita: un fallo de respuesta puede ocurrir después de imprimir. */
-export async function printKitchenJob(job: KitchenJob): Promise<void> {
+export async function printKitchenJob(job: KitchenJob, isReprint = true): Promise<void> {
   if (useKitchenQueue.getState().busy.includes(job.orderId)) return;
   useKitchenQueue.setState((state) => ({ busy: [...state.busy, job.orderId] }));
   try {
     const settings = usePrintSettingsStore.getState();
     const { ticket } = await authFetch<{ ticket: Ticket }>(`/api/orders/${job.orderId}/comanda`);
     if (settings.printMode === 'agente_local') {
-      await printAtAgent({ ...ticket, format: settings.ticketFormat }, settings.printerId);
+      await printAtAgent({ ...ticket, format: settings.ticketFormat, isReprint }, settings.printerId);
     } else {
       const target = settings.printMode === 'red'
         ? { mode: 'red', ...settings.networkPrinter }
         : { mode: 'otra_terminal', agentUrl: settings.otherTerminal.agentUrl };
       await authFetch(`/api/orders/${job.orderId}/comanda/print`, {
-        method: 'POST', body: { target, printerId: settings.printerId ?? undefined, format: settings.ticketFormat },
+        method: 'POST', body: { target, isReprint, printerId: settings.printerId ?? undefined, format: settings.ticketFormat },
       });
     }
     useKitchenQueue.getState().remove(job.orderId);
@@ -45,8 +45,8 @@ export async function printKitchenJob(job: KitchenJob): Promise<void> {
   }
 }
 
-export async function printNewOrderKitchen(order: Order): Promise<void> {
+export async function printNewOrderKitchen(order: Order, isReprint = false): Promise<void> {
   const job = { orderId: order.id, ticketNumber: order.ticketNumber };
   useKitchenQueue.getState().add(job);
-  await printKitchenJob(job);
+  await printKitchenJob(job, isReprint);
 }

@@ -14,11 +14,11 @@ export default async function receiptsRoutes(fastify: FastifyInstance): Promise<
   });
   fastify.post('/api/orders/:id/comanda/print', { preHandler: fastify.authenticate }, async (request) => {
     const { id } = idParamSchema.parse(request.params);
-    const { target, printerId, format } = printDispatchRequestSchema.parse(request.body);
+    const { target, printerId, format, isReprint } = printDispatchRequestSchema.parse(request.body);
     if (target.mode === 'agente_local') throw new ValidationError('Usa el agente local desde esta terminal');
     const ticket = await getKitchenTicket(fastify.prisma, id);
     try {
-      await dispatchPrint({ ...ticket, format: format ?? ticket.format }, target, printerId);
+      await dispatchPrint({ ...ticket, format: format ?? ticket.format, isReprint: isReprint ?? false }, target, printerId);
     } catch (error) {
       request.log.error({ err: error, saleId: id }, 'Fallo al imprimir comanda');
       throw new PrintDispatchFailedError();

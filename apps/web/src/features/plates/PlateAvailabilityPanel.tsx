@@ -1,3 +1,4 @@
+import { useEscapeDismiss } from '../../lib/escapeActions';
 import { useState, type JSX, type FormEvent } from 'react';
 import { usePermission } from '../auth/authStore';
 import { usePlateAvailability, useSavePlates } from './hooks';
@@ -6,6 +7,7 @@ import { ApiError } from '../../lib/apiClient';
 export function PlateAvailabilityPanel(): JSX.Element {
   const query = usePlateAvailability();
   const [editing, setEditing] = useState(false);
+  useEscapeDismiss(() => setEditing(false), editing);
   const [kilo, setKilo] = useState('');
   const [half, setHalf] = useState('');
   const [reason, setReason] = useState('');

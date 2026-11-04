@@ -8,7 +8,7 @@ test('fallar la impresión conserva el pedido y permite reimprimir sin duplicarl
   let savedNotes = '';
   let printedCustomer = '';
   let printedTotal = 0;
-  let printedPortions: string[] = [];
+  let printedQuantities: number[] = [];
   page.on('response', async (response) => {
     if (response.request().method() === 'POST' && new URL(response.url()).pathname === '/api/orders' && response.ok()) {
       savedNotes = (await response.json()).notes;
@@ -23,7 +23,7 @@ test('fallar la impresión conserva el pedido y permite reimprimir sin duplicarl
     printedNotes = ticket.notes;
     printedCustomer = ticket.customerName;
     printedTotal = ticket.total;
-    printedPortions = ticket.lines.map((line: { notes: string }) => line.notes).sort();
+    printedQuantities = ticket.lines.map((line: { quantity: number }) => line.quantity);
     expect(ticket.customerPhone).toBe('6671234567');
     expect(ticket.deliveryAddress).toBe('Calle de prueba 123');
     expect(ticket.deliveryReferences).toBe('Casa azul');
@@ -44,19 +44,13 @@ test('fallar la impresión conserva el pedido y permite reimprimir sin duplicarl
   await dialog.getByLabel('Notas generales del pedido (opcional)').fill('Salsa aparte');
   await dialog.getByRole('button', { name: 'Mostrador', exact: true }).click();
   await dialog.getByRole('button', { name: 'Delivery', exact: true }).click();
-  await dialog.getByLabel('Nombre del cliente').fill('Ana Prueba');
+  await dialog.getByLabel('Nombre del cliente (opcional)').fill('Ana Prueba');
   await dialog.getByLabel('Teléfono').fill('6671234567');
   await dialog.getByLabel('Dirección', { exact: true }).fill('Calle de prueba 123');
   await dialog.getByLabel('Referencias (opcional)').fill('Casa azul');
   await dialog.getByRole('button', { name: 'Agregar uno: Aguachile Tradicional (1 kilo)', exact: true }).click();
   await dialog.getByRole('button', { name: 'Agregar uno: Aguachile Tradicional (1 kilo)', exact: true }).first().click();
-  const firstPortion = dialog.getByRole('group', { name: 'Aguachile Tradicional (1 kilo) · Porción 1', exact: true });
-  await firstPortion.getByLabel('Sin pepino').check();
-  await firstPortion.getByLabel('Ajo', { exact: true }).selectOption('Sin');
-  const secondPortion = dialog.getByRole('group', { name: 'Aguachile Tradicional (1 kilo) · Porción 2', exact: true });
-  await secondPortion.getByLabel('Sin cebolla').check();
-  await secondPortion.getByLabel('Sal', { exact: true }).selectOption('Poco');
-  await secondPortion.getByLabel('Extra picante').check();
+  await expect(dialog.getByText(/Porción [12]/)).toHaveCount(0);
   await dialog.getByRole('button', { name: 'Crear pedido', exact: true }).click();
   await expect(page.getByRole('dialog')).toHaveCount(0);
   await expect(page.getByText(/Impresión sin confirmar/)).toBeVisible();
@@ -71,10 +65,10 @@ test('fallar la impresión conserva el pedido y permite reimprimir sin duplicarl
   expect(creates).toBe(1);
   expect(prints).toBe(2);
   expect(savedNotes).toBe('Salsa aparte');
-  expect(printedPortions).toEqual(['Sin cebolla · Poco sal · Extra picante', 'Sin pepino · Sin ajo'].sort());
+  expect(printedQuantities).toEqual([2]);
   expect(printedNotes).toBe(savedNotes);
   expect(printedCustomer).toBe('Ana Prueba');
   expect(printedTotal).toBeGreaterThan(0);
-  await expect(page.getByText('Sin cebolla · Poco sal · Extra picante', { exact: true })).toBeVisible();
+
   await page.screenshot({ path: test.info().outputPath('tablero-compacto.png'), fullPage: true });
 });

@@ -79,6 +79,7 @@ export const printTargetSchema = z.discriminatedUnion('mode', [
 export type PrintTarget = z.infer<typeof printTargetSchema>;
 
 export const printDispatchRequestSchema = z.object({
+  isReprint: z.boolean().optional(),
   format: ticketFormatSchema.optional(),
   target: printTargetSchema,
   printerId: z.string().min(1).optional(),

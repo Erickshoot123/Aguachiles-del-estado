@@ -6,7 +6,6 @@ import { CHANNEL_LABELS, formatCurrency } from './channelLabels';
 import { useCreateOrder, useProducts } from './hooks';
 import { usePlateAvailability } from '../plates/hooks';
 import { ProductCard } from './ProductCard';
-import { PortionPreferences, describePortion, emptyPortionPreferences, type PortionPreferencesValue } from './PortionPreferences';
 import { ApiError } from '../../lib/apiClient';
 
 const UI_TEXT = {
@@ -21,12 +20,12 @@ const UI_TEXT = {
   loadingProducts: 'Cargando menú…',
   error: 'No se pudo crear el pedido.',
   deliveryTitle: 'Datos de entrega',
-  customerName: 'Nombre del cliente',
+  customerName: 'Nombre del cliente (opcional)',
   customerPhone: 'Teléfono',
   deliveryAddress: 'Dirección',
   deliveryReferences: 'Referencias (opcional)',
   deliveryReferencesPlaceholder: 'Entre calles, color de fachada, piso, etc.',
-  missingDeliveryInfo: 'Completa nombre, teléfono y dirección para pedidos de delivery',
+  missingDeliveryInfo: 'Completa teléfono y dirección para pedidos de delivery',
   total: 'Total',
 } as const;
 
@@ -59,15 +58,13 @@ export function NewOrderModal({ onClose }: NewOrderModalProps): JSX.Element {
   const productsQuery = useProducts();
   const createOrder = useCreateOrder();
   const [channel, setChannel] = useState<SaleChannel>('delivery');
-  const [portionPreferences, setPortionPreferences] = useState<Record<string, PortionPreferencesValue[]>>({});
   const [notes, setNotes] = useState('');
   const [quantities, setQuantities] = useState<Record<string, number>>({});
   const [deliveryInfo, setDeliveryInfo] = useState<DeliveryFormState>(EMPTY_DELIVERY_INFO);
 
   const setQuantity = (productId: string, quantity: number): void => {
     setQuantities((prev) => ({ ...prev, [productId]: Math.max(0, quantity) }));
-    setPortionPreferences((prev) => ({ ...prev, [productId]: Array.from({ length: Math.max(0, quantity) },
-      (_, index) => prev[productId]?.[index] ?? emptyPortionPreferences()) }));
+
   };
   const incrementProduct = (productId: string): void => {
     setQuantity(productId, (quantities[productId] ?? 0) + 1);
@@ -94,10 +91,7 @@ export function NewOrderModal({ onClose }: NewOrderModalProps): JSX.Element {
   const orderableProductIds = new Set(orderableProducts.map((product) => product.id));
   const items = Object.entries(quantities)
     .filter(([productId, quantity]) => quantity > 0 && orderableProductIds.has(productId))
-    .flatMap(([productId, quantity]) => mainProducts.find((product) => product.id === productId)?.plateSize
-      ? Array.from({ length: quantity }, (_, index) => ({ productId, quantity: 1,
-        notes: describePortion(portionPreferences[productId]?.[index] ?? emptyPortionPreferences()) }))
-      : [{ productId, quantity, notes: undefined }]);
+    .map(([productId, quantity]) => ({ productId, quantity }));
 
   const priceByProductId = new Map(
     orderableProducts.map((product) => [product.id, product.price]),
@@ -111,8 +105,7 @@ export function NewOrderModal({ onClose }: NewOrderModalProps): JSX.Element {
   const isDelivery = channel === 'delivery';
   const hasRequiredDeliveryInfo =
     !isDelivery ||
-    (deliveryInfo.customerName.trim() !== '' &&
-      deliveryInfo.customerPhone.trim() !== '' &&
+    (deliveryInfo.customerPhone.trim() !== '' &&
       deliveryInfo.deliveryAddress.trim() !== '');
   const selectedPlates = { kilo: 0, half_kilo: 0 };
   for (const product of mainProducts) {
@@ -127,7 +120,6 @@ export function NewOrderModal({ onClose }: NewOrderModalProps): JSX.Element {
     if (!canSubmit) return;
     const deliveryPayload = isDelivery
       ? {
-          customerName: deliveryInfo.customerName.trim(),
           customerPhone: deliveryInfo.customerPhone.trim(),
           deliveryAddress: deliveryInfo.deliveryAddress.trim(),
           deliveryReferences:
@@ -136,7 +128,7 @@ export function NewOrderModal({ onClose }: NewOrderModalProps): JSX.Element {
               : deliveryInfo.deliveryReferences.trim(),
         }
       : {};
-    createOrder.mutate({ channel, items, ...deliveryPayload, notes: notes.trim() || undefined }, { onSuccess: onClose });
+    createOrder.mutate({ channel, items, customerName: deliveryInfo.customerName.trim() || undefined, ...deliveryPayload, notes: notes.trim() || undefined }, { onSuccess: onClose });
   };
 
   return (
@@ -173,11 +165,6 @@ export function NewOrderModal({ onClose }: NewOrderModalProps): JSX.Element {
           </div>
         </div>
 
-        {isDelivery ? (
-          <div className="flex flex-col gap-3 rounded-lg border border-border p-3">
-            <span className="text-sm font-medium text-text">{UI_TEXT.deliveryTitle}</span>
-
-            <div className="grid grid-cols-2 gap-3">
               <label className="flex flex-col gap-1 text-sm">
                 {UI_TEXT.customerName}
                 <input
@@ -186,6 +173,13 @@ export function NewOrderModal({ onClose }: NewOrderModalProps): JSX.Element {
                   className="h-11 rounded-lg border border-border px-3"
                 />
               </label>
+
+        {isDelivery ? (
+          <div className="flex flex-col gap-3 rounded-lg border border-border p-3">
+            <span className="text-sm font-medium text-text">{UI_TEXT.deliveryTitle}</span>
+
+            <div className="grid gap-3">
+
               <label className="flex flex-col gap-1 text-sm">
                 {UI_TEXT.customerPhone}
                 <input
@@ -256,15 +250,6 @@ export function NewOrderModal({ onClose }: NewOrderModalProps): JSX.Element {
           </div>
         ) : null}
 
-        {mainProducts.filter((product) => product.plateSize && (quantities[product.id] ?? 0) > 0).map((product) =>
-          <div key={product.id} className="flex flex-col gap-2">
-            {Array.from({ length: quantities[product.id] ?? 0 }, (_, index) => <PortionPreferences
-              key={index} label={`${product.name} · Porción ${index + 1}`}
-              value={portionPreferences[product.id]?.[index] ?? emptyPortionPreferences()}
-              onChange={(value) => setPortionPreferences((prev) => ({ ...prev,
-                [product.id]: Array.from({ length: quantities[product.id] ?? 0 }, (_, position) =>
-                  position === index ? value : prev[product.id]?.[position] ?? emptyPortionPreferences()) }))} />)}
-          </div>)}
         <label className="flex flex-col gap-1 text-sm">Notas generales del pedido (opcional)
           <textarea value={notes} onChange={(event) => setNotes(event.target.value)} rows={2}
             placeholder="Indicaciones generales de entrega…" className="rounded-lg border border-border px-3 py-2" />

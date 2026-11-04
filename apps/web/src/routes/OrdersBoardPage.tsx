@@ -1,3 +1,4 @@
+import { useBoardDragDrop } from '../features/orders/useBoardDragDrop';
 import type { Order } from '@aguachiles/shared';
 import type { FormEvent, JSX } from 'react';
 import { useState } from 'react';
@@ -29,6 +30,7 @@ function summarize(orders: Order[]): string {
 }
 
 export function OrdersBoardPage(): JSX.Element {
+  const drag = useBoardDragDrop();
   const ordersQuery = useOrders();
   const platesQuery = usePlateAvailability();
   const advanceOrder = useAdvanceOrder();
@@ -101,13 +103,18 @@ export function OrdersBoardPage(): JSX.Element {
         <p className="px-7 pt-3 text-[13px] text-red-600">{UI_TEXT.searchNotFound}</p>
       ) : null}
 
+      {drag.pending ? <p role="status" className="px-5 py-1 text-xs text-muted">Guardando cambio de columna…</p> : null}
+      {drag.error ? <p role="alert" className="px-5 py-2 text-sm text-red-700">{drag.error}</p> : null}
       <section className="grid min-h-0 flex-1 grid-cols-1 items-stretch gap-3 p-3 sm:grid-cols-2 lg:grid-cols-3">
         {BOARD_COLUMNS.map((column) => {
           const columnOrders = orders.filter((order) => order.fulfillmentStatus === column.key);
           return (
             <div
               key={column.key}
-              className="flex min-h-[260px] flex-col overflow-hidden rounded-2xl border border-border bg-surface"
+              role="region" aria-label={column.title}
+              onDragOver={(event) => drag.hover(event, column.key)}
+              onDrop={(event) => drag.drop(event, column.key)}
+              className={`flex min-h-[260px] flex-col overflow-hidden rounded-2xl border border-border bg-surface ${drag.over === column.key ? 'ring-2 ring-accent' : ''}`}
             >
               <div className="flex items-center gap-2.5 border-b border-divider px-3 py-2">
                 <span className={`h-[22px] w-1 rounded ${column.accentClassName}`} />
@@ -129,6 +136,9 @@ export function OrdersBoardPage(): JSX.Element {
                     <OrderCard
                       key={order.id}
                       order={order}
+                      draggable={!drag.pending}
+                      onDragStart={(event) => drag.start(event, order)}
+                      onDragEnd={drag.end}
                       advanceLabel={getAdvanceActionLabel(order) ?? column.advanceActionLabel}
                       onOpenDetail={(order) => {
                         setSubmittedTicketNumber('');

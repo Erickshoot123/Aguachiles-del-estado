@@ -1,10 +1,11 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
-import type { ChargeOrderRequest, CreateOrderRequest, Order } from '@aguachiles/shared';
+import type { ChargeOrderRequest, CreateOrderRequest, MoveOrderRequest, Order } from '@aguachiles/shared';
 import { ApiError } from '../../lib/apiClient';
 import { useIsLoggedIn } from '../auth/authStore';
 import { CASH_SESSION_QUERY_KEY } from '../cash/hooks';
 import {
   advanceOrder,
+  moveOrder,
   cancelOrder,
   chargeOrder,
   createOrder,
@@ -124,5 +125,14 @@ export function useOrderLookup(ticketNumber: string, enabled: boolean) {
     queryFn: () => lookupOrderByTicketNumber(ticketNumber),
     enabled: enabled && isLoggedIn && ticketNumber !== '',
     retry: false,
+  });
+}
+
+export function useMoveOrder() {
+  const client = useQueryClient();
+  return useMutation({
+    mutationFn: ({ id, ...input }: MoveOrderRequest & { id: string }) => moveOrder(id, input),
+    onSuccess: (order) => client.setQueryData<Order[]>(ORDERS_QUERY_KEY, (orders) => orders?.map((item) => item.id === order.id ? order : item)),
+    onSettled: () => { void client.invalidateQueries({ queryKey: ORDERS_QUERY_KEY }); },
   });
 }

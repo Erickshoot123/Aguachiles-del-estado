@@ -1,3 +1,5 @@
+import { useRef } from 'react';
+import { useEscapeDismiss } from '../lib/escapeActions';
 import type { JSX, MouseEvent, ReactNode } from 'react';
 
 interface ModalBackdropProps {
@@ -13,6 +15,8 @@ export function ModalBackdrop({
   contentClassName = '',
   zIndexClassName = 'z-40',
 }: ModalBackdropProps): JSX.Element {
+  const backdrop = useRef<HTMLDivElement>(null);
+  useEscapeDismiss(onClose, true, backdrop);
   const handleBackdropClick = (event: MouseEvent<HTMLDivElement>): void => {
     event.stopPropagation();
     onClose();
@@ -20,6 +24,7 @@ export function ModalBackdrop({
 
   return (
     <div
+      ref={backdrop}
       onClick={handleBackdropClick}
       className={`fixed inset-0 flex items-center justify-center bg-text/40 p-6 ${zIndexClassName}`}
     >

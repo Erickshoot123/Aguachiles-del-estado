@@ -13,7 +13,7 @@ export interface BoardColumn {
 export const BOARD_COLUMNS: readonly BoardColumn[] = [
   {
     key: 'in_prep',
-    title: 'En preparación',
+    title: 'Cocina',
     subtitle: 'Cocina',
     accentClassName: 'bg-accent',
     advanceActionLabel: 'Listo',
@@ -27,7 +27,7 @@ export const BOARD_COLUMNS: readonly BoardColumn[] = [
   },
   {
     key: 'in_delivery',
-    title: 'En delivery',
+    title: 'Enviado',
     subtitle: 'En ruta',
     accentClassName: 'bg-text',
     advanceActionLabel: 'Entregado',
@@ -40,7 +40,7 @@ export const BOARD_COLUMNS: readonly BoardColumn[] = [
 export function getAdvanceActionLabel(
   order: Pick<Order, 'channel' | 'fulfillmentStatus'>,
 ): string | null {
-  if (order.fulfillmentStatus === 'in_prep' && order.channel === 'counter') {
+  if (order.channel === 'counter' && BOARD_COLUMNS.some((column) => column.key === order.fulfillmentStatus)) {
     return 'Entregado';
   }
   return BOARD_COLUMNS.find((column) => column.key === order.fulfillmentStatus)?.advanceActionLabel ?? null;

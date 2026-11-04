@@ -1,3 +1,5 @@
+import { ReprintKitchenButton } from '../receipts/ReprintKitchenButton';
+import { productVariant } from './productVariant';
 import type { Order } from '@aguachiles/shared';
 import type { JSX } from 'react';
 import { useState } from 'react';
@@ -66,7 +68,7 @@ export function OrderDetailModal({
     <>
       <ModalBackdrop
         onClose={onClose}
-        contentClassName="flex w-full max-w-md flex-col rounded-2xl bg-surface"
+        contentClassName="flex max-h-[90vh] w-full max-w-md flex-col overflow-y-auto rounded-2xl bg-surface"
       >
         <div className="flex items-baseline gap-2.5 border-b border-divider px-5 py-4">
           <span className="font-mono text-[20px] font-semibold">{order.ticketNumber}</span>
@@ -80,7 +82,7 @@ export function OrderDetailModal({
           {order.items.map((item) => (
             <div key={item.id} className="flex items-baseline gap-2.5 text-[15px]">
               <span className="font-mono text-muted-2">{item.quantity}x</span>
-              <span className="min-w-0 flex-1">{item.productName}{item.notes ? <small className="block whitespace-pre-line font-semibold text-accent-hover">{item.notes}</small> : null}</span>
+              <span className="min-w-0 flex-1"><span className={`rounded px-1.5 py-0.5 ${productVariant(item.productName).badge}`}>{item.productName}</span>{item.notes ? <small className="block whitespace-pre-line font-semibold text-accent-hover">{item.notes}</small> : null}</span>
               <span className="font-mono text-muted">{formatCurrency(item.subtotal)}</span>
             </div>
           ))}
@@ -94,10 +96,11 @@ export function OrderDetailModal({
             {UI_TEXT.onBoardSince} {formatElapsedMinutes(order.createdAt)}
           </span>
 
-          {order.channel === 'delivery' && order.customerName ? (
+          {order.channel !== 'delivery' && order.customerName ? <p className="text-sm">Cliente: {order.customerName}</p> : null}
+          {order.channel === 'delivery' ? (
             <div className="flex flex-col gap-1 rounded-lg bg-bg px-3 py-2.5 text-[13px]">
               <span className="font-medium text-text">
-                {order.customerName} · {order.customerPhone}
+                {order.customerName ? `${order.customerName} · ` : ''}{order.customerPhone}
               </span>
               <span className="text-muted">{order.deliveryAddress}</span>
               {order.deliveryReferences ? (
@@ -111,6 +114,7 @@ export function OrderDetailModal({
         </div>
 
         <div className="flex flex-wrap gap-2.5 bg-bg px-5 py-4">
+          <ReprintKitchenButton order={order} />
           {canCancelOrCharge && order.fulfillmentStatus !== 'delivered' && order.fulfillmentStatus !== 'cancelled' ? (
             <button
               type="button"

@@ -29,14 +29,10 @@ export const createOrderItemSchema = z.object({
 });
 export type CreateOrderItem = z.infer<typeof createOrderItemSchema>;
 
-// Solo tienen sentido (y solo se piden) para channel = 'delivery'. No
-// participan en subtotal/total/pagos: son datos de logística de entrega
-// (quién, dónde, qué), capturados al crear el pedido para armar el mensaje
-// de WhatsApp del repartidor y, opcionalmente, el QR impreso en el ticket.
-// A propósito no incluye nada de montos (costo de envío, "paga con") — el
-// negocio no quiere esa información en el mensaje.
+// El nombre es opcional para cualquier pedido. Teléfono y dirección se exigen
+// únicamente para delivery. Estos datos no alteran precios ni pagos.
 const deliveryInfoFieldsSchema = z.object({
-  customerName: z.string().min(1).optional(),
+  customerName: z.string().trim().transform((value) => value || undefined).optional(),
   customerPhone: z.string().min(1).optional(),
   deliveryAddress: z.string().min(1).optional(),
   deliveryReferences: z.string().min(1).optional(),
@@ -52,13 +48,6 @@ export const createOrderRequestSchema = z
   .merge(deliveryInfoFieldsSchema)
   .superRefine((data, ctx) => {
     if (data.channel !== 'delivery') return;
-    if (!data.customerName) {
-      ctx.addIssue({
-        code: z.ZodIssueCode.custom,
-        message: 'El nombre del cliente es obligatorio para pedidos de delivery',
-        path: ['customerName'],
-      });
-    }
     if (!data.customerPhone) {
       ctx.addIssue({
         code: z.ZodIssueCode.custom,
@@ -131,3 +120,7 @@ export const whatsAppShareSchema = z.object({
   truncated: z.boolean(),
 });
 export type WhatsAppShare = z.infer<typeof whatsAppShareSchema>;
+
+export const boardStatusSchema = z.enum(['in_prep', 'waiting_pickup', 'in_delivery']);
+export const moveOrderRequestSchema = z.object({ status: boardStatusSchema, fromStatus: boardStatusSchema });
+export type MoveOrderRequest = z.infer<typeof moveOrderRequestSchema>;

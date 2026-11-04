@@ -128,14 +128,14 @@ export async function getWhatsAppShareForOrder(
   if (sale.channel !== 'delivery') {
     throw new OrderNotDeliveryError();
   }
-  if (!sale.customerName || !sale.customerPhone || !sale.deliveryAddress) {
+  if (!sale.customerPhone || !sale.deliveryAddress) {
     throw new OrderMissingDeliveryInfoError();
   }
 
   return buildWhatsAppMessage({
     ticketNumber: sale.ticketNumber,
     createdAt: sale.createdAt.toISOString(),
-    customerName: sale.customerName,
+    customerName: sale.customerName ?? 'Sin nombre',
     customerPhone: sale.customerPhone,
     deliveryAddress: sale.deliveryAddress,
     deliveryReferences: sale.deliveryReferences,
