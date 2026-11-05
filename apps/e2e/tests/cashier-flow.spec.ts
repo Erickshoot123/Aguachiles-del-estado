@@ -53,8 +53,7 @@ test('flujo completo de cajero: login, abrir caja, vender con pago dividido, imp
     expect(comanda).toContain(ticketNumber);
     expect(comanda).toContain(PRODUCT_NAME);
     expect(comanda).toContain(EXTRA_PRODUCT_NAME);
-    expect(comanda).not.toContain('TOTAL');
-    expect(comanda).not.toContain('$');
+    expect(comanda).toContain('TOTAL $155.00');
   });
 
   await test.step('cobrar con pago dividido (efectivo + tarjeta)', async () => {

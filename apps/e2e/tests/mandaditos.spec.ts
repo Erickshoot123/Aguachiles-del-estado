@@ -20,14 +20,14 @@ test('mandaditos con teclado numérico y efectivo de caja, cierre y analítica d
   const headers = { Authorization: `Bearer ${token}` };
   await ensurePlateAvailability(page);
   await page.getByRole('link', { name: 'Caja y cierre', exact: true }).click();
-  await page.getByLabel('Caja de esta terminal').selectOption({ label: 'Caja principal' });
+  await page.getByLabel('Caja de esta terminal').selectOption({ label: 'Caja móvil' });
   await page.getByLabel('Fondo inicial').fill('500');
   await page.getByRole('button', { name: 'Abrir caja', exact: true }).click();
   await expect(page.getByText('Caja abierta desde')).toBeVisible();
   const registers = await (
     await request.get('http://127.0.0.1:3100/api/cash-registers', { headers })
   ).json();
-  const register = registers.find((item: { name: string }) => item.name === 'Caja principal');
+  const register = registers.find((item: { name: string }) => item.name === 'Caja móvil');
   const methods = await (
     await request.get('http://127.0.0.1:3100/api/payment-methods', { headers })
   ).json();

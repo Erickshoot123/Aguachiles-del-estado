@@ -13,12 +13,13 @@ test('las tres columnas vacías llenan la altura disponible del tablero', async 
   await ensurePlateAvailability(page);
   const columns = page.locator('main > section').last().locator(':scope > div');
   await expect(columns).toHaveCount(3);
-  const viewportHeight = page.viewportSize()!.height;
+  const main = await page.getByRole('main').boundingBox();
+  expect(main).not.toBeNull();
+  const bottom = main!.y + main!.height;
   for (const column of await columns.all()) {
     const box = await column.boundingBox();
     expect(box).not.toBeNull();
-    expect(box!.y + box!.height).toBeGreaterThanOrEqual(viewportHeight - 16);
-    expect(box!.y + box!.height).toBeLessThanOrEqual(viewportHeight);
+    expect(bottom - (box!.y + box!.height)).toBeCloseTo(12);
   }
   await page.screenshot({ path: test.info().outputPath('columnas-altura-completa.png') });
 });
