@@ -46,8 +46,10 @@ export async function renderTicketCommands(
 
   if (isKitchen) {
     const customerDetails = [
-      ['Cliente', ticket.customerName], ['Telefono', ticket.customerPhone],
-      ['Direccion', ticket.deliveryAddress], ['Referencias', ticket.deliveryReferences],
+      ['Cliente', ticket.customerName],
+      ['Telefono', ticket.customerPhone],
+      ['Direccion', ticket.deliveryAddress],
+      ['Referencias', ticket.deliveryReferences],
     ];
     for (const [label, value] of customerDetails) {
       if (value) printer.println(`${label}: ${value}`);
@@ -74,6 +76,7 @@ export async function renderTicketCommands(
     printer.drawLine();
   }
   printer.bold(true);
+  if (ticket.deliveryFee) printer.leftRight('Envio / Mandadito', formatMoney(ticket.deliveryFee));
   printer.leftRight('TOTAL', formatMoney(ticket.total));
   printer.bold(false);
 

@@ -21,6 +21,9 @@ function movement(overrides: {
     : null;
 
   return {
+    category: null,
+    saleId: null,
+    clientRequestId: null,
     id: `mv-${movementCounter}`,
     sessionId: 'session-1',
     type: overrides.type,

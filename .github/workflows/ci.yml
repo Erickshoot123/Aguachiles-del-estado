@@ -51,6 +51,9 @@ jobs:
 
       - run: npm run test
 
+      - name: Probar respaldos y actualizador manual sin ejecutar instaladores
+        run: node --test packaging/windows/protected-backup.test.mjs packaging/windows/updates.test.mjs
+
       - run: npm run build
 
   e2e:

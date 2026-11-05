@@ -10,15 +10,20 @@ import {
 } from './cash.errors.js';
 
 import { toCashSessionDto } from './cashDto.js';
+import { mandaditoSummary } from './mandaditoSummary.js';
 
 import { cashMovementsDelta } from './cashMath.js';
 export { cashMovementsDelta, type MovementWithMethod } from './cashMath.js';
 export { closeSession } from './cashClose.service.js';
 
-type MovementWithUser = Prisma.CashMovementGetPayload<{ include: { user: true } }>;
+type MovementWithUser = Prisma.CashMovementGetPayload<{
+  include: { user: true; paymentMethod: true };
+}>;
 
 function toCashMovementDto(movement: MovementWithUser): CashMovement {
   return {
+    category: movement.category,
+    paymentMethodName: movement.paymentMethod?.name ?? null,
     id: movement.id,
     type: movement.type,
     amount: movement.amount.toNumber(),
@@ -35,18 +40,6 @@ function toCashRegisterDto(cashRegister: PrismaCashRegister): CashRegister {
     location: cashRegister.location,
     isActive: cashRegister.isActive,
   };
-}
-
-async function computeExpectedClosingAmount(
-  prisma: PrismaClient,
-  sessionId: string,
-  openingAmount: Prisma.Decimal,
-): Promise<Prisma.Decimal> {
-  const movements = await prisma.cashMovement.findMany({
-    where: { sessionId },
-    include: { paymentMethod: true },
-  });
-  return openingAmount.add(cashMovementsDelta(movements));
 }
 
 export async function listCashRegisters(prisma: PrismaClient): Promise<CashRegister[]> {
@@ -69,12 +62,19 @@ export async function getCurrentSession(
   });
   if (!session) return null;
 
-  const expected = await computeExpectedClosingAmount(prisma, session.id, session.openingAmount);
-
-  return toCashSessionDto({
-    ...session,
-    expectedClosingAmount: expected,
+  const movements = await prisma.cashMovement.findMany({
+    where: { sessionId: session.id },
+    include: { paymentMethod: true },
   });
+  const expected = session.openingAmount.add(cashMovementsDelta(movements));
+
+  return toCashSessionDto(
+    {
+      ...session,
+      expectedClosingAmount: expected,
+    },
+    mandaditoSummary(movements),
+  );
 }
 
 export async function openSession(
@@ -157,7 +157,7 @@ export async function listCashMovements(
   await assertLocalRegister(prisma, session.cashRegisterId);
   const movements = await prisma.cashMovement.findMany({
     where: { sessionId },
-    include: { user: true },
+    include: { user: true, paymentMethod: true },
     orderBy: { createdAt: 'desc' },
   });
   return movements.map(toCashMovementDto);

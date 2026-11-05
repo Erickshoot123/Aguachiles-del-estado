@@ -3,7 +3,11 @@ import bcrypt from 'bcryptjs';
 import { disconnectTestDb, resetDatabase, testPrisma as db } from './testDb.js';
 import { bootstrapLocalInstallation } from '../src/modules/installation/bootstrap.service.js';
 
-const input = { locationName: 'Sucursal nueva', adminUsername: 'encargado', adminPassword: 'Instalacion-segura-123' };
+const input = {
+  locationName: 'Sucursal nueva',
+  adminUsername: 'encargado',
+  adminPassword: 'Instalacion-segura-123',
+};
 describe('primera instalación local', () => {
   beforeEach(resetDatabase);
   afterAll(disconnectTestDb);
@@ -25,13 +29,22 @@ describe('primera instalación local', () => {
     await db.product.update({ where: { sku: 'AGU-TRAD-MK' }, data: { price: 180 } });
     await bootstrapLocalInstallation(db, { ...input, locationName: 'Otra' });
     expect(await db.user.count()).toBe(1);
-    expect((await db.product.findUniqueOrThrow({ where: { sku: 'AGU-TRAD-MK' } })).price.toNumber()).toBe(180);
+    expect(
+      (await db.product.findUniqueOrThrow({ where: { sku: 'AGU-TRAD-MK' } })).price.toNumber(),
+    ).toBe(180);
     expect((await db.location.findFirstOrThrow()).name).toBe('Sucursal nueva');
-    await expect(bootstrapLocalInstallation(db, { ...input, adminPassword: 'Otra-clave-distinta-123' })).rejects.toThrow('existente');
-    expect(await bcrypt.compare(input.adminPassword, (await db.user.findFirstOrThrow()).passwordHash)).toBe(true);
+    await expect(
+      bootstrapLocalInstallation(db, { ...input, adminPassword: 'Otra-clave-distinta-123' }),
+    ).rejects.toThrow('existente');
+    expect(
+      await bcrypt.compare(input.adminPassword, (await db.user.findFirstOrThrow()).passwordHash),
+    ).toBe(true);
   });
   it('inicializaciones simultáneas no duplican cuentas o menú', async () => {
-    await Promise.all([bootstrapLocalInstallation(db, input), bootstrapLocalInstallation(db, input)]);
+    await Promise.all([
+      bootstrapLocalInstallation(db, input),
+      bootstrapLocalInstallation(db, input),
+    ]);
     expect(await db.user.count()).toBe(1);
     expect(await db.product.count()).toBe(12);
   });

@@ -39,6 +39,7 @@ export function buildTicket(sale: SaleForReceipt, format: TicketFormat): Ticket 
     format,
     issuedAt: new Date().toISOString(),
     businessName: BUSINESS_NAME,
+    deliveryFee: sale.deliveryFee.toNumber(),
     lines: sale.items.map((item) => ({
       productName: item.product.name,
       quantity: item.quantity.toNumber(),
@@ -81,7 +82,11 @@ export async function getReceiptTicket(
 
   const ticket = receipt.contentSnapshot as unknown as Ticket;
   return {
-    ticket: { ...ticket, whatsappUrl: addTotalToWhatsAppUrl(ticket.whatsappUrl, ticket.total), isReprint: receipt.printedAt !== null },
+    ticket: {
+      ...ticket,
+      whatsappUrl: addTotalToWhatsAppUrl(ticket.whatsappUrl, ticket.total),
+      isReprint: receipt.printedAt !== null,
+    },
     reprintCount: receipt.reprintCount,
   };
 }

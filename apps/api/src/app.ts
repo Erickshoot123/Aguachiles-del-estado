@@ -23,8 +23,12 @@ import suppliersRoutes from './modules/suppliers/suppliers.routes.js';
 import { registerSyncRoutes } from './modules/sync/sync.routes.js';
 import { registerSyncWorker } from './modules/sync/syncWorker.js';
 import { registerBranchReportRoutes } from './modules/branches/branches.routes.js';
+import { registerUpdateRoutes, type UpdateRequester } from './modules/updates/updates.routes.js';
 
-export async function buildApp(env: Env): Promise<FastifyInstance> {
+export async function buildApp(
+  env: Env,
+  options: { requestUpdate?: UpdateRequester } = {},
+): Promise<FastifyInstance> {
   const app = Fastify({ logger: env.NODE_ENV !== 'test' });
 
   await app.register(cors, { origin: env.CORS_ORIGIN });
@@ -39,6 +43,7 @@ export async function buildApp(env: Env): Promise<FastifyInstance> {
     app.get('/health', async () => ({ status: 'ok', mode: 'central' }));
     return app;
   }
+  registerUpdateRoutes(app, options.requestUpdate);
   await app.register(categoriesRoutes);
   await app.register(productsRoutes);
   await app.register(ordersRoutes);

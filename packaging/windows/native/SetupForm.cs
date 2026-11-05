@@ -15,6 +15,7 @@ internal sealed class PosSetupForm : Form {
   bool validationShown;
   internal PosSetupForm(Dictionary<string, object> current, bool first) {
     config = current; initial = first;
+    Icon = PosCommon.BrandIcon;
     Text = first ? "Aguachiles POS · Primera instalación" : "Aguachiles POS · Impresora";
     ClientSize = new Size(590, first ? Math.Min(710, Screen.PrimaryScreen.WorkingArea.Height - 90) : 300);
     StartPosition = FormStartPosition.CenterScreen; FormBorderStyle = FormBorderStyle.FixedDialog;
@@ -22,6 +23,7 @@ internal sealed class PosSetupForm : Form {
     MaximizeBox = false; MinimizeBox = false; Font = new Font("Segoe UI", 10);
     var panel = new TableLayoutPanel { Dock = DockStyle.Fill, Padding = new Padding(24), ColumnCount = 1, AutoScroll = true };
     panel.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 100)); Controls.Add(panel);
+    Add(panel, new PictureBox { Image = PosCommon.BrandLogo, SizeMode = PictureBoxSizeMode.Zoom, Width = 150, Height = 100 });
     Add(panel, new Label { Text = first ? "Configura tu sucursal y crea la cuenta del administrador. Todos sus campos son obligatorios." : "Selecciona la impresora instalada en Windows. Las comandas serán de 58 mm.", AutoSize = true, MaximumSize = new Size(520, 60) });
     summary.AutoSize = true; summary.ForeColor = Color.FromArgb(160, 30, 30); summary.MaximumSize = new Size(520, 60);
     summary.Visible = false; summary.Margin = new Padding(0, 10, 0, 0); Add(panel, summary);
@@ -31,7 +33,7 @@ internal sealed class PosSetupForm : Form {
       AddField(panel, "Nombre de la sucursal", location, "location");
       AddField(panel, "Usuario administrador", user, "user");
       Add(panel, new Label { Text = "3–40 caracteres. Ejemplo: admin, erick_01 o sucursal.centro", AutoSize = true, Font = new Font("Segoe UI", 9), ForeColor = Color.DimGray });
-      AddField(panel, "Contraseña (mínimo 12 caracteres)", password, "password");
+      AddField(panel, "Contraseña (mínimo 6 caracteres)", password, "password");
       AddField(panel, "Repite la contraseña", confirm, "confirm");
       var show = new CheckBox { Text = "Mostrar contraseñas", AutoSize = true, Margin = new Padding(0, 8, 0, 0) };
       show.CheckedChanged += (s, e) => { password.UseSystemPasswordChar = confirm.UseSystemPasswordChar = !show.Checked; };

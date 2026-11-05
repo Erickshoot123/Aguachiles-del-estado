@@ -15,6 +15,12 @@ internal static class PosLauncher {
     try {
       string root = PosCommon.Root(args, false);
       if (PosCommon.Has(args, "/stop")) { PosCommon.SendEvent(root, "stop"); return 0; }
+      using (var update = new Mutex(false, PosCommon.EventName(root, "update"))) {
+        bool free;
+        try { free = update.WaitOne(0); } catch (AbandonedMutexException) { free = true; }
+        if (!free) { MessageBox.Show("El POS se está actualizando. Espera a que termine y se abra nuevamente.", "Aguachiles POS"); return 0; }
+        update.ReleaseMutex();
+      }
       using (var mutex = new Mutex(false, PosCommon.EventName(root, "mutex"))) {
         bool acquired;
         try { acquired = mutex.WaitOne(0); } catch (AbandonedMutexException) { acquired = true; }
@@ -59,16 +65,30 @@ internal sealed class PosContext : ApplicationContext {
     root = rootPath; appDir = application; config = settings; openWhenReady = showBrowser;
     stopSignal = new EventWaitHandle(false, EventResetMode.AutoReset, PosCommon.EventName(root, "stop"));
     openSignal = new EventWaitHandle(false, EventResetMode.AutoReset, PosCommon.EventName(root, "open"));
-    status = new Form { Text = "Aguachiles POS", Width = 480, Height = 150, StartPosition = FormStartPosition.CenterScreen, FormBorderStyle = FormBorderStyle.FixedDialog, ControlBox = false };
+    status = new Form { Icon = PosCommon.BrandIcon, Text = "Aguachiles POS", Width = 480, Height = 150, StartPosition = FormStartPosition.CenterScreen, FormBorderStyle = FormBorderStyle.FixedDialog, ControlBox = false };
     label = new Label { Text = "Iniciando…", Dock = DockStyle.Fill, TextAlign = ContentAlignment.MiddleCenter, Font = new Font("Segoe UI", 11) };
     status.Controls.Add(label); status.Show();
     var menu = new ContextMenuStrip();
     menu.Items.Add("Abrir POS", null, (s, e) => Open());
     menu.Items.Add("Configurar impresora", null, (s, e) => { restartPrinter = true; ClosePos(); });
-    menu.Items.Add("Crear respaldo", null, (s, e) => Send("BACKUP"));
+    menu.Items.Add("Crear respaldo protegido", null, (s, e) => {
+      using (var form = new BackupPasswordForm(true)) if (form.ShowDialog() == DialogResult.OK)
+        Send(PosCommon.Json.Serialize(new { type = "BACKUP_PROTECTED", password = form.Password }));
+    });
+    menu.Items.Add("Desbloquear respaldo", null, (s, e) => {
+      using (var backupInput = new OpenFileDialog { Filter = "Respaldo protegido|*.agpos" }) {
+        if (backupInput.ShowDialog() != DialogResult.OK) return;
+        using (var output = new SaveFileDialog { Filter = "Respaldo PostgreSQL|*.dump", FileName = "respaldo-desbloqueado.dump" }) {
+          if (output.ShowDialog() != DialogResult.OK) return;
+          if (File.Exists(output.FileName)) { MessageBox.Show("Elige un archivo nuevo para conservar el existente."); return; }
+          using (var form = new BackupPasswordForm(false)) if (form.ShowDialog() == DialogResult.OK)
+            Send(PosCommon.Json.Serialize(new { type = "UNLOCK_BACKUP", password = form.Password, input = backupInput.FileName, output = output.FileName }));
+        }
+      }
+    });
     menu.Items.Add("Abrir respaldos y registros", null, (s, e) => Process.Start("explorer.exe", PosCommon.Quote(Path.Combine(root, "data"))));
     menu.Items.Add("Cerrar POS", null, (s, e) => ClosePos());
-    tray = new NotifyIcon { Icon = SystemIcons.Application, Text = "Aguachiles POS · iniciando", Visible = true, ContextMenuStrip = menu };
+    tray = new NotifyIcon { Icon = PosCommon.BrandIcon, Text = "Aguachiles POS · iniciando", Visible = true, ContextMenuStrip = menu };
     tray.DoubleClick += (s, e) => Open();
     timer.Interval = 250; timer.Tick += (s, e) => { if (stopSignal.WaitOne(0)) ClosePos(); if (openSignal.WaitOne(0)) Open(); }; timer.Start();
     node = new Process { StartInfo = new ProcessStartInfo(Path.Combine(appDir, "node", "node.exe"), PosCommon.Quote(Path.Combine(appDir, "desktop", "supervisor.mjs"))) {

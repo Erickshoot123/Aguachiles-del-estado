@@ -1,12 +1,15 @@
 import type { Prisma } from '@prisma/client';
 import type { Order } from '@aguachiles/shared';
 
-export type SaleWithItems = Prisma.SaleGetPayload<{ include: { items: { include: { product: true } } } }>;
+export type SaleWithItems = Prisma.SaleGetPayload<{
+  include: { items: { include: { product: true } } };
+}>;
 
 export function toOrderDto(sale: SaleWithItems): Order {
   return {
     id: sale.id,
     ticketNumber: sale.ticketNumber,
+    deliveryFee: sale.deliveryFee.toNumber(),
     channel: sale.channel,
     fulfillmentStatus: sale.fulfillmentStatus,
     status: sale.status,
@@ -31,4 +34,3 @@ export function toOrderDto(sale: SaleWithItems): Order {
     notes: sale.notes,
   };
 }
-

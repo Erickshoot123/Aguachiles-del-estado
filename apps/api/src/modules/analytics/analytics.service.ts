@@ -1,5 +1,9 @@
 import { Prisma, type PrismaClient } from '@prisma/client';
-import type { AnalyticsDashboard, AnalyticsTopProduct, AnalyticsTrendPoint } from '@aguachiles/shared';
+import type {
+  AnalyticsDashboard,
+  AnalyticsTopProduct,
+  AnalyticsTrendPoint,
+} from '@aguachiles/shared';
 import { fetchSalesForPeriod, refundedItemsOf, refundedTotalOf } from '../reports/salesPeriod.js';
 
 const TOP_PRODUCTS_LIMIT = 10;
@@ -52,7 +56,10 @@ export async function getAnalyticsDashboard(
   const byProduct = new Map<string, ProductAccumulator>();
 
   for (const sale of sales) {
-    const netTotal = sale.total.sub(refundedTotalOf(sale));
+    const netTotal = Prisma.Decimal.max(
+      0,
+      sale.total.sub(sale.deliveryFee).sub(refundedTotalOf(sale)),
+    );
     totalRevenue = totalRevenue.add(netTotal);
 
     const dayKey = sale.createdAt.toISOString().slice(0, 10);

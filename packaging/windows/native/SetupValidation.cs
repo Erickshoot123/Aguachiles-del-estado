@@ -10,7 +10,7 @@ internal static class PosSetupValidation {
     else if (!Regex.IsMatch(user.Trim(), "^[a-zA-Z0-9._-]{3,40}$"))
       errors["user"] = "Usa de 3 a 40 caracteres: letras sin acentos, números, punto, guion o guion bajo. No uses espacios.";
     if (String.IsNullOrWhiteSpace(password)) errors["password"] = "Falta la contraseña del administrador.";
-    else if (password.Length < 12) errors["password"] = "La contraseña necesita al menos 12 caracteres. Faltan " + (12 - password.Length) + ".";
+    else if (password.Length < 6) errors["password"] = "La contraseña necesita al menos 6 caracteres. Faltan " + (6 - password.Length) + ".";
     if (String.IsNullOrEmpty(confirmation)) errors["confirm"] = "Falta repetir la contraseña.";
     else if (password != confirmation) errors["confirm"] = "Las contraseñas no coinciden. Escríbelas exactamente iguales.";
     return errors;

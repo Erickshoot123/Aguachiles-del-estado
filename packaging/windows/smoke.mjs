@@ -8,6 +8,7 @@ import { createInterface } from 'node:readline';
 import { run } from './runtime/processes.mjs';
 import { chromium } from '@playwright/test';
 import { LocalDatabase } from './runtime/database.mjs';
+import { unlockBackup } from './runtime/protected-backup.mjs';
 
 const getArg = (name) => process.argv[process.argv.indexOf(name) + 1];
 const installer = resolve(getArg('--installer'));
@@ -17,10 +18,21 @@ const root = join(testBase, `prueba con espacios-${Date.now()}`);
 const packaging = dirname(fileURLToPath(import.meta.url));
 const report = { installer, root, checks: [], success: false };
 const isolatedPorts = process.argv.includes('--isolated-ports');
-const config = { root, locationName: 'Sucursal de prueba de instalación', adminUsername: 'admin_prueba',
-  adminPassword: 'Prueba-' + randomUUID(), dbPassword: randomBytes(32).toString('hex'),
-  appPassword: randomBytes(32).toString('hex'), jwtSecret: randomBytes(32).toString('hex'),
-  timeZone: 'America/Mazatlan', printerName: '', dbPort: isolatedPorts ? 54429 : 54329, webPort: isolatedPorts ? 48980 : 48880, apiPort: isolatedPorts ? 48981 : 48881, printPort: isolatedPorts ? 48982 : 48882 };
+const config = {
+  root,
+  locationName: 'Sucursal de prueba de instalación',
+  adminUsername: 'admin_prueba',
+  adminPassword: '123456',
+  dbPassword: randomBytes(32).toString('hex'),
+  appPassword: randomBytes(32).toString('hex'),
+  jwtSecret: randomBytes(32).toString('hex'),
+  timeZone: 'America/Mazatlan',
+  printerName: '',
+  dbPort: isolatedPorts ? 54529 : 54329,
+  webPort: isolatedPorts ? 49080 : 48880,
+  apiPort: isolatedPorts ? 49081 : 48881,
+  printPort: isolatedPorts ? 49082 : 48882,
+};
 const webUrl = `http://127.0.0.1:${config.webPort}`;
 const apiUrl = `http://127.0.0.1:${config.apiPort}`;
 const printUrl = `http://127.0.0.1:${config.printPort}`;
@@ -33,27 +45,54 @@ async function isolateFrontend(appDir) {
     if (!file.endsWith('.js')) continue;
     const path = join(assets, file);
     const content = await readFile(path, 'utf8');
-    await writeFile(path, content.replaceAll('http://127.0.0.1:48881', apiUrl).replaceAll('http://127.0.0.1:48882', printUrl));
+    await writeFile(
+      path,
+      content
+        .replaceAll('http://127.0.0.1:48881', apiUrl)
+        .replaceAll('http://127.0.0.1:48882', printUrl),
+    );
   }
 }
-const check = (name) => { report.checks.push(name); console.warn(name); };
+const check = (name) => {
+  report.checks.push(name);
+  console.warn(name);
+};
 let session;
 async function boot(appDir) {
   const isolatedEnv = { ...process.env };
-  for (const key of Object.keys(isolatedEnv)) if (/^(path|node_path|node_options)$/i.test(key)) delete isolatedEnv[key];
-  isolatedEnv.Path = [process.env.WINDIR, join(process.env.WINDIR, 'System32'), join(process.env.WINDIR, 'System32/WindowsPowerShell/v1.0')].join(';');
+  for (const key of Object.keys(isolatedEnv))
+    if (/^(path|node_path|node_options)$/i.test(key)) delete isolatedEnv[key];
+  isolatedEnv.Path = [
+    process.env.WINDIR,
+    join(process.env.WINDIR, 'System32'),
+    join(process.env.WINDIR, 'System32/WindowsPowerShell/v1.0'),
+  ].join(';');
   isolatedEnv.HTTPS_PROXY = 'http://127.0.0.1:1';
   isolatedEnv.HTTP_PROXY = 'http://127.0.0.1:1';
   isolatedEnv.NO_PROXY = '127.0.0.1,localhost';
   const child = spawn(join(appDir, 'node/node.exe'), [join(appDir, 'desktop/supervisor.mjs')], {
-    cwd: appDir, windowsHide: true, stdio: ['pipe', 'pipe', 'pipe'], env: isolatedEnv,
+    cwd: appDir,
+    windowsHide: true,
+    stdio: ['pipe', 'pipe', 'pipe'],
+    env: isolatedEnv,
   });
   const events = [];
   let stopped = false;
-  const exited = new Promise((ready) => child.once('exit', (code) => { stopped = true; ready(code); }));
+  const exited = new Promise((ready) =>
+    child.once('exit', (code) => {
+      stopped = true;
+      ready(code);
+    }),
+  );
   child.stderr.on('data', (chunk) => process.stderr.write(chunk));
   createInterface({ input: child.stdout }).on('line', (line) => {
-    try { const item = JSON.parse(line); events.push(item); if (item.type === 'status') console.warn(item.message); } catch { /* Solo protocolo JSON. */ }
+    try {
+      const item = JSON.parse(line);
+      events.push(item);
+      if (item.type === 'status') console.warn(item.message);
+    } catch {
+      /* Solo protocolo JSON. */
+    }
   });
   child.stdin.write(JSON.stringify(config) + '\n');
   const event = async (type) => {
@@ -73,20 +112,32 @@ async function boot(appDir) {
 async function stop() {
   if (!session) return;
   session.child.stdin.write('STOP\n');
-  const timer = setTimeout(() => { session?.child.kill(); }, 45000);
+  const timer = setTimeout(() => {
+    session?.child.kill();
+  }, 45000);
   const code = await session.exited;
-  clearTimeout(timer); session = null;
+  clearTimeout(timer);
+  session = null;
   assert.equal(code, 0, 'El supervisor debe cerrar sin error.');
 }
 async function request(path, method = 'GET', body, token) {
-  const response = await fetch(`${apiUrl}${path}`, { method,
-    headers: { ...(body ? { 'Content-Type': 'application/json' } : {}), ...(token ? { Authorization: `Bearer ${token}` } : {}) },
-    body: body ? JSON.stringify(body) : undefined, signal: AbortSignal.timeout(10000) });
+  const response = await fetch(`${apiUrl}${path}`, {
+    method,
+    headers: {
+      ...(body ? { 'Content-Type': 'application/json' } : {}),
+      ...(token ? { Authorization: `Bearer ${token}` } : {}),
+    },
+    body: body ? JSON.stringify(body) : undefined,
+    signal: AbortSignal.timeout(10000),
+  });
   assert.ok(response.ok, `La API respondió ${response.status} en ${path}`);
   return response.status === 204 ? null : response.json();
 }
 try {
-  assert.ok(root.startsWith(testBase + '\\'), 'La prueba debe quedar dentro de la carpeta de prueba elegida.');
+  assert.ok(
+    root.startsWith(testBase + '\\'),
+    'La prueba debe quedar dentro de la carpeta de prueba elegida.',
+  );
   await run(installer, ['/silent', `/dir=${root}`]);
   check('Extracción e integridad del instalador EXE');
   const version = (await readFile(join(root, 'current-version'), 'utf8')).trim();
@@ -94,49 +145,103 @@ try {
   await isolateFrontend(appDir);
   // Se prueba el mismo almacenamiento DPAPI que usa el lanzador nativo.
   const probe = join(buildRoot, 'config-probe.exe');
-  await run(join(process.env.WINDIR, 'Microsoft.NET/Framework64/v4.0.30319/csc.exe'), ['/nologo', '/target:exe', '/platform:x64',
-    `/out:${probe}`, '/reference:System.Security.dll', '/reference:System.Web.Extensions.dll', '/reference:Microsoft.CSharp.dll',
-    join(packaging, 'native/Common.cs'), join(packaging, 'native/ConfigProbe.cs')]);
+  await run(join(process.env.WINDIR, 'Microsoft.NET/Framework64/v4.0.30319/csc.exe'), [
+    '/nologo',
+    '/target:exe',
+    '/platform:x64',
+    `/out:${probe}`,
+    '/reference:System.Drawing.dll',
+    '/reference:System.Security.dll',
+    '/reference:System.Web.Extensions.dll',
+    '/reference:Microsoft.CSharp.dll',
+    join(packaging, 'native/Common.cs'),
+    join(packaging, 'native/ConfigProbe.cs'),
+  ]);
   await run(probe, [], { input: JSON.stringify(config) });
   check('Configuración cifrada con DPAPI, sin guardar contraseña de administrador');
   session = await boot(appDir);
   await session.event('ready');
   check('PostgreSQL, migraciones, API, agente e interfaz empaquetados');
   const nativeUiProbe = join(root, 'native-ui-probe.exe');
-  await run(join(process.env.WINDIR, 'Microsoft.NET/Framework64/v4.0.30319/csc.exe'), ['/nologo', '/target:exe', '/platform:x64', '/codepage:65001',
-    `/out:${nativeUiProbe}`, '/reference:System.Windows.Forms.dll', '/reference:System.Drawing.dll',
-    `/reference:${join(root, 'Microsoft.Web.WebView2.Core.dll')}`, `/reference:${join(root, 'Microsoft.Web.WebView2.WinForms.dll')}`,
-    join(packaging, 'native/NativeUiProbe.cs')]);
+  await run(join(process.env.WINDIR, 'Microsoft.NET/Framework64/v4.0.30319/csc.exe'), [
+    '/nologo',
+    '/target:exe',
+    '/platform:x64',
+    '/codepage:65001',
+    `/out:${nativeUiProbe}`,
+    '/reference:System.Windows.Forms.dll',
+    '/reference:System.Drawing.dll',
+    `/reference:${join(root, 'Microsoft.Web.WebView2.Core.dll')}`,
+    `/reference:${join(root, 'Microsoft.Web.WebView2.WinForms.dll')}`,
+    join(packaging, 'native/NativeUiProbe.cs'),
+  ]);
   const nativeResult = await run(nativeUiProbe, [root, `${webUrl}/login`]);
-  assert.ok(nativeResult.output.includes('Ventana WebView2:') && nativeResult.output.includes('Formulario:'), 'La prueba debe completar tanto el formulario como la ventana integrada');
+  assert.ok(
+    nativeResult.output.includes('Ventana WebView2:') &&
+      nativeResult.output.includes('Formulario:'),
+    'La prueba debe completar tanto el formulario como la ventana integrada',
+  );
   await unlink(nativeUiProbe);
-  check('Formulario real con errores por campo y ventana WebView2 con login sin barra de direcciones');
+  check(
+    'Formulario real con errores por campo y ventana WebView2 con login sin barra de direcciones',
+  );
   const html = await fetch(`${webUrl}/login`);
   assert.equal(html.status, 200);
   assert.ok((await html.text()).includes('id="root"'));
-  const auth = await request('/api/auth/login', 'POST', { username: config.adminUsername, password: config.adminPassword });
+  const auth = await request('/api/auth/login', 'POST', {
+    username: config.adminUsername,
+    password: config.adminPassword,
+  });
   const token = auth.accessToken;
   const users = await request('/api/auth/users', 'GET', undefined, token);
   assert.equal(users.length, 1);
-  const identity = await new LocalDatabase(appDir, config).sql('SELECT id FROM locations WHERE is_active;', 'aguachiles_pos');
-  assert.ok(identity && identity !== '00000000-0000-0000-0000-000000000001', 'Cada instalación nueva necesita identidad propia de sucursal.');
+  const identity = await new LocalDatabase(appDir, config).sql(
+    'SELECT id FROM locations WHERE is_active;',
+    'aguachiles_pos',
+  );
+  assert.ok(
+    identity && identity !== '00000000-0000-0000-0000-000000000001',
+    'Cada instalación nueva necesita identidad propia de sucursal.',
+  );
   const plates = await request('/api/plates/today', 'GET', undefined, token);
   assert.equal(plates.initialized, false);
   check('Administrador elegido y captura de platos obligatoria; sin usuarios demo');
   await request('/api/plates/today', 'POST', { kilo: 1, halfKilo: 2 }, token);
   const products = await request('/api/products', 'GET', undefined, token);
   const product = products.find((item) => item.name === 'Aguachile Tradicional (medio kilo)');
-  const input = { clientRequestId: randomUUID(), channel: 'delivery', customerName: 'Cliente Prueba', customerPhone: '6671234567', deliveryAddress: 'Calle de prueba 123', deliveryReferences: 'Casa azul', notes: 'Sin pepino', items: [{ productId: product.id, quantity: 1 }] };
+  const input = {
+    clientRequestId: randomUUID(),
+    channel: 'delivery',
+    customerName: 'Cliente Prueba',
+    customerPhone: '6671234567',
+    deliveryAddress: 'Calle de prueba 123',
+    deliveryReferences: 'Casa azul',
+    notes: 'Sin pepino',
+    items: [{ productId: product.id, quantity: 1 }],
+  };
   const order = await request('/api/orders', 'POST', input, token);
   const repeated = await request('/api/orders', 'POST', input, token);
   assert.equal(repeated.id, order.id);
   const { ticket } = await request(`/api/orders/${order.id}/comanda`, 'GET', undefined, token);
-  const printed = await fetch(`${printUrl}/print`, { method: 'POST', headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ ticket, printerId: 'default' }) });
+  const printed = await fetch(`${printUrl}/print`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ ticket, printerId: 'default' }),
+  });
   assert.ok(printed.ok);
   const bytes = await readFile(join(root, 'data/print-output/last-ticket.bin'), 'latin1');
-  assert.ok(bytes.includes('COMANDA DE COCINA') && bytes.includes('TOTAL') && bytes.includes('$' + ticket.total.toFixed(2)));
-  assert.ok(bytes.includes('Cliente: Cliente Prueba') && bytes.includes('6671234567') && bytes.includes('Casa azul') && bytes.includes('Sin pepino'));
+  assert.ok(
+    bytes.includes('COMANDA DE COCINA') &&
+      bytes.includes('TOTAL') &&
+      bytes.includes('$' + ticket.total.toFixed(2)),
+  );
+  assert.ok(!bytes.includes('Envio / Mandadito'));
+  assert.ok(
+    bytes.includes('Cliente: Cliente Prueba') &&
+      bytes.includes('6671234567') &&
+      bytes.includes('Casa azul') &&
+      bytes.includes('Sin pepino'),
+  );
   check('Pedido idempotente, reserva de platos y comanda de 58 mm a archivo');
   const browser = await chromium.launch({ headless: true });
   try {
@@ -144,7 +249,10 @@ try {
     await page.route('**/*', (route) => {
       const address = new URL(route.request().url());
       const allowedPorts = [config.webPort, config.apiPort, config.printPort];
-      return ['127.0.0.1', 'localhost'].includes(address.hostname) && allowedPorts.includes(Number(address.port)) ? route.continue() : route.abort();
+      return ['127.0.0.1', 'localhost'].includes(address.hostname) &&
+        allowedPorts.includes(Number(address.port))
+        ? route.continue()
+        : route.abort();
     });
     await page.goto(`${webUrl}/login`);
     await page.getByLabel('Usuario').fill(config.adminUsername);
@@ -154,32 +262,101 @@ try {
     await page.getByRole('button', { name: 'Nuevo pedido' }).click();
     const dialog = page.getByRole('dialog').last();
     await dialog.getByRole('button', { name: 'Mostrador', exact: true }).click();
-    await dialog.getByRole('button', { name: 'Agregar uno: Aguachile Tradicional (medio kilo)', exact: true }).click();
+    await dialog
+      .getByRole('button', { name: 'Agregar uno: Aguachile Tradicional (medio kilo)', exact: true })
+      .click();
     await dialog.getByRole('button', { name: 'Crear pedido', exact: true }).click();
     await page.getByRole('dialog').waitFor({ state: 'hidden' });
     const afterUi = await request('/api/plates/today', 'GET', undefined, token);
     assert.equal(afterUi.buckets.find((bucket) => bucket.size === 'half_kilo').available, 0);
-    const adjustBox = await page.getByRole('button', { name: 'Ajustar platos', exact: true }).boundingBox();
+    const adjustBox = await page
+      .getByRole('button', { name: 'Ajustar platos', exact: true })
+      .boundingBox();
     const stockBox = await page.getByText(/1 kilo: .* disponibles/, { exact: true }).boundingBox();
-    assert.ok(adjustBox && stockBox && Math.abs(adjustBox.y - stockBox.y) < 60, 'Ajustar platos debe estar junto a las cantidades');
+    assert.ok(
+      adjustBox && stockBox && Math.abs(adjustBox.y - stockBox.y) < 60,
+      'Ajustar platos debe estar junto a las cantidades',
+    );
     await page.screenshot({ path: join(buildRoot, 'packaged-pos.png'), fullPage: true });
     check('Interfaz compilada: login, pedido y comanda automática sin peticiones externas');
-  } finally { await browser.close(); }
-  await new LocalDatabase(appDir, config).sql(`UPDATE sales SET fulfillment_status = 'in_delivery', delivery_due_at = CURRENT_TIMESTAMP - INTERVAL '1 second' WHERE id = '${order.id}';`, 'aguachiles_pos');
+  } finally {
+    await browser.close();
+  }
+  await new LocalDatabase(appDir, config).sql(
+    `UPDATE sales SET fulfillment_status = 'in_delivery', delivery_due_at = CURRENT_TIMESTAMP - INTERVAL '1 second' WHERE id = '${order.id}';`,
+    'aguachiles_pos',
+  );
   let autoDelivered;
   const deliveryTimeout = Date.now() + 25000;
   do {
-    autoDelivered = await request(`/api/orders/lookup?ticketNumber=${encodeURIComponent(order.ticketNumber)}`, 'GET', undefined, token);
+    autoDelivered = await request(
+      `/api/orders/lookup?ticketNumber=${encodeURIComponent(order.ticketNumber)}`,
+      'GET',
+      undefined,
+      token,
+    );
     if (autoDelivered.fulfillmentStatus === 'delivered') break;
     await new Promise((ready) => setTimeout(ready, 1000));
   } while (Date.now() < deliveryTimeout);
   assert.equal(autoDelivered.fulfillmentStatus, 'delivered');
   assert.equal(autoDelivered.status, 'pending');
   check('Entrega automática persistente ejecutada por el servidor sin registrar cobros');
+  const registers = await request('/api/cash-registers', 'GET', undefined, token);
+  const cashSession = await request(
+    '/api/cash-sessions',
+    'POST',
+    { cashRegisterId: registers[0].id, openingAmount: 0 },
+    token,
+  );
+  const methods = await request('/api/payment-methods', 'GET', undefined, token);
+  await request(
+    `/api/orders/${order.id}/charge`,
+    'PATCH',
+    {
+      cashRegisterId: registers[0].id,
+      payments: [{ paymentMethodId: methods[0].id, amount: order.total }],
+    },
+    token,
+  );
+  await request(
+    `/api/cash-sessions/${cashSession.id}/mandaditos`,
+    'POST',
+    {
+      clientRequestId: randomUUID(),
+      saleId: order.id,
+      paymentMethodId: methods.find((method) => method.type === 'cash').id,
+      amount: 35.5,
+    },
+    token,
+  );
+  const day = new Intl.DateTimeFormat('en-CA', { timeZone: config.timeZone }).format(new Date());
+  const operations = await request(
+    `/api/analytics/operations?from=${day}&to=${day}`,
+    'GET',
+    undefined,
+    token,
+  );
+  assert.equal(operations.orders, 1);
+  assert.equal(operations.mandaditoTotal, 35.5);
+  assert.equal(operations.foodSales, order.total);
+  assert.equal(operations.mix.length, 6);
+  assert.equal(
+    operations.payments.reduce((sum, row) => sum + row.net, 0),
+    order.total - 35.5,
+  );
+  check('Gasto de mandadito posterior al cobro, seis combinaciones y conciliación por método');
   session.child.stdin.write('BACKUP\n');
   const backup = await session.event('backup');
   assert.ok((await stat(backup.message)).size > 0);
   check('Respaldo PostgreSQL completo');
+  session.child.stdin.write(
+    JSON.stringify({ type: 'BACKUP_PROTECTED', password: '123456' }) + '\n',
+  );
+  const protectedBackup = await session.event('backup');
+  const unlocked = join(root, 'data/backups/desbloqueado-prueba.dump');
+  await unlockBackup(protectedBackup.message, unlocked, '123456');
+  assert.equal((await readFile(unlocked)).subarray(0, 5).toString(), 'PGDMP');
+  check('Respaldo real cifrado y recuperado con contraseña de seis caracteres');
   await stop();
   check('Cierre ordenado de servicios y PostgreSQL');
   const before = await readFile(join(root, 'data/config.dat'));
@@ -189,10 +366,22 @@ try {
   await writeFile(join(root, 'data/schema-version'), 'version-anterior-simulada');
   session = await boot(appDir);
   await session.event('ready');
-  const authAgain = await request('/api/auth/login', 'POST', { username: config.adminUsername, password: config.adminPassword });
-  const found = await request(`/api/orders/lookup?ticketNumber=${encodeURIComponent(order.ticketNumber)}`, 'GET', undefined, authAgain.accessToken);
+  const authAgain = await request('/api/auth/login', 'POST', {
+    username: config.adminUsername,
+    password: config.adminPassword,
+  });
+  const found = await request(
+    `/api/orders/lookup?ticketNumber=${encodeURIComponent(order.ticketNumber)}`,
+    'GET',
+    undefined,
+    authAgain.accessToken,
+  );
   assert.equal(found.id, order.id);
-  assert.ok((await readdir(join(root, 'data/backups'))).some((name) => name.includes('antes-de-actualizar')));
+  assert.ok(
+    (await readdir(join(root, 'data/backups'))).some((name) =>
+      name.includes('antes-de-actualizar'),
+    ),
+  );
   check('Reinstalación conserva configuración y pedidos; respaldo previo a migrar');
   await stop();
   await run(join(root, 'Uninstall.exe'), ['/silent']);

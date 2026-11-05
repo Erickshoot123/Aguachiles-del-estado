@@ -20,12 +20,15 @@ internal static class PosInstaller {
       try { Install(root, false, false, text => {}); return 0; }
       catch (Exception error) { File.WriteAllText(Path.Combine(Path.GetTempPath(), "AguachilesPOS-install-error.txt"), error.ToString()); return 1; }
     }
-    using (var form = new Form { Text = "Instalar Aguachiles POS", Width = 560, Height = 330, StartPosition = FormStartPosition.CenterScreen,
+    using (var form = new Form { Text = "Instalar Aguachiles POS", Icon = PosCommon.BrandIcon, BackColor = Color.White, Width = 680, Height = 510, StartPosition = FormStartPosition.CenterScreen,
       FormBorderStyle = FormBorderStyle.FixedDialog, MaximizeBox = false, Font = new Font("Segoe UI", 10) }) {
-      var info = new Label { Text = "Instalación local para Windows de 64 bits.\n\nIncluye aplicación, PostgreSQL y agente de impresión.\nLas actualizaciones conservan tus datos.\n\nCarpeta: " + root, Left = 20, Top = 20, Width = 500, Height = 125 };
-      var desktop = new CheckBox { Text = "Crear acceso directo en el escritorio", Checked = true, Left = 20, Top = 150, Width = 450 };
-      var startup = new CheckBox { Text = "Iniciar el POS al entrar a Windows", Checked = true, Left = 20, Top = 180, Width = 450 };
-      var button = new Button { Text = "Instalar", Left = 360, Top = 225, Width = 150, Height = 38 };
+      var info = new Label { Text = "Instalación local para Windows de 64 bits.\n\nIncluye aplicación, PostgreSQL y agente de impresión.\nLas actualizaciones conservan tus datos.\n\nCarpeta: " + root, Left = 30, Top = 160, Width = 600, Height = 125 };
+      var desktop = new CheckBox { Text = "Crear acceso directo en el escritorio", Checked = true, Left = 20, Top = 300, Width = 580 };
+      var startup = new CheckBox { Text = "Iniciar el POS al entrar a Windows", Checked = true, Left = 20, Top = 335, Width = 580 };
+      var button = new Button { Text = "Instalar", Left = 430, Top = 390, Width = 180, Height = 44, BackColor = Color.FromArgb(234,88,12), ForeColor = Color.White, FlatStyle = FlatStyle.Flat };
+      form.Controls.Add(new PictureBox { Image = PosCommon.BrandLogo, SizeMode = PictureBoxSizeMode.Zoom, Left = 25, Top = 15, Width = 140, Height = 130 });
+      form.Controls.Add(new Label { Text = "Aguachiles del Estado", Left = 185, Top = 42, Width = 440, Height = 40, Font = new Font("Segoe UI", 21, FontStyle.Bold) });
+      form.Controls.Add(new Label { Text = "Tu punto de venta, listo para trabajar", Left = 190, Top = 89, Width = 420, Height = 28, ForeColor = Color.DimGray });
       form.Controls.AddRange(new Control[] { info, desktop, startup, button });
       bool installed = false, working = false;
       form.FormClosing += (s, e) => { if (working) e.Cancel = true; };
@@ -84,12 +87,7 @@ internal static class PosInstaller {
       }
       EnsureVisualCpp(destination, progress);
       EnsureWebView2(destination, progress);
-      foreach (string library in new[] { "Microsoft.Web.WebView2.Core.dll", "Microsoft.Web.WebView2.WinForms.dll", "WebView2Loader.dll" })
-        File.Copy(Path.Combine(destination, library), Path.Combine(root, library), true);
-      File.Copy(Path.Combine(destination, "AguachilesPOS.exe"), Path.Combine(root, "AguachilesPOS.exe"), true);
-      File.Copy(Path.Combine(destination, "Uninstall.exe"), Path.Combine(root, "Uninstall.exe"), true);
-      File.WriteAllText(Path.Combine(root, "current-version"), version, new UTF8Encoding(false));
-      File.WriteAllText(Path.Combine(root, "installation.json"), PosCommon.Json.Serialize(new { product = "AguachilesPOS", version = version }), new UTF8Encoding(false));
+      InstallActivation.Activate(root, destination, version);
       PosCommon.ProtectDataDirectory(root);
       if (desktop) PosCommon.Shortcut(Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.DesktopDirectory), "Aguachiles POS.lnk"), Path.Combine(root, "AguachilesPOS.exe"), "");
       if (desktop || startup) {

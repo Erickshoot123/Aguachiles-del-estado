@@ -1,4 +1,5 @@
 import { useBoardDragDrop } from '../features/orders/useBoardDragDrop';
+import { MandaditoButton } from '../features/cash/MandaditoButton';
 import type { Order } from '@aguachiles/shared';
 import type { FormEvent, JSX } from 'react';
 import { useState } from 'react';
@@ -88,11 +89,16 @@ export function OrdersBoardPage(): JSX.Element {
             {UI_TEXT.searchAction}
           </button>
         </form>
+        <MandaditoButton />
         <button
           type="button"
           onClick={() => setIsCreating(true)}
           disabled={!platesQuery.data?.initialized}
-          title={!platesQuery.data?.initialized ? 'Registra los platos iniciales de hoy para empezar' : undefined}
+          title={
+            !platesQuery.data?.initialized
+              ? 'Registra los platos iniciales de hoy para empezar'
+              : undefined
+          }
           className="h-11 rounded-lg bg-accent px-4 text-[14px] font-semibold text-white hover:bg-accent-hover"
         >
           {UI_TEXT.newOrder}
@@ -103,15 +109,24 @@ export function OrdersBoardPage(): JSX.Element {
         <p className="px-7 pt-3 text-[13px] text-red-600">{UI_TEXT.searchNotFound}</p>
       ) : null}
 
-      {drag.pending ? <p role="status" className="px-5 py-1 text-xs text-muted">Guardando cambio de columna…</p> : null}
-      {drag.error ? <p role="alert" className="px-5 py-2 text-sm text-red-700">{drag.error}</p> : null}
+      {drag.pending ? (
+        <p role="status" className="px-5 py-1 text-xs text-muted">
+          Guardando cambio de columna…
+        </p>
+      ) : null}
+      {drag.error ? (
+        <p role="alert" className="px-5 py-2 text-sm text-red-700">
+          {drag.error}
+        </p>
+      ) : null}
       <section className="grid min-h-0 flex-1 grid-cols-1 items-stretch gap-3 p-3 sm:grid-cols-2 lg:grid-cols-3">
         {BOARD_COLUMNS.map((column) => {
           const columnOrders = orders.filter((order) => order.fulfillmentStatus === column.key);
           return (
             <div
               key={column.key}
-              role="region" aria-label={column.title}
+              role="region"
+              aria-label={column.title}
               onDragOver={(event) => drag.hover(event, column.key)}
               onDrop={(event) => drag.drop(event, column.key)}
               className={`flex min-h-[260px] flex-col overflow-hidden rounded-2xl border border-border bg-surface ${drag.over === column.key ? 'ring-2 ring-accent' : ''}`}
@@ -156,7 +171,11 @@ export function OrdersBoardPage(): JSX.Element {
 
       {isCreating ? <NewOrderModal onClose={() => setIsCreating(false)} /> : null}
       {detailOrder ? (
-        <OrderDetailModal order={detailOrder} advanceLabel={detailAdvanceLabel} onClose={closeDetail} />
+        <OrderDetailModal
+          order={detailOrder}
+          advanceLabel={detailAdvanceLabel}
+          onClose={closeDetail}
+        />
       ) : null}
     </AppShell>
   );

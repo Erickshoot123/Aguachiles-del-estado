@@ -297,6 +297,10 @@ enum CashMovementType {
 }
 
 model CashMovement {
+  category        String?
+  saleId          String?              @map("sale_id")
+  sale            Sale?                @relation(fields: [saleId], references: [id], onDelete: Restrict)
+  clientRequestId String?              @unique @map("client_request_id")
   id              String               @id @default(uuid())
   sessionId       String               @map("session_id")
   session         CashRegisterSession  @relation(fields: [sessionId], references: [id], onDelete: Restrict)
@@ -310,6 +314,8 @@ model CashMovement {
 
   createdAt DateTime @default(now()) @map("created_at")
 
+  @@index([category, createdAt])
+  @@index([saleId])
   @@map("cash_movements")
 }
 
@@ -341,6 +347,9 @@ enum FulfillmentStatus {
 }
 
 model Sale {
+  deliveryExpenses CashMovement[]
+  // Compatibilidad histórica: los pedidos nuevos siempre dejan este recargo en cero.
+  deliveryFee Decimal @default(0) @map("delivery_fee") @db.Decimal(12, 2)
   plateAllocation PlateAllocation?
   id                     String               @id @default(uuid())
   ticketNumber           String               @unique @map("ticket_number")
@@ -482,6 +491,8 @@ model SyncRecord {
 }
 
 model SaleItem {
+  menuFlavor String? @map("menu_flavor")
+  portionSize PlateSize? @map("portion_size")
   notes      String?
   id         String   @id @default(uuid())
   saleId     String   @map("sale_id")

@@ -38,9 +38,9 @@ internal static class NativeUiProbe {
       field("password").Text = "corta"; field("confirm").Text = "distinta";
       Check(messages["location"].Text == "", "El error debe desaparecer al corregir el campo");
       Check(messages["user"].Text.Contains("3 a 40"), "Falta explicación de caracteres del usuario");
-      Check(messages["password"].Text.Contains("12"), "Falta longitud de contraseña");
+      Check(messages["password"].Text.Contains("6"), "Falta longitud de contraseña");
       Check(messages["confirm"].Text.Contains("no coinciden"), "Falta aviso de contraseñas distintas");
-      field("user").Text = "  erick_01  "; field("password").Text = "Prueba-segura-123"; field("confirm").Text = "Prueba-segura-123";
+      field("user").Text = "  erick_01  "; field("password").Text = "123456"; field("confirm").Text = "123456";
       Check(validate(), "Los datos válidos deben permitirse");
       foreach (Label label in messages.Values) Check(label.Text == "", "No deben quedar errores después de corregir");
       Check(field("password").UseSystemPasswordChar && field("confirm").UseSystemPasswordChar, "Las contraseñas deben comenzar ocultas");

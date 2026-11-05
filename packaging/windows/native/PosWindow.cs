@@ -14,6 +14,7 @@ internal sealed class PosWindow : Form {
   internal PosWindow(string url, string dataRoot) {
     address = new Uri(url); root = dataRoot;
     if (!address.IsLoopback || address.Scheme != "http") throw new ArgumentException("La interfaz debe estar en esta computadora.");
+    Icon = PosCommon.BrandIcon;
     Text = "Aguachiles POS"; StartPosition = FormStartPosition.CenterScreen;
     MinimumSize = new Size(900, 600); Width = 1280; Height = 800; WindowState = FormWindowState.Maximized;
     view.Dock = DockStyle.Fill; Controls.Add(view); Controls.Add(loading); loading.BringToFront();

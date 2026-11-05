@@ -1,7 +1,14 @@
 import { Prisma, type CashRegisterSession, type PrismaClient, type User } from '@prisma/client';
 import type { CashSessionHistoryItem, SalesReport } from '@aguachiles/shared';
+import { mandaditoSummary } from '../cash/mandaditoSummary.js';
+import type { MovementWithMethod } from '../cash/cashMath.js';
 import { getLocalLocation } from '../locations/localLocation.repository.js';
-import { fetchSalesForPeriod, refundedItemsOf, refundedTotalOf, type SaleWithRelations } from './salesPeriod.js';
+import {
+  fetchSalesForPeriod,
+  refundedItemsOf,
+  refundedTotalOf,
+  type SaleWithRelations,
+} from './salesPeriod.js';
 
 interface Accumulator {
   totalSales: Prisma.Decimal;
@@ -66,7 +73,10 @@ function accumulateSale(acc: Accumulator, sale: SaleWithRelations): void {
   const paymentScale = sale.total.greaterThan(0) ? netTotal.div(sale.total) : new Prisma.Decimal(0);
   for (const payment of sale.payments) {
     const current = acc.byPaymentMethod.get(payment.paymentMethod.name) ?? new Prisma.Decimal(0);
-    acc.byPaymentMethod.set(payment.paymentMethod.name, current.add(payment.amount.mul(paymentScale)));
+    acc.byPaymentMethod.set(
+      payment.paymentMethod.name,
+      current.add(payment.amount.mul(paymentScale)),
+    );
   }
 }
 
@@ -129,6 +139,7 @@ export async function getSalesReport(
 }
 
 type CashSessionForHistory = CashRegisterSession & {
+  cashMovements: MovementWithMethod[];
   cashRegister: { name: string };
   openedBy: User;
   closedBy: User | null;
@@ -136,6 +147,7 @@ type CashSessionForHistory = CashRegisterSession & {
 
 function toCashSessionHistoryDto(session: CashSessionForHistory): CashSessionHistoryItem {
   return {
+    ...mandaditoSummary(session.cashMovements),
     id: session.id,
     cashRegisterName: session.cashRegister.name,
     openedByName: session.openedBy.name,
@@ -162,7 +174,12 @@ export async function getCashSessionHistory(
   const location = await getLocalLocation(prisma);
   const sessions = await prisma.cashRegisterSession.findMany({
     where: { cashRegister: { locationId: location.id } },
-    include: { cashRegister: true, openedBy: true, closedBy: true },
+    include: {
+      cashRegister: true,
+      openedBy: true,
+      closedBy: true,
+      cashMovements: { include: { paymentMethod: true } },
+    },
     orderBy: { openedAt: 'desc' },
     take: CASH_SESSION_HISTORY_LIMIT,
   });

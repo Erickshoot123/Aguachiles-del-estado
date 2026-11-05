@@ -46,7 +46,9 @@ function MovementTypeToggle({
     { value: 'withdrawal', label: UI_TEXT.withdrawal },
     { value: 'deposit', label: UI_TEXT.deposit },
   ];
-  const options = canWithdraw ? allOptions : allOptions.filter((option) => option.value !== 'withdrawal');
+  const options = canWithdraw
+    ? allOptions
+    : allOptions.filter((option) => option.value !== 'withdrawal');
   return (
     <div className="mb-4 flex gap-2">
       {options.map((option) => (
@@ -55,7 +57,9 @@ function MovementTypeToggle({
           type="button"
           onClick={() => onChange(option.value)}
           className={`flex-1 rounded-lg border px-3 py-2 text-sm font-medium ${
-            type === option.value ? 'border-accent bg-accent-soft text-accent-hover' : 'border-border text-muted'
+            type === option.value
+              ? 'border-accent bg-accent-soft text-accent-hover'
+              : 'border-border text-muted'
           }`}
         >
           {option.label}
@@ -74,7 +78,9 @@ function MovementHistory({ movements }: { movements: CashMovement[] }): JSX.Elem
       {movements.map((movement) => (
         <div key={movement.id} className="flex items-baseline justify-between text-[13px]">
           <span className="text-muted">
-            {MOVEMENT_TYPE_LABELS[movement.type]} · {formatDateTime(movement.createdAt)}
+            {movement.category === 'mandadito' ? 'Mandadito' : MOVEMENT_TYPE_LABELS[movement.type]}
+            {movement.paymentMethodName ? ` · ${movement.paymentMethodName}` : ''} ·{' '}
+            {formatDateTime(movement.createdAt)}
           </span>
           <span className="font-mono font-semibold">{formatCurrency(movement.amount)}</span>
         </div>

@@ -1,3 +1,6 @@
+import { localMidnight, nextDay } from './period.js';
+import { z } from 'zod';
+import { getOperationalAnalytics } from './operational.service.js';
 import { salesReportQuerySchema } from '@aguachiles/shared';
 import type { FastifyInstance } from 'fastify';
 import { requirePermission } from '../../lib/authorize.js';
@@ -9,6 +12,28 @@ function startOfToday(): Date {
 }
 
 export default async function analyticsRoutes(fastify: FastifyInstance): Promise<void> {
+  fastify.get(
+    '/api/analytics/operations',
+    { preHandler: [fastify.authenticate, requirePermission('reports.view')] },
+    async (request) => {
+      const day = z
+        .string()
+        .regex(/^\d{4}-\d{2}-\d{2}$/)
+        .refine((value) => {
+          const date = new Date(value + 'T00:00:00Z');
+          return !Number.isNaN(date.getTime()) && date.toISOString().startsWith(value);
+        });
+      const query = z
+        .object({ from: day, to: day })
+        .refine((value) => value.from <= value.to, 'El rango de fechas es inválido')
+        .parse(request.query);
+      return getOperationalAnalytics(
+        fastify.prisma,
+        localMidnight(query.from, process.env.POS_TIME_ZONE ?? 'America/Mazatlan'),
+        localMidnight(nextDay(query.to), process.env.POS_TIME_ZONE ?? 'America/Mazatlan'),
+      );
+    },
+  );
   fastify.get(
     '/api/analytics/dashboard',
     { preHandler: [fastify.authenticate, requirePermission('reports.view')] },

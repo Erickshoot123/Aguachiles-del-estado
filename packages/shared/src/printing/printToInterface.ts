@@ -9,7 +9,7 @@ import { sendToWindowsPrinter } from './windowsSpooler.js';
 
 export class PrintFailedError extends Error {
   constructor(cause: unknown) {
-    super('No se pudo imprimir el ticket después de varios intentos');
+    super('No se confirmó la impresión. Revisa la impresora antes de volver a intentar.');
     this.name = 'PrintFailedError';
     this.cause = cause;
   }
@@ -32,15 +32,21 @@ function wait(ms: number): Promise<void> {
 
 /**
  * Renderiza y envía un ticket a cualquier interfaz ESC/POS soportada por
- * node-thermal-printer, con reintentos. Es el único lugar que arma un
+ * node-thermal-printer. Por defecto realiza un solo envío para evitar duplicados.
+ * Es el único lugar que arma un
  * `ThermalPrinter` y ejecuta la impresión: el Print Agent (modo local y
  * cuando reenvía a otra impresora) y el backend (modo impresora de red)
  * pasan por aquí para que el ticket resultante sea siempre el mismo.
  */
 export async function printTicketToInterface(options: PrintToInterfaceOptions): Promise<void> {
-  const { interfaceString, ticket, width, maxRetries = 3, retryDelayMs = 500, qrMode } = options;
+  const { interfaceString, ticket, width, maxRetries = 1, retryDelayMs = 500, qrMode } = options;
   if (interfaceString.startsWith('printer:') && process.platform === 'win32') {
-    const printer = new ThermalPrinter({ type: PrinterTypes.EPSON, interface: '', width, characterSet: CharacterSet.WPC1252 });
+    const printer = new ThermalPrinter({
+      type: PrinterTypes.EPSON,
+      interface: '',
+      width,
+      characterSet: CharacterSet.WPC1252,
+    });
     await renderTicketCommands(printer, ticket, { qrMode });
     // No reintentar automáticamente: un acuse perdido podría duplicar el ticket físico.
     await sendToWindowsPrinter(interfaceString.slice('printer:'.length), printer.getBuffer());

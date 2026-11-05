@@ -64,7 +64,6 @@ export function NewOrderModal({ onClose }: NewOrderModalProps): JSX.Element {
 
   const setQuantity = (productId: string, quantity: number): void => {
     setQuantities((prev) => ({ ...prev, [productId]: Math.max(0, quantity) }));
-
   };
   const incrementProduct = (productId: string): void => {
     setQuantity(productId, (quantities[productId] ?? 0) + 1);
@@ -93,27 +92,28 @@ export function NewOrderModal({ onClose }: NewOrderModalProps): JSX.Element {
     .filter(([productId, quantity]) => quantity > 0 && orderableProductIds.has(productId))
     .map(([productId, quantity]) => ({ productId, quantity }));
 
-  const priceByProductId = new Map(
-    orderableProducts.map((product) => [product.id, product.price]),
-  );
-  const totalAmount = items.reduce(
+  const priceByProductId = new Map(orderableProducts.map((product) => [product.id, product.price]));
+  const foodAmount = items.reduce(
     (sum, item) => sum + (priceByProductId.get(item.productId) ?? 0) * item.quantity,
     0,
   );
+  const totalAmount = foodAmount;
   const totalUnits = items.reduce((sum, item) => sum + item.quantity, 0);
 
   const isDelivery = channel === 'delivery';
   const hasRequiredDeliveryInfo =
     !isDelivery ||
-    (deliveryInfo.customerPhone.trim() !== '' &&
-      deliveryInfo.deliveryAddress.trim() !== '');
+    (deliveryInfo.customerPhone.trim() !== '' && deliveryInfo.deliveryAddress.trim() !== '');
   const selectedPlates = { kilo: 0, half_kilo: 0 };
   for (const product of mainProducts) {
     if (product.plateSize) selectedPlates[product.plateSize] += quantities[product.id] ?? 0;
   }
-  const availablePlates = (size: 'kilo' | 'half_kilo') => platesQuery.data?.buckets.find((bucket) => bucket.size === size)?.available ?? 0;
-  const hasPlates = Boolean(platesQuery.data?.initialized) && selectedPlates.kilo <= availablePlates('kilo')
-    && selectedPlates.half_kilo <= availablePlates('half_kilo');
+  const availablePlates = (size: 'kilo' | 'half_kilo') =>
+    platesQuery.data?.buckets.find((bucket) => bucket.size === size)?.available ?? 0;
+  const hasPlates =
+    Boolean(platesQuery.data?.initialized) &&
+    selectedPlates.kilo <= availablePlates('kilo') &&
+    selectedPlates.half_kilo <= availablePlates('half_kilo');
   const canSubmit = items.length > 0 && hasRequiredDeliveryInfo && hasPlates;
 
   const handleSubmit = (): void => {
@@ -128,7 +128,16 @@ export function NewOrderModal({ onClose }: NewOrderModalProps): JSX.Element {
               : deliveryInfo.deliveryReferences.trim(),
         }
       : {};
-    createOrder.mutate({ channel, items, customerName: deliveryInfo.customerName.trim() || undefined, ...deliveryPayload, notes: notes.trim() || undefined }, { onSuccess: onClose });
+    createOrder.mutate(
+      {
+        channel,
+        items,
+        customerName: deliveryInfo.customerName.trim() || undefined,
+        ...deliveryPayload,
+        notes: notes.trim() || undefined,
+      },
+      { onSuccess: onClose },
+    );
   };
 
   return (
@@ -165,21 +174,20 @@ export function NewOrderModal({ onClose }: NewOrderModalProps): JSX.Element {
           </div>
         </div>
 
-              <label className="flex flex-col gap-1 text-sm">
-                {UI_TEXT.customerName}
-                <input
-                  value={deliveryInfo.customerName}
-                  onChange={(event) => setDeliveryField('customerName', event.target.value)}
-                  className="h-11 rounded-lg border border-border px-3"
-                />
-              </label>
+        <label className="flex flex-col gap-1 text-sm">
+          {UI_TEXT.customerName}
+          <input
+            value={deliveryInfo.customerName}
+            onChange={(event) => setDeliveryField('customerName', event.target.value)}
+            className="h-11 rounded-lg border border-border px-3"
+          />
+        </label>
 
         {isDelivery ? (
           <div className="flex flex-col gap-3 rounded-lg border border-border p-3">
             <span className="text-sm font-medium text-text">{UI_TEXT.deliveryTitle}</span>
 
             <div className="grid gap-3">
-
               <label className="flex flex-col gap-1 text-sm">
                 {UI_TEXT.customerPhone}
                 <input
@@ -209,7 +217,6 @@ export function NewOrderModal({ onClose }: NewOrderModalProps): JSX.Element {
                 className="h-11 rounded-lg border border-border px-3"
               />
             </label>
-
           </div>
         ) : null}
 
@@ -223,7 +230,10 @@ export function NewOrderModal({ onClose }: NewOrderModalProps): JSX.Element {
                 <ProductCard
                   key={product.id}
                   product={product}
-                  disabled={Boolean(product.plateSize && selectedPlates[product.plateSize] >= availablePlates(product.plateSize))}
+                  disabled={Boolean(
+                    product.plateSize &&
+                    selectedPlates[product.plateSize] >= availablePlates(product.plateSize),
+                  )}
                   quantity={quantities[product.id] ?? 0}
                   onIncrement={() => incrementProduct(product.id)}
                   onDecrement={() => decrementProduct(product.id)}
@@ -235,7 +245,9 @@ export function NewOrderModal({ onClose }: NewOrderModalProps): JSX.Element {
 
         {hasMainItem && extraProducts.length > 0 ? (
           <div>
-            <span className="mb-1.5 block text-sm font-medium text-text">{UI_TEXT.extrasLabel}</span>
+            <span className="mb-1.5 block text-sm font-medium text-text">
+              {UI_TEXT.extrasLabel}
+            </span>
             <div className={PRODUCT_GRID_CLASS}>
               {extraProducts.map((product) => (
                 <ProductCard
@@ -250,14 +262,31 @@ export function NewOrderModal({ onClose }: NewOrderModalProps): JSX.Element {
           </div>
         ) : null}
 
-        <label className="flex flex-col gap-1 text-sm">Notas generales del pedido (opcional)
-          <textarea value={notes} onChange={(event) => setNotes(event.target.value)} rows={2}
-            placeholder="Indicaciones generales de entrega…" className="rounded-lg border border-border px-3 py-2" />
+        <label className="flex flex-col gap-1 text-sm">
+          Notas generales del pedido (opcional)
+          <textarea
+            value={notes}
+            onChange={(event) => setNotes(event.target.value)}
+            rows={2}
+            placeholder="Indicaciones generales de entrega…"
+            className="rounded-lg border border-border px-3 py-2"
+          />
         </label>
 
-        {!hasPlates ? <p role="alert" className="text-sm text-red-600">Revisa la disponibilidad de platos antes de crear el pedido.</p> : null}
-        <p className="text-sm text-muted">Disponibles: {availablePlates('kilo')} de kilo · {availablePlates('half_kilo')} de medio kilo. Se comparten entre todos los sabores.</p>
-        {createOrder.isError ? <p className="text-sm text-red-600">{createOrder.error instanceof ApiError ? createOrder.error.message : UI_TEXT.error}</p> : null}
+        {!hasPlates ? (
+          <p role="alert" className="text-sm text-red-600">
+            Revisa la disponibilidad de platos antes de crear el pedido.
+          </p>
+        ) : null}
+        <p className="text-sm text-muted">
+          Disponibles: {availablePlates('kilo')} de kilo · {availablePlates('half_kilo')} de medio
+          kilo. Se comparten entre todos los sabores.
+        </p>
+        {createOrder.isError ? (
+          <p className="text-sm text-red-600">
+            {createOrder.error instanceof ApiError ? createOrder.error.message : UI_TEXT.error}
+          </p>
+        ) : null}
       </div>
 
       <div className="flex items-center gap-3 border-t border-divider bg-bg px-5 py-4">

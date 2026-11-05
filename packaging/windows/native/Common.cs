@@ -17,7 +17,14 @@ internal static class PosCommon {
     AppContext.SetSwitch("Switch.System.IO.UseLegacyPathHandling", false);
     AppContext.SetSwitch("Switch.System.IO.BlockLongPaths", false);
   }
+  internal static System.Drawing.Icon BrandIcon { get { return System.Drawing.Icon.ExtractAssociatedIcon(Assembly.GetExecutingAssembly().Location); } }
+  internal static System.Drawing.Image BrandLogo { get { using (var stream = Assembly.GetExecutingAssembly().GetManifestResourceStream("brand-logo")) return new System.Drawing.Bitmap(System.Drawing.Image.FromStream(stream)); } }
   internal static void Initialize() { }
+  internal static void WriteAtomic(string path, string text) {
+    string temporary = path + ".new-" + Guid.NewGuid().ToString("N");
+    File.WriteAllText(temporary, text, new UTF8Encoding(false));
+    if (File.Exists(path)) File.Replace(temporary, path, null); else File.Move(temporary, path);
+  }
   internal static string FilePath(string value) {
     string path = Path.GetFullPath(value);
     if (path.StartsWith("\\\\?\\")) return path;
@@ -100,6 +107,7 @@ internal static class PosCommon {
     shortcut.TargetPath = executable;
     shortcut.Arguments = arguments;
     shortcut.WorkingDirectory = Path.GetDirectoryName(executable);
+    shortcut.IconLocation = executable + ",0";
     shortcut.Description = "Aguachiles del Estado · Punto de venta";
     shortcut.Save();
   }

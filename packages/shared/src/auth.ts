@@ -2,7 +2,7 @@ import { z } from 'zod';
 
 export const loginRequestSchema = z.object({
   username: z.string().min(1),
-  password: z.string().min(8),
+  password: z.string().min(6),
 });
 
 export type LoginRequest = z.infer<typeof loginRequestSchema>;
@@ -61,7 +61,7 @@ export const refreshResponseSchema = z.object({
 export type RefreshResponse = z.infer<typeof refreshResponseSchema>;
 
 export const resetPasswordRequestSchema = z.object({
-  newPassword: z.string().min(8, 'La contraseña debe tener al menos 8 caracteres'),
+  newPassword: z.string().min(6, 'La contraseña debe tener al menos 6 caracteres'),
 });
 export type ResetPasswordRequest = z.infer<typeof resetPasswordRequestSchema>;
 

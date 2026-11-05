@@ -32,7 +32,11 @@ export type CreateOrderItem = z.infer<typeof createOrderItemSchema>;
 // El nombre es opcional para cualquier pedido. Teléfono y dirección se exigen
 // únicamente para delivery. Estos datos no alteran precios ni pagos.
 const deliveryInfoFieldsSchema = z.object({
-  customerName: z.string().trim().transform((value) => value || undefined).optional(),
+  customerName: z
+    .string()
+    .trim()
+    .transform((value) => value || undefined)
+    .optional(),
   customerPhone: z.string().min(1).optional(),
   deliveryAddress: z.string().min(1).optional(),
   deliveryReferences: z.string().min(1).optional(),
@@ -43,11 +47,15 @@ export const createOrderRequestSchema = z
   .object({
     clientRequestId: z.string().uuid().optional(),
     channel: saleChannelSchema,
+    // Compatibilidad con clientes anteriores: nunca cargar envío al cliente.
+    deliveryFee: z.literal(0).optional(),
     items: z.array(createOrderItemSchema).min(1),
   })
   .merge(deliveryInfoFieldsSchema)
   .superRefine((data, ctx) => {
-    if (data.channel !== 'delivery') return;
+    if (data.channel !== 'delivery') {
+      return;
+    }
     if (!data.customerPhone) {
       ctx.addIssue({
         code: z.ZodIssueCode.custom,
@@ -92,6 +100,7 @@ export type OrderItem = z.infer<typeof orderItemSchema>;
 export const orderSchema = z.object({
   id: z.string().uuid(),
   ticketNumber: z.string(),
+  deliveryFee: z.number().nonnegative().optional(),
   channel: saleChannelSchema,
   fulfillmentStatus: fulfillmentStatusSchema,
   status: saleStatusSchema,
@@ -122,5 +131,8 @@ export const whatsAppShareSchema = z.object({
 export type WhatsAppShare = z.infer<typeof whatsAppShareSchema>;
 
 export const boardStatusSchema = z.enum(['in_prep', 'waiting_pickup', 'in_delivery']);
-export const moveOrderRequestSchema = z.object({ status: boardStatusSchema, fromStatus: boardStatusSchema });
+export const moveOrderRequestSchema = z.object({
+  status: boardStatusSchema,
+  fromStatus: boardStatusSchema,
+});
 export type MoveOrderRequest = z.infer<typeof moveOrderRequestSchema>;

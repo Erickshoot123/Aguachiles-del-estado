@@ -1,4 +1,6 @@
 import { EscapeNavigation } from './components/EscapeNavigation';
+import { PrintersPage } from './routes/PrintersPage';
+import { UpdatesPage } from './routes/UpdatesPage';
 import type { JSX } from 'react';
 import { BrowserRouter, Route, Routes } from 'react-router-dom';
 import { AuthBootstrap } from './features/auth/AuthBootstrap';
@@ -21,6 +23,22 @@ export function App(): JSX.Element {
       <EscapeNavigation />
       <AuthBootstrap>
         <Routes>
+          <Route
+            path="/actualizaciones"
+            element={
+              <ProtectedRoute permission="users.manage">
+                <UpdatesPage />
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="/impresoras"
+            element={
+              <ProtectedRoute>
+                <PrintersPage />
+              </ProtectedRoute>
+            }
+          />
           <Route path="/login" element={<LoginPage />} />
           <Route
             path="/"

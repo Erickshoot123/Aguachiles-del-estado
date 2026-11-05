@@ -26,10 +26,12 @@ const NAV_SECTIONS: readonly { title: string; items: readonly NavItem[] }[] = [
     title: 'Administración',
     items: [
       { label: 'Caja y cierre', path: '/caja' },
+      { label: 'Impresoras', path: '/impresoras' },
       { label: 'Reportes', path: '/reportes', permission: 'reports.view' },
       { label: 'Analítica', path: '/analitica', permission: 'reports.view' },
       { label: 'Auditoría', path: '/auditoria', permission: 'audit.view' },
       { label: 'Usuarios', path: '/usuarios', permission: 'users.manage' },
+      { label: 'Actualizaciones', path: '/actualizaciones', permission: 'users.manage' },
     ],
   },
 ];
@@ -61,7 +63,9 @@ function useVisibleNavSections(): readonly { title: string; items: readonly NavI
 
   return NAV_SECTIONS.map((section) => ({
     ...section,
-    items: section.items.filter((item) => !item.permission || permissions.includes(item.permission)),
+    items: section.items.filter(
+      (item) => !item.permission || permissions.includes(item.permission),
+    ),
   })).filter((section) => section.items.length > 0);
 }
 

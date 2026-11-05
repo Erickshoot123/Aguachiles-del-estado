@@ -1,9 +1,16 @@
 import type { CashSession } from '@aguachiles/shared';
+import { MandaditoSummary } from '../features/cash/MandaditoSummary';
+import { MandaditoButton } from '../features/cash/MandaditoButton';
 import type { JSX } from 'react';
 import { useState } from 'react';
 import { AppShell } from '../components/AppShell';
 import { CashMovementsPanel } from '../features/cash/CashMovementsPanel';
-import { useCashRegisters, useCloseCashSession, useCurrentCashSession, useOpenCashSession } from '../features/cash/hooks';
+import {
+  useCashRegisters,
+  useCloseCashSession,
+  useCurrentCashSession,
+  useOpenCashSession,
+} from '../features/cash/hooks';
 import { useTerminalCashRegisterId, useTerminalStore } from '../features/cash/terminalStore';
 import { formatCurrency } from '../features/orders/channelLabels';
 
@@ -123,8 +130,11 @@ function OpenSessionPanel({
           {UI_TEXT.openingAmountShown}: {formatCurrency(session.openingAmount)}
         </p>
         <p className="text-sm text-muted">
-          {UI_TEXT.expectedSoFar}: {formatCurrency(session.expectedClosingAmount ?? session.openingAmount)}
+          {UI_TEXT.expectedSoFar}:{' '}
+          {formatCurrency(session.expectedClosingAmount ?? session.openingAmount)}
         </p>
+        <MandaditoSummary session={session} />
+        <MandaditoButton />
       </div>
 
       <div className="rounded-2xl border border-border bg-surface p-6">
@@ -164,6 +174,7 @@ function LastCloseSummary({ session }: { session: CashSession }): JSX.Element {
   return (
     <div className="mb-6 max-w-sm rounded-2xl border border-border bg-surface p-6">
       <h2 className="m-0 mb-3 text-[15px] font-semibold">{UI_TEXT.lastCloseTitle}</h2>
+      <MandaditoSummary session={session} />
       <div className="flex flex-col gap-1 text-sm text-muted">
         <span>
           {UI_TEXT.expected}: {formatCurrency(session.expectedClosingAmount ?? 0)}
@@ -199,14 +210,19 @@ export function CashPage(): JSX.Element {
 
         {cashRegisterId && !currentSessionQuery.isLoading ? (
           <>
-            {lastClosed && !currentSessionQuery.data ? <LastCloseSummary session={lastClosed} /> : null}
+            {lastClosed && !currentSessionQuery.data ? (
+              <LastCloseSummary session={lastClosed} />
+            ) : null}
             {currentSessionQuery.data ? (
               <OpenSessionPanel
                 session={currentSessionQuery.data}
                 onClosed={(closed) => setLastClosed(closed)}
               />
             ) : (
-              <OpenSessionForm cashRegisterId={cashRegisterId} onOpened={() => setLastClosed(null)} />
+              <OpenSessionForm
+                cashRegisterId={cashRegisterId}
+                onOpened={() => setLastClosed(null)}
+              />
             )}
           </>
         ) : null}

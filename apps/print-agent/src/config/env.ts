@@ -44,6 +44,10 @@ const printersSchema = z
   });
 
 const envSchema = z.object({
+  PRINTER_SETTINGS_FILE: z.string().default('./print-output/printer-settings.json'),
+  PRINT_ALLOWED_ORIGINS: z
+    .string()
+    .default('http://127.0.0.1:5173,http://localhost:5173,http://127.0.0.1:5273'),
   PORT: z.coerce.number().int().positive().default(4000),
   // Por defecto solo escucha en localhost: el navegador de esta misma
   // terminal es el único que debería llamar al agente. Cambialo a la IP de

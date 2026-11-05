@@ -18,6 +18,7 @@ export const ticketSchema = z.object({
   format: ticketFormatSchema,
   issuedAt: z.string().datetime(),
   businessName: z.string(),
+  deliveryFee: z.number().nonnegative().optional(),
   lines: z.array(ticketLineSchema).min(1),
   subtotal: z.number().nonnegative(),
   taxTotal: z.number().nonnegative(),
