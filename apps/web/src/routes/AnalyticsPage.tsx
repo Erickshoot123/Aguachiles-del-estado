@@ -6,15 +6,24 @@ import { authFetch } from '../lib/authFetch';
 import { AnalyticsKpis } from '../features/analytics/AnalyticsKpis';
 import { SalesMixTable } from '../features/analytics/SalesMixTable';
 import { PaymentSummary } from '../features/analytics/PaymentSummary';
+import { usePlateAvailability } from '../features/plates/hooks';
 import '../features/analytics/analytics.css';
 
-function localDate(date: Date): string {
-  return `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}-${String(date.getDate()).padStart(2, '0')}`;
+function startOfPeriod(today: string, period: string): string {
+  if (!today || period === 'Hoy') return today;
+  const date = new Date(today + 'T00:00:00Z');
+  if (period === 'Esta semana') date.setUTCDate(date.getUTCDate() - ((date.getUTCDay() + 6) % 7));
+  if (period === 'Este mes') date.setUTCDate(1);
+  return date.toISOString().slice(0, 10);
 }
 export function AnalyticsPage(): JSX.Element {
-  const [from, setFrom] = useState(localDate(new Date()));
-  const [to, setTo] = useState(localDate(new Date()));
+  const calendar = usePlateAvailability();
+  const today = calendar.data?.date ?? '';
+  const [customFrom, setCustomFrom] = useState('');
+  const [customTo, setCustomTo] = useState('');
   const [period, setPeriod] = useState('Hoy');
+  const from = period === 'Personalizado' ? customFrom : startOfPeriod(today, period);
+  const to = period === 'Personalizado' ? customTo : today;
   const valid = from !== '' && to !== '' && from <= to;
   const query = useQuery({
     queryKey: ['operations', from, to],
@@ -25,14 +34,11 @@ export function AnalyticsPage(): JSX.Element {
     },
   });
   const choose = (label: string): void => {
+    if (label === 'Personalizado' && period !== 'Personalizado') {
+      setCustomFrom(from);
+      setCustomTo(to);
+    }
     setPeriod(label);
-    if (label === 'Personalizado') return;
-    const now = new Date();
-    const start = new Date(now);
-    if (label === 'Esta semana') start.setDate(now.getDate() - ((now.getDay() + 6) % 7));
-    if (label === 'Este mes') start.setDate(1);
-    setFrom(localDate(start));
-    setTo(localDate(now));
   };
   const data = valid && !query.isError ? query.data : undefined;
   const displayDay = (value: string): string =>
@@ -66,23 +72,43 @@ export function AnalyticsPage(): JSX.Element {
               ? from === to
                 ? displayDay(from)
                 : `${displayDay(from)} — ${displayDay(to)}`
-              : 'Selecciona un periodo válido'}
+              : period === 'Personalizado'
+                ? 'Selecciona un periodo válido'
+                : 'Fecha de la sucursal'}
           </span>
           <span>Fechas de la sucursal · Importes en MXN</span>
           {period === 'Personalizado' ? (
             <>
               <label>
                 Desde
-                <input type="date" value={from} onChange={(event) => setFrom(event.target.value)} />
+                <input
+                  type="date"
+                  value={from}
+                  onChange={(event) => setCustomFrom(event.target.value)}
+                />
               </label>
               <label>
                 Hasta
-                <input type="date" value={to} onChange={(event) => setTo(event.target.value)} />
+                <input
+                  type="date"
+                  value={to}
+                  onChange={(event) => setCustomTo(event.target.value)}
+                />
               </label>
             </>
           ) : null}
         </div>
-        {!valid ? (
+        {period !== 'Personalizado' && !today ? (
+          calendar.isError ? (
+            <p className="analytics-status" role="alert">
+              No se pudo cargar la fecha de la sucursal.
+            </p>
+          ) : (
+            <p className="analytics-status" role="status">
+              Cargando fecha de la sucursal…
+            </p>
+          )
+        ) : !valid ? (
           <p className="analytics-status" role="alert">
             Revisa el rango de fechas.
           </p>
