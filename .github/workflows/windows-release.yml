@@ -61,7 +61,6 @@ jobs:
     env:
       RELEASE_VERSION: ${{ inputs.version }}
       RELEASE_NOTES: ${{ inputs.release_notes }}
-      RELEASE_OUTPUT: ${{ runner.temp }}\aguachiles-release
       POS_UPDATE_REPOSITORY: ${{ vars.UPDATE_RELEASE_REPOSITORY || 'Erickshoot123/aguachiles-pos-releases' }}
       POS_UPDATE_PUBLIC_KEY_PEM: ${{ vars.UPDATE_PUBLIC_KEY_PEM }}
       GH_TOKEN: ${{ secrets.RELEASE_UPLOAD_TOKEN || github.token }}
@@ -81,6 +80,7 @@ jobs:
           if ($env:POS_UPDATE_REPOSITORY -ne $env:GITHUB_REPOSITORY -and $env:RELEASE_UPLOAD_CONFIGURED -ne 'true') { throw 'Configura RELEASE_UPLOAD_TOKEN con acceso al repositorio de descargas.' }
           $private = gh api "repos/$env:POS_UPDATE_REPOSITORY" --jq '.private'
           if ($LASTEXITCODE -ne 0 -or $private -ne 'false') { throw 'El canal de descargas debe ser un repositorio público accesible. El código fuente puede seguir privado.' }
+          "RELEASE_OUTPUT=$env:RUNNER_TEMP\aguachiles-release" >> $env:GITHUB_ENV
       - run: npm ci
       - name: Verificar componentes nativos del actualizador
         run: node packaging/windows/test-native-updates.mjs

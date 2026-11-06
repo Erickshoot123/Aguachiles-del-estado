@@ -19,6 +19,14 @@ test('mandaditos con teclado numérico y efectivo de caja, cierre y analítica d
   const token = (await (await loginResponse).json()).accessToken;
   const headers = { Authorization: `Bearer ${token}` };
   await ensurePlateAvailability(page);
+  const branchDay = await request.get('http://127.0.0.1:3100/api/plates/today', { headers });
+  const { date } = await branchDay.json();
+  const analyticsBefore = await request.get('http://127.0.0.1:3100/api/analytics/operations', {
+    headers,
+    params: { from: date, to: date },
+  });
+  expect(analyticsBefore.ok()).toBeTruthy();
+  const { mandaditoTotal: expensesBefore } = await analyticsBefore.json();
   await page.getByRole('link', { name: 'Caja y cierre', exact: true }).click();
   await page.getByLabel('Caja de esta terminal').selectOption({ label: 'Caja móvil' });
   await page.getByLabel('Fondo inicial').fill('500');
@@ -132,14 +140,20 @@ test('mandaditos con teclado numérico y efectivo de caja, cierre y analítica d
   await expect(
     page.getByRole('columnheader', { name: 'Mandaditos efectivo', exact: true }),
   ).toBeVisible();
-  await expect(page.getByRole('cell', { name: '$160.00', exact: true })).toHaveCount(2);
+  const latestMobileClose = page
+    .getByRole('row')
+    .filter({ has: page.getByRole('cell', { name: 'Caja móvil', exact: true }) })
+    .first();
+  await expect(latestMobileClose.getByRole('cell', { name: '$160.00', exact: true })).toHaveCount(
+    2,
+  );
   await page.getByRole('link', { name: 'Analítica', exact: true }).click();
   await expect(
     page.getByRole('heading', { name: 'Mix por sabor y presentación', exact: true }),
   ).toBeVisible();
   await expect(
     page.getByRole('region', { name: 'Gastos de mandaditos', exact: true }),
-  ).toContainText('$160.00');
+  ).toContainText(`$${(expensesBefore + 160).toFixed(2)}`);
   await page.screenshot({
     path: test.info().outputPath('analitica-mandaditos.png'),
     fullPage: true,

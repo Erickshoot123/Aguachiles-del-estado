@@ -4,6 +4,9 @@ test('analítica legible: jerarquía, filas sin ventas, cobros íntegros y manda
   page,
 }) => {
   await page.setViewportSize({ width: 1440, height: 1000 });
+  await page.route('**/api/plates/today', (route) =>
+    route.fulfill({ json: { date: '2026-11-04', initialized: false, buckets: [] } }),
+  );
   const ranges: URLSearchParams[] = [];
   await page.route('**/api/analytics/operations?*', async (route) => {
     ranges.push(new URL(route.request().url()).searchParams);
@@ -56,6 +59,7 @@ test('analítica legible: jerarquía, filas sin ventas, cobros íntegros y manda
   const main = kpis.getByRole('article').filter({ hasText: 'Ventas de comida' });
   const secondary = kpis.getByRole('article').filter({ hasText: 'Ticket promedio' });
   await expect(main).toContainText('$300.00');
+  expect(ranges[0]?.toString()).toBe('from=2026-11-04&to=2026-11-04');
   expect((await main.boundingBox())!.width).toBeGreaterThan(
     (await secondary.boundingBox())!.width * 1.5,
   );
@@ -92,6 +96,9 @@ test('analítica legible: jerarquía, filas sin ventas, cobros íntegros y manda
     'aria-pressed',
     'true',
   );
+  await expect
+    .poll(() => ranges.some((range) => range.toString() === 'from=2026-11-02&to=2026-11-04'))
+    .toBeTruthy();
   await page.getByRole('button', { name: 'Personalizado', exact: true }).click();
   await page.getByLabel('Desde', { exact: true }).fill('2026-11-01');
   await page.getByLabel('Hasta', { exact: true }).fill('2026-11-04');
