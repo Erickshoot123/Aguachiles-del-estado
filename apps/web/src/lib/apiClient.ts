@@ -16,6 +16,7 @@ interface ApiRequestOptions {
   body?: unknown;
   token?: string | null;
   baseUrl?: string;
+  timeoutMs?: number;
 }
 
 interface ApiErrorBody {
@@ -34,6 +35,7 @@ export async function apiRequest<TResponse>(
       ...(options.token ? { Authorization: `Bearer ${options.token}` } : {}),
     },
     body: options.body !== undefined ? JSON.stringify(options.body) : undefined,
+    signal: options.timeoutMs ? AbortSignal.timeout(options.timeoutMs) : undefined,
   });
 
   if (!response.ok) {

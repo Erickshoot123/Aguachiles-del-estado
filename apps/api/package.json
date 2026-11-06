@@ -16,7 +16,9 @@
     "prisma:seed": "tsx prisma/seed.ts",
     "backup:db": "tsx scripts/backup-db.ts",
     "restore:db": "tsx scripts/restore-db.ts",
-    "check:health": "tsx scripts/check-health.ts"
+    "check:health": "tsx scripts/check-health.ts",
+    "sync:admin": "tsx scripts/sync-admin.ts",
+    "central:admin": "tsx scripts/central-admin.ts"
   },
   "prisma": {
     "seed": "tsx prisma/seed.ts"

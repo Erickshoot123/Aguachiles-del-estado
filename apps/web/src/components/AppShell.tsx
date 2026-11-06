@@ -4,6 +4,7 @@ import { Link, useLocation } from 'react-router-dom';
 import { useAuthStore, usePermissions } from '../features/auth/authStore';
 import { useLogout } from '../features/auth/useLogout';
 import { OfflineQueueBanner } from '../features/orders/OfflineQueueBanner';
+import { KitchenPrintBanner } from '../features/receipts/KitchenPrintBanner';
 import { useOfflineQueueSync } from '../features/orders/offlineQueueSync';
 
 interface NavItem {
@@ -25,10 +26,12 @@ const NAV_SECTIONS: readonly { title: string; items: readonly NavItem[] }[] = [
     title: 'Administración',
     items: [
       { label: 'Caja y cierre', path: '/caja' },
+      { label: 'Impresoras', path: '/impresoras' },
       { label: 'Reportes', path: '/reportes', permission: 'reports.view' },
       { label: 'Analítica', path: '/analitica', permission: 'reports.view' },
       { label: 'Auditoría', path: '/auditoria', permission: 'audit.view' },
       { label: 'Usuarios', path: '/usuarios', permission: 'users.manage' },
+      { label: 'Actualizaciones', path: '/actualizaciones', permission: 'users.manage' },
     ],
   },
 ];
@@ -60,7 +63,9 @@ function useVisibleNavSections(): readonly { title: string; items: readonly NavI
 
   return NAV_SECTIONS.map((section) => ({
     ...section,
-    items: section.items.filter((item) => !item.permission || permissions.includes(item.permission)),
+    items: section.items.filter(
+      (item) => !item.permission || permissions.includes(item.permission),
+    ),
   })).filter((section) => section.items.length > 0);
 }
 
@@ -113,6 +118,7 @@ export function AppShell({ children }: AppShellProps): JSX.Element {
 
       <main className="flex min-w-0 flex-1 flex-col">
         <OfflineQueueBanner />
+        <KitchenPrintBanner />
         {children}
       </main>
     </div>

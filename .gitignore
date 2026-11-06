@@ -27,3 +27,6 @@ apps/api/logs/
 apps/e2e/test-results/
 apps/e2e/playwright-report/
 apps/e2e/.cache/
+
+# La clave privada de publicación nunca pertenece al código ni a un paquete del POS.
+**/update-private.pem

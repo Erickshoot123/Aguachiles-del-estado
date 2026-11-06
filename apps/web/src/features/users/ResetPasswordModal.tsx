@@ -12,7 +12,7 @@ const UI_TEXT = {
   cancel: 'Cancelar',
   save: 'Restablecer',
   saving: 'Guardando…',
-  error: 'No se pudo restablecer la contraseña. Debe tener al menos 8 caracteres.',
+  error: 'No se pudo restablecer la contraseña. Debe tener al menos 6 caracteres.',
   success: 'Contraseña actualizada. Todas las sesiones activas de este usuario se cerraron.',
 } as const;
 
@@ -27,7 +27,7 @@ export function ResetPasswordModal({ user, onClose }: ResetPasswordModalProps): 
   const [confirmPassword, setConfirmPassword] = useState('');
 
   const passwordsMatch = newPassword === confirmPassword;
-  const canSubmit = newPassword.length >= 8 && passwordsMatch;
+  const canSubmit = newPassword.length >= 6 && passwordsMatch;
 
   const handleSubmit = (): void => {
     resetPassword.mutate({ userId: user.id, input: { newPassword } });

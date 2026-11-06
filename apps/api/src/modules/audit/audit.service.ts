@@ -4,6 +4,7 @@ import type { AuditLogEntry } from '@aguachiles/shared';
 type AuditClient = PrismaClient | Prisma.TransactionClient;
 
 interface RecordAuditLogInput {
+  id?: string;
   userId: string;
   action: string;
   entity: string;
@@ -15,6 +16,7 @@ interface RecordAuditLogInput {
 export async function recordAuditLog(client: AuditClient, input: RecordAuditLogInput): Promise<void> {
   await client.auditLog.create({
     data: {
+      id: input.id,
       userId: input.userId,
       action: input.action,
       entity: input.entity,

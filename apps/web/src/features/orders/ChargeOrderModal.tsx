@@ -51,7 +51,9 @@ function useChargeForm(orderTotal: number, methods: PaymentMethod[]) {
     setLines(effectiveLines.filter((_, i) => i !== index));
   };
 
-  const paidTotal = round2(effectiveLines.reduce((sum, line) => sum + (Number(line.amount) || 0), 0));
+  const paidTotal = round2(
+    effectiveLines.reduce((sum, line) => sum + (Number(line.amount) || 0), 0),
+  );
   const remaining = round2(orderTotal - paidTotal);
 
   return { effectiveLines, updateLine, addLine, removeLine, paidTotal, remaining };
@@ -147,7 +149,13 @@ function PaymentLinesSection({
   );
 }
 
-function PaymentSummary({ paidTotal, remaining }: { paidTotal: number; remaining: number }): JSX.Element {
+function PaymentSummary({
+  paidTotal,
+  remaining,
+}: {
+  paidTotal: number;
+  remaining: number;
+}): JSX.Element {
   const isBalanced = remaining === 0;
   return (
     <div className="flex flex-col gap-1 border-t border-divider pt-3 text-sm">

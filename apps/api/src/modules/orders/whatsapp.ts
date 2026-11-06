@@ -1,3 +1,4 @@
+import { formatWhatsAppTotal } from './whatsappTotal.js';
 import type { WhatsAppShare } from '@aguachiles/shared';
 
 // wa.me no impone un límite documentado, pero URLs muy largas dejan de ser
@@ -11,10 +12,12 @@ const NOTES_TRIM_STEP = 40;
 export interface WhatsAppOrderItem {
   productName: string;
   quantity: number;
+  notes?: string | null;
 }
 
 export interface WhatsAppOrderInput {
   ticketNumber: string;
+  total: number;
   createdAt: string;
   customerName: string;
   customerPhone: string;
@@ -43,7 +46,10 @@ function buildMessage(order: WhatsAppOrderInput, notes: string | null): string {
   lines.push('');
   for (const item of order.items) {
     lines.push(`${item.quantity}x ${item.productName}`);
+    if (item.notes) lines.push(`  ${item.notes}`);
   }
+
+  lines.push(formatWhatsAppTotal(order.total));
 
   if (notes) {
     lines.push('');
@@ -57,15 +63,8 @@ function toWhatsAppUrl(message: string): string {
   return `https://wa.me/?text=${encodeURIComponent(message)}`;
 }
 
-/**
- * Arma el texto y la liga wa.me para compartir un pedido delivery. Solo
- * datos de logística de entrega (quién, dónde, qué) — nada de montos: el
- * negocio no quiere el total, el envío, el método de pago, "paga con" ni el
- * cambio en este mensaje. Sin emojis; la única marca de formato de WhatsApp
- * que usa es *negrita* en el folio. Si la URL resultante excede ~900
- * caracteres, recorta primero las notas (lo menos esencial del mensaje)
- * hasta que quepa o hasta quitarlas del todo, y lo marca como `truncated`
- * para avisar en la UI.
+/** Comparte los datos de entrega y el total guardado del pedido.
+ * Si hace falta reducir el QR, solo recorta notas; conserva productos y total.
  */
 export function buildWhatsAppMessage(order: WhatsAppOrderInput): WhatsAppShare {
   let notes = order.notes;

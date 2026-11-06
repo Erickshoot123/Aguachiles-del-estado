@@ -1,157 +1,110 @@
-import type { AnalyticsTopProduct, AnalyticsTrendPoint } from '@aguachiles/shared';
-import type { JSX } from 'react';
-import { useState } from 'react';
+import { useState, type JSX } from 'react';
+import { useQuery } from '@tanstack/react-query';
+import type { OperationalAnalytics } from '@aguachiles/shared';
 import { AppShell } from '../components/AppShell';
-import { useAnalyticsDashboard } from '../features/analytics/hooks';
-import { formatCurrency } from '../features/orders/channelLabels';
-import * as dateRanges from '../features/reports/dateRanges';
-import type { DateRange } from '../features/reports/dateRanges';
+import { authFetch } from '../lib/authFetch';
+import { AnalyticsKpis } from '../features/analytics/AnalyticsKpis';
+import { SalesMixTable } from '../features/analytics/SalesMixTable';
+import { PaymentSummary } from '../features/analytics/PaymentSummary';
+import '../features/analytics/analytics.css';
 
-const UI_TEXT = {
-  title: 'Analítica',
-  today: 'Hoy',
-  last7Days: 'Últimos 7 días',
-  last30Days: 'Últimos 30 días',
-  thisMonth: 'Este mes',
-  revenue: 'Ingresos netos',
-  loading: 'Cargando…',
-  error: 'No se pudo cargar la analítica.',
-  trendTitle: 'Tendencia de ventas',
-  emptyTrend: 'Sin ventas en este periodo.',
-  topProductsTitle: 'Productos más vendidos',
-  emptyTopProducts: 'Sin ventas en este periodo.',
-  colProduct: 'Producto',
-  colQuantity: 'Cantidad',
-  colRevenue: 'Ingresos',
-} as const;
-
-const RANGE_OPTIONS: { label: string; getRange: () => DateRange }[] = [
-  { label: UI_TEXT.today, getRange: dateRanges.today },
-  { label: UI_TEXT.last7Days, getRange: () => dateRanges.lastNDays(7) },
-  { label: UI_TEXT.last30Days, getRange: () => dateRanges.lastNDays(30) },
-  { label: UI_TEXT.thisMonth, getRange: dateRanges.thisMonth },
-];
-
-function formatShortDate(iso: string): string {
-  return new Date(iso).toLocaleDateString('es-MX', { day: 'numeric', month: 'short' });
+function localDate(date: Date): string {
+  return `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}-${String(date.getDate()).padStart(2, '0')}`;
 }
-
-function SummaryCard({ label, value }: { label: string; value: string }): JSX.Element {
-  return (
-    <div className="max-w-xs rounded-2xl border border-border bg-surface p-4">
-      <div className="text-[13px] text-muted">{label}</div>
-      <div className="font-mono text-[22px] font-semibold">{value}</div>
-    </div>
-  );
-}
-
-function TrendChart({ points }: { points: AnalyticsTrendPoint[] }): JSX.Element {
-  if (points.length === 0) {
-    return <p className="text-sm text-muted">{UI_TEXT.emptyTrend}</p>;
-  }
-  const maxTotal = Math.max(...points.map((point) => point.total), 1);
-  const barWidth = 100 / points.length;
-
-  return (
-    <svg viewBox="0 0 100 40" preserveAspectRatio="none" className="h-32 w-full">
-      {points.map((point, index) => {
-        const height = (point.total / maxTotal) * 36;
-        return (
-          <rect
-            key={point.date}
-            x={index * barWidth + barWidth * 0.15}
-            y={40 - height}
-            width={barWidth * 0.7}
-            height={Math.max(height, 0.5)}
-            className="fill-accent"
-          >
-            <title>
-              {formatShortDate(point.date)}: {formatCurrency(point.total)}
-            </title>
-          </rect>
-        );
-      })}
-    </svg>
-  );
-}
-
-function TopProductsTable({ products }: { products: AnalyticsTopProduct[] }): JSX.Element {
-  if (products.length === 0) {
-    return <p className="text-sm text-muted">{UI_TEXT.emptyTopProducts}</p>;
-  }
-  return (
-    <table className="w-full border-collapse overflow-hidden rounded-2xl bg-surface text-left text-sm">
-      <thead>
-        <tr className="border-b border-border text-[12px] uppercase tracking-wide text-muted-2">
-          <th className="px-4 py-3">{UI_TEXT.colProduct}</th>
-          <th className="px-4 py-3">{UI_TEXT.colQuantity}</th>
-          <th className="px-4 py-3">{UI_TEXT.colRevenue}</th>
-        </tr>
-      </thead>
-      <tbody>
-        {products.map((product) => (
-          <tr key={product.productId} className="border-b border-divider last:border-0">
-            <td className="px-4 py-3 font-medium">{product.productName}</td>
-            <td className="px-4 py-3 font-mono">{product.quantity}</td>
-            <td className="px-4 py-3 font-mono">{formatCurrency(product.revenue)}</td>
-          </tr>
-        ))}
-      </tbody>
-    </table>
-  );
-}
-
 export function AnalyticsPage(): JSX.Element {
-  const [range, setRange] = useState<DateRange>(dateRanges.today());
-  const [selectedLabel, setSelectedLabel] = useState<string>(UI_TEXT.today);
-  const dashboardQuery = useAnalyticsDashboard(range.from.toISOString(), range.to.toISOString());
-  const dashboard = dashboardQuery.data;
-
+  const [from, setFrom] = useState(localDate(new Date()));
+  const [to, setTo] = useState(localDate(new Date()));
+  const [period, setPeriod] = useState('Hoy');
+  const valid = from !== '' && to !== '' && from <= to;
+  const query = useQuery({
+    queryKey: ['operations', from, to],
+    enabled: valid,
+    queryFn: () => {
+      const params = new URLSearchParams({ from, to });
+      return authFetch<OperationalAnalytics>(`/api/analytics/operations?${params}`);
+    },
+  });
+  const choose = (label: string): void => {
+    setPeriod(label);
+    if (label === 'Personalizado') return;
+    const now = new Date();
+    const start = new Date(now);
+    if (label === 'Esta semana') start.setDate(now.getDate() - ((now.getDay() + 6) % 7));
+    if (label === 'Este mes') start.setDate(1);
+    setFrom(localDate(start));
+    setTo(localDate(now));
+  };
+  const data = valid && !query.isError ? query.data : undefined;
+  const displayDay = (value: string): string =>
+    new Intl.DateTimeFormat('es-MX', { day: 'numeric', month: 'short', year: 'numeric' }).format(
+      new Date(value + 'T12:00:00'),
+    );
   return (
     <AppShell>
-      <header className="flex flex-wrap items-center gap-3 border-b border-border bg-surface px-7 py-[18px]">
-        <h1 className="m-0 text-[23px] font-bold tracking-tight">{UI_TEXT.title}</h1>
-        <div className="ml-auto flex flex-wrap gap-2">
-          {RANGE_OPTIONS.map((option) => (
-            <button
-              key={option.label}
-              type="button"
-              onClick={() => {
-                setRange(option.getRange());
-                setSelectedLabel(option.label);
-              }}
-              className={
-                selectedLabel === option.label
-                  ? 'h-10 rounded-lg bg-accent px-3 text-[13px] font-semibold text-white'
-                  : 'h-10 rounded-lg border border-border px-3 text-[13px] hover:border-border-hover'
-              }
-            >
-              {option.label}
-            </button>
-          ))}
+      <div className="analytics-dashboard">
+        <header className="analytics-topbar">
+          <div>
+            <p className="analytics-overline">Resumen del negocio</p>
+            <h1>Analíticas operativas</h1>
+          </div>
+          <div className="analytics-period-buttons" role="group" aria-label="Periodo de analíticas">
+            {['Hoy', 'Esta semana', 'Este mes', 'Personalizado'].map((label) => (
+              <button
+                key={label}
+                type="button"
+                aria-pressed={period === label}
+                onClick={() => choose(label)}
+              >
+                {label}
+              </button>
+            ))}
+          </div>
+        </header>
+        <div className="analytics-range">
+          <span>
+            {valid
+              ? from === to
+                ? displayDay(from)
+                : `${displayDay(from)} — ${displayDay(to)}`
+              : 'Selecciona un periodo válido'}
+          </span>
+          <span>Fechas de la sucursal · Importes en MXN</span>
+          {period === 'Personalizado' ? (
+            <>
+              <label>
+                Desde
+                <input type="date" value={from} onChange={(event) => setFrom(event.target.value)} />
+              </label>
+              <label>
+                Hasta
+                <input type="date" value={to} onChange={(event) => setTo(event.target.value)} />
+              </label>
+            </>
+          ) : null}
         </div>
-      </header>
-
-      <section className="flex-1 overflow-x-auto p-5">
-        {dashboardQuery.isLoading ? <p className="text-sm text-muted">{UI_TEXT.loading}</p> : null}
-        {dashboardQuery.isError ? <p className="text-sm text-red-600">{UI_TEXT.error}</p> : null}
-
-        {dashboard ? (
+        {!valid ? (
+          <p className="analytics-status" role="alert">
+            Revisa el rango de fechas.
+          </p>
+        ) : query.isError ? (
+          <p className="analytics-status" role="alert">
+            No se pudo cargar la analítica. Vuelve a seleccionar el periodo para intentarlo.
+          </p>
+        ) : query.isLoading ? (
+          <p className="analytics-status" role="status">
+            Cargando cifras del periodo…
+          </p>
+        ) : null}
+        {data ? (
           <>
-            <div className="mb-6">
-              <SummaryCard label={UI_TEXT.revenue} value={formatCurrency(dashboard.totalRevenue)} />
+            <AnalyticsKpis data={data} />
+            <div className="analytics-detail-grid">
+              <SalesMixTable mix={data.mix} />
+              <PaymentSummary data={data} />
             </div>
-
-            <h2 className="m-0 mb-3 text-[15px] font-semibold">{UI_TEXT.trendTitle}</h2>
-            <div className="mb-8 rounded-2xl border border-border bg-surface p-4">
-              <TrendChart points={dashboard.dailyTrend} />
-            </div>
-
-            <h2 className="m-0 mb-3 text-[15px] font-semibold">{UI_TEXT.topProductsTitle}</h2>
-            <TopProductsTable products={dashboard.topProducts} />
           </>
         ) : null}
-      </section>
+      </div>
     </AppShell>
   );
 }

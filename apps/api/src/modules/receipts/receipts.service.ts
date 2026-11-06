@@ -1,7 +1,9 @@
+import { addTotalToWhatsAppUrl } from '../orders/whatsappTotal.js';
 import type { Prisma, PrismaClient } from '@prisma/client';
 import type { Ticket, TicketFormat } from '@aguachiles/shared';
 import { buildWhatsAppMessage } from '../orders/whatsapp.js';
 import { ReceiptNotFoundError } from './receipts.errors.js';
+import { assertLocalSale } from '../locations/localLocation.repository.js';
 
 const BUSINESS_NAME = 'Aguachiles del Estado';
 
@@ -11,18 +13,20 @@ type SaleForReceipt = Prisma.SaleGetPayload<{
 
 function buildWhatsappUrlIfDelivery(sale: SaleForReceipt): string | null {
   if (sale.channel !== 'delivery') return null;
-  if (!sale.customerName || !sale.customerPhone || !sale.deliveryAddress) return null;
+  if (!sale.customerPhone || !sale.deliveryAddress) return null;
 
   return buildWhatsAppMessage({
     ticketNumber: sale.ticketNumber,
+    total: sale.total.toNumber(),
     createdAt: sale.createdAt.toISOString(),
-    customerName: sale.customerName,
+    customerName: sale.customerName ?? 'Sin nombre',
     customerPhone: sale.customerPhone,
     deliveryAddress: sale.deliveryAddress,
     deliveryReferences: sale.deliveryReferences,
     items: sale.items.map((item) => ({
       productName: item.product.name,
       quantity: item.quantity.toNumber(),
+      notes: item.notes,
     })),
     notes: sale.notes,
   }).url;
@@ -35,9 +39,11 @@ export function buildTicket(sale: SaleForReceipt, format: TicketFormat): Ticket 
     format,
     issuedAt: new Date().toISOString(),
     businessName: BUSINESS_NAME,
+    deliveryFee: sale.deliveryFee.toNumber(),
     lines: sale.items.map((item) => ({
       productName: item.product.name,
       quantity: item.quantity.toNumber(),
+      notes: item.notes,
       unitPrice: item.unitPrice.toNumber(),
       subtotal: item.subtotal.toNumber(),
     })),
@@ -68,6 +74,7 @@ export async function getReceiptTicket(
   prisma: PrismaClient,
   saleId: string,
 ): Promise<{ ticket: Ticket; reprintCount: number }> {
+  await assertLocalSale(prisma, saleId);
   const receipt = await prisma.receipt.findUnique({ where: { saleId } });
   if (!receipt) {
     throw new ReceiptNotFoundError();
@@ -75,12 +82,17 @@ export async function getReceiptTicket(
 
   const ticket = receipt.contentSnapshot as unknown as Ticket;
   return {
-    ticket: { ...ticket, isReprint: receipt.printedAt !== null },
+    ticket: {
+      ...ticket,
+      whatsappUrl: addTotalToWhatsAppUrl(ticket.whatsappUrl, ticket.total),
+      isReprint: receipt.printedAt !== null,
+    },
     reprintCount: receipt.reprintCount,
   };
 }
 
 export async function recordPrinted(prisma: PrismaClient, saleId: string): Promise<void> {
+  await assertLocalSale(prisma, saleId);
   const receipt = await prisma.receipt.findUnique({ where: { saleId } });
   if (!receipt) {
     throw new ReceiptNotFoundError();

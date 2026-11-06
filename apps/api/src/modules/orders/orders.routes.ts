@@ -1,4 +1,5 @@
-import { chargeOrderRequestSchema, createOrderRequestSchema } from '@aguachiles/shared';
+import { moveOrder } from './orderMove.service.js';
+import { chargeOrderRequestSchema, createOrderRequestSchema, moveOrderRequestSchema } from '@aguachiles/shared';
 import type { FastifyInstance } from 'fastify';
 import { z } from 'zod';
 import { idParamSchema } from '../../lib/paramsSchemas.js';
@@ -35,6 +36,11 @@ export default async function ordersRoutes(fastify: FastifyInstance): Promise<vo
     const input = createOrderRequestSchema.parse(request.body);
     const order = await createOrder(fastify.prisma, request.user.sub, input);
     reply.status(201).send(order);
+  });
+
+  fastify.patch('/api/orders/:id/move', { preHandler: fastify.authenticate }, async (request) => {
+    const { id } = idParamSchema.parse(request.params);
+    return moveOrder(fastify.prisma, id, moveOrderRequestSchema.parse(request.body));
   });
 
   fastify.patch(

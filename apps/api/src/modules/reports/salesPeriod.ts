@@ -1,4 +1,5 @@
 import { Prisma, type PrismaClient } from '@prisma/client';
+import { getLocalLocation } from '../locations/localLocation.repository.js';
 
 export type SaleWithRelations = Prisma.SaleGetPayload<{
   include: {
@@ -33,8 +34,9 @@ export async function fetchSalesForPeriod(
   from: Date,
   to: Date,
 ): Promise<SaleWithRelations[]> {
+  const location = await getLocalLocation(prisma);
   return prisma.sale.findMany({
-    where: { status: { in: [...REPORTABLE_STATUSES] }, createdAt: { gte: from, lte: to } },
+    where: { locationId: location.id, status: { in: [...REPORTABLE_STATUSES] }, createdAt: { gte: from, lte: to } },
     include: {
       items: { include: { product: true } },
       payments: { include: { paymentMethod: true } },

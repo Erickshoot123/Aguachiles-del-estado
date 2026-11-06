@@ -1,0 +1,110 @@
+name: Preparar versión Windows (manual)
+
+on:
+  workflow_dispatch:
+    inputs:
+      version:
+        description: 'Versión estable, por ejemplo 0.2.7 (sin v)'
+        required: true
+        type: string
+      release_notes:
+        description: 'Novedades que verá el usuario del POS'
+        required: true
+        type: string
+
+permissions:
+  contents: read
+
+concurrency:
+  group: windows-release-${{ inputs.version }}
+  cancel-in-progress: false
+
+jobs:
+  verify:
+    runs-on: ubuntu-latest
+    services:
+      postgres:
+        image: postgres:16
+        env:
+          POSTGRES_USER: postgres
+          POSTGRES_PASSWORD: postgres
+          POSTGRES_DB: aguachiles_pos_test
+        ports: ['5432:5432']
+        options: >-
+          --health-cmd pg_isready --health-interval 10s
+          --health-timeout 5s --health-retries 5
+    env:
+      DATABASE_URL: postgresql://postgres:postgres@127.0.0.1:5432/aguachiles_pos_test
+      TEST_DATABASE_URL: postgresql://postgres:postgres@127.0.0.1:5432/aguachiles_pos_test
+      JWT_SECRET: release-tests-only-not-a-production-credential
+      RELEASE_VERSION: ${{ inputs.version }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+      - name: Validar versión
+        run: node --input-type=module -e "import { stableVersion } from './packaging/windows/runtime/updates/version.mjs'; stableVersion(process.env.RELEASE_VERSION);"
+      - run: npm ci
+      - run: npm run lint
+      - run: npm run typecheck
+      - run: npx prisma migrate deploy --schema apps/api/prisma/schema.prisma
+      - run: npm run test
+      - run: node --test packaging/windows/protected-backup.test.mjs packaging/windows/updates.test.mjs
+
+  build-draft:
+    needs: verify
+    runs-on: windows-latest
+    permissions:
+      contents: write
+    env:
+      RELEASE_VERSION: ${{ inputs.version }}
+      RELEASE_NOTES: ${{ inputs.release_notes }}
+      RELEASE_OUTPUT: ${{ runner.temp }}\aguachiles-release
+      POS_UPDATE_REPOSITORY: ${{ vars.UPDATE_RELEASE_REPOSITORY || 'Erickshoot123/aguachiles-pos-releases' }}
+      POS_UPDATE_PUBLIC_KEY_PEM: ${{ vars.UPDATE_PUBLIC_KEY_PEM }}
+      GH_TOKEN: ${{ secrets.RELEASE_UPLOAD_TOKEN || github.token }}
+      RELEASE_UPLOAD_CONFIGURED: ${{ secrets.RELEASE_UPLOAD_TOKEN != '' }}
+      SIGNING_KEY_CONFIGURED: ${{ secrets.UPDATE_SIGNING_PRIVATE_KEY != '' }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+      - name: Comprobar configuración del canal público
+        shell: pwsh
+        run: |
+          if (-not $env:POS_UPDATE_PUBLIC_KEY_PEM) { throw 'Configura UPDATE_PUBLIC_KEY_PEM antes de generar una versión.' }
+          if ($env:SIGNING_KEY_CONFIGURED -ne 'true') { throw 'Configura UPDATE_SIGNING_PRIVATE_KEY antes de generar una versión.' }
+          if ($env:POS_UPDATE_REPOSITORY -ne $env:GITHUB_REPOSITORY -and $env:RELEASE_UPLOAD_CONFIGURED -ne 'true') { throw 'Configura RELEASE_UPLOAD_TOKEN con acceso al repositorio de descargas.' }
+          $private = gh api "repos/$env:POS_UPDATE_REPOSITORY" --jq '.private'
+          if ($LASTEXITCODE -ne 0 -or $private -ne 'false') { throw 'El canal de descargas debe ser un repositorio público accesible. El código fuente puede seguir privado.' }
+      - run: npm ci
+      - name: Verificar componentes nativos del actualizador
+        run: node packaging/windows/test-native-updates.mjs
+      - name: Construir instalador con versión y clave pública
+        shell: pwsh
+        run: npm run build:windows -- --version "$env:RELEASE_VERSION" --build-root "$env:RUNNER_TEMP\aguachiles-build" --output "$env:RELEASE_OUTPUT"
+      - name: Firmar el manifiesto
+        run: node packaging/windows/prepare-release.mjs
+        env:
+          UPDATE_SIGNING_PRIVATE_KEY: ${{ secrets.UPDATE_SIGNING_PRIVATE_KEY }}
+      - uses: actions/upload-artifact@v4
+        with:
+          name: windows-${{ inputs.version }}
+          path: ${{ env.RELEASE_OUTPUT }}\*
+          if-no-files-found: error
+      - name: Crear borrador de GitHub Release (no publicar)
+        shell: pwsh
+        run: |
+          $target = $env:GITHUB_SHA
+          if ($env:POS_UPDATE_REPOSITORY -ne $env:GITHUB_REPOSITORY) {
+            $target = gh api "repos/$env:POS_UPDATE_REPOSITORY" --jq '.default_branch'
+            if ($LASTEXITCODE -ne 0) { throw 'No se pudo consultar el repositorio de descargas.' }
+          }
+          $files = @("$env:RELEASE_OUTPUT\AguachilesPOS-Instalador-$env:RELEASE_VERSION.exe", "$env:RELEASE_OUTPUT\AguachilesPOS-Instalador-$env:RELEASE_VERSION.exe.sha256.txt", "$env:RELEASE_OUTPUT\update-manifest.json", "$env:RELEASE_OUTPUT\update-manifest.sig")
+          $arguments = @('release', 'create', "v$env:RELEASE_VERSION", '--repo', $env:POS_UPDATE_REPOSITORY, '--target', $target, '--draft', '--title', "Aguachiles POS $env:RELEASE_VERSION", '--notes-file', "$env:RELEASE_OUTPUT\release-notes.md") + $files
+          & gh @arguments
+          if ($LASTEXITCODE -ne 0) { throw 'No se pudo crear el borrador. No se reemplazan versiones ya publicadas.' }

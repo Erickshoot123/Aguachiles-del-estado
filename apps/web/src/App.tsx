@@ -1,3 +1,6 @@
+import { EscapeNavigation } from './components/EscapeNavigation';
+import { PrintersPage } from './routes/PrintersPage';
+import { UpdatesPage } from './routes/UpdatesPage';
 import type { JSX } from 'react';
 import { BrowserRouter, Route, Routes } from 'react-router-dom';
 import { AuthBootstrap } from './features/auth/AuthBootstrap';
@@ -11,18 +14,37 @@ import { OrdersBoardPage } from './routes/OrdersBoardPage';
 import { ReportsPage } from './routes/ReportsPage';
 import { SuppliersPage } from './routes/SuppliersPage';
 import { UsersPage } from './routes/UsersPage';
+import { BranchesPage } from './routes/BranchesPage';
+import { env } from './lib/env';
 
 export function App(): JSX.Element {
   return (
     <BrowserRouter>
+      <EscapeNavigation />
       <AuthBootstrap>
         <Routes>
+          <Route
+            path="/actualizaciones"
+            element={
+              <ProtectedRoute permission="users.manage">
+                <UpdatesPage />
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="/impresoras"
+            element={
+              <ProtectedRoute>
+                <PrintersPage />
+              </ProtectedRoute>
+            }
+          />
           <Route path="/login" element={<LoginPage />} />
           <Route
             path="/"
             element={
               <ProtectedRoute>
-                <OrdersBoardPage />
+                {env.VITE_POS_MODE === 'central' ? <BranchesPage /> : <OrdersBoardPage />}
               </ProtectedRoute>
             }
           />

@@ -1,9 +1,11 @@
+import { addTotalToWhatsAppUrl } from './whatsappTotal.js';
 import { describe, expect, it } from 'vitest';
 import { buildWhatsAppMessage, type WhatsAppOrderInput } from './whatsapp.js';
 
 function baseOrder(overrides: Partial<WhatsAppOrderInput> = {}): WhatsAppOrderInput {
   return {
     ticketNumber: '#1042',
+    total: 558,
     createdAt: '2026-01-15T20:30:00.000Z',
     customerName: 'Juan Pérez',
     customerPhone: '5512345678',
@@ -26,15 +28,15 @@ describe('buildWhatsAppMessage', () => {
     expect(message).toContain('2x Aguachile Tradicional (1 kilo)');
   });
 
-  it('no incluye montos: ni total, ni envío, ni método de pago, ni "paga con"/cambio', () => {
+  it('incluye el total con dos decimales sin agregar envío, método de pago o cambio', () => {
     const { message } = buildWhatsAppMessage(baseOrder());
 
-    expect(message).not.toContain('Total');
+    expect(message).toContain('Total: $558.00');
     expect(message).not.toContain('Envío');
     expect(message).not.toContain('Método de pago');
     expect(message).not.toContain('Paga con');
     expect(message).not.toContain('Cambio');
-    expect(message).not.toMatch(/\$\d/);
+    expect(buildWhatsAppMessage(baseOrder({ total: 558.1 })).message).toContain('Total: $558.10');
   });
 
   it('incluye las referencias solo cuando vienen', () => {
@@ -102,6 +104,7 @@ describe('buildWhatsAppMessage', () => {
     // notas se recortan.
     expect(message).toContain('Pedido *#1042*');
     expect(message).toContain('6x Aguachile Tradicional (medio kilo)');
+    expect(message).toContain('Total: $558.00');
     expect(message).toContain('Notas:');
     expect(message).not.toContain(veryLongNotes);
   });
@@ -129,5 +132,20 @@ describe('buildWhatsAppMessage', () => {
 
     expect(truncated).toBe(false);
     expect(url.length).toBeLessThanOrEqual(900);
+  });
+});
+
+describe('total en QR de comprobantes anteriores', () => {
+  it('agrega el total al enlace guardado sin alterar cliente, productos ni notas', () => {
+    const original = 'Pedido #1042\n2x Aguachile\n\nNotas: Salsa aparte';
+    const updated = addTotalToWhatsAppUrl(`https://wa.me/?text=${encodeURIComponent(original)}`, 558.1)!;
+    const message = new URL(updated).searchParams.get('text')!;
+    expect(message).toContain('Total: $558.10');
+    expect(message).toContain('2x Aguachile');
+    expect(message).toContain('Notas: Salsa aparte');
+    expect(addTotalToWhatsAppUrl(updated, 558.1)).toBe(updated);
+  });
+  it('no inventa un QR en comprobantes que no lo tenían', () => {
+    expect(addTotalToWhatsAppUrl(null, 558)).toBeNull();
   });
 });

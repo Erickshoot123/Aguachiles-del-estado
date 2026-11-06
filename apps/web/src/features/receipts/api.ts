@@ -22,6 +22,7 @@ export function printAtAgent(ticket: Ticket, printerId: string | null): Promise<
     method: 'POST',
     body: { ticket, printerId: printerId ?? undefined },
     baseUrl: env.VITE_PRINT_AGENT_URL,
+    timeoutMs: 40000,
   });
 }
 

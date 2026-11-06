@@ -25,17 +25,18 @@ export type SaleStatus = z.infer<typeof saleStatusSchema>;
 export const createOrderItemSchema = z.object({
   productId: z.string().uuid(),
   quantity: z.number().positive(),
+  notes: z.string().trim().min(1).max(1000).optional(),
 });
 export type CreateOrderItem = z.infer<typeof createOrderItemSchema>;
 
-// Solo tienen sentido (y solo se piden) para channel = 'delivery'. No
-// participan en subtotal/total/pagos: son datos de logística de entrega
-// (quién, dónde, qué), capturados al crear el pedido para armar el mensaje
-// de WhatsApp del repartidor y, opcionalmente, el QR impreso en el ticket.
-// A propósito no incluye nada de montos (costo de envío, "paga con") — el
-// negocio no quiere esa información en el mensaje.
+// El nombre es opcional para cualquier pedido. Teléfono y dirección se exigen
+// únicamente para delivery. Estos datos no alteran precios ni pagos.
 const deliveryInfoFieldsSchema = z.object({
-  customerName: z.string().min(1).optional(),
+  customerName: z
+    .string()
+    .trim()
+    .transform((value) => value || undefined)
+    .optional(),
   customerPhone: z.string().min(1).optional(),
   deliveryAddress: z.string().min(1).optional(),
   deliveryReferences: z.string().min(1).optional(),
@@ -44,18 +45,16 @@ const deliveryInfoFieldsSchema = z.object({
 
 export const createOrderRequestSchema = z
   .object({
+    clientRequestId: z.string().uuid().optional(),
     channel: saleChannelSchema,
+    // Compatibilidad con clientes anteriores: nunca cargar envío al cliente.
+    deliveryFee: z.literal(0).optional(),
     items: z.array(createOrderItemSchema).min(1),
   })
   .merge(deliveryInfoFieldsSchema)
   .superRefine((data, ctx) => {
-    if (data.channel !== 'delivery') return;
-    if (!data.customerName) {
-      ctx.addIssue({
-        code: z.ZodIssueCode.custom,
-        message: 'El nombre del cliente es obligatorio para pedidos de delivery',
-        path: ['customerName'],
-      });
+    if (data.channel !== 'delivery') {
+      return;
     }
     if (!data.customerPhone) {
       ctx.addIssue({
@@ -94,16 +93,19 @@ export const orderItemSchema = z.object({
   quantity: z.number().positive(),
   unitPrice: z.number().nonnegative(),
   subtotal: z.number().nonnegative(),
+  notes: z.string().nullable().optional(),
 });
 export type OrderItem = z.infer<typeof orderItemSchema>;
 
 export const orderSchema = z.object({
   id: z.string().uuid(),
   ticketNumber: z.string(),
+  deliveryFee: z.number().nonnegative().optional(),
   channel: saleChannelSchema,
   fulfillmentStatus: fulfillmentStatusSchema,
   status: saleStatusSchema,
   createdAt: z.string().datetime(),
+  deliveryDueAt: z.string().datetime().nullable().optional(),
   items: z.array(orderItemSchema),
   subtotal: z.number().nonnegative(),
   taxTotal: z.number().nonnegative(),
@@ -127,3 +129,10 @@ export const whatsAppShareSchema = z.object({
   truncated: z.boolean(),
 });
 export type WhatsAppShare = z.infer<typeof whatsAppShareSchema>;
+
+export const boardStatusSchema = z.enum(['in_prep', 'waiting_pickup', 'in_delivery']);
+export const moveOrderRequestSchema = z.object({
+  status: boardStatusSchema,
+  fromStatus: boardStatusSchema,
+});
+export type MoveOrderRequest = z.infer<typeof moveOrderRequestSchema>;

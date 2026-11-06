@@ -1,5 +1,14 @@
 # Aguachiles del Estado — Sistema POS
 
+## Varias sucursales y panel central
+
+El POS admite sincronización financiera desde cada servidor local hacia una central
+de consulta. La configuración, garantías, límites y pruebas están en
+[docs/MULTISUCURSAL.md](./docs/MULTISUCURSAL.md). Usar `POS_MODE=local` en tiendas y
+`POS_MODE=central` en el servidor del administrador; el frontend se compila con el
+`VITE_POS_MODE` correspondiente. Esta ampliación sustituye el alcance inicial de
+una sola sucursal descrito en el plan histórico.
+
 Monorepo del sistema de punto de venta. La arquitectura completa, el modelo de datos y el
 roadmap por fases están documentados en [PLAN_POS.md](./PLAN_POS.md) — léelo antes de agregar
 funcionalidad nueva.
@@ -258,3 +267,7 @@ indirectamente como dependencias de las pruebas de pedidos/caja/reembolsos.
 
 La carpeta `referencia/` contiene el mockup de diseño original del negocio; es material de
 referencia visual, no código de producción.
+Control de platos diarios: consulta [Disponibilidad de kilo y medio kilo](docs/PLATOS-DIARIOS.md).
+
+Instalador Windows: [instalación, respaldos y construcción](docs/INSTALADOR-WINDOWS.md).
+

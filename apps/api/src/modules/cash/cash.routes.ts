@@ -1,5 +1,6 @@
 import {
   closeCashSessionRequestSchema,
+  createMandaditoRequestSchema,
   createCashMovementRequestSchema,
   openCashSessionRequestSchema,
 } from '@aguachiles/shared';
@@ -7,6 +8,7 @@ import type { FastifyInstance } from 'fastify';
 import { z } from 'zod';
 import { assertPermission } from '../../lib/authorize.js';
 import { idParamSchema } from '../../lib/paramsSchemas.js';
+import { createMandadito, listOrderMandaditos } from './mandaditos.service.js';
 import {
   closeSession,
   createCashMovement,
@@ -19,6 +21,25 @@ import {
 const currentSessionQuerySchema = z.object({ cashRegisterId: z.string().uuid() });
 
 export default async function cashRoutes(fastify: FastifyInstance): Promise<void> {
+  fastify.post(
+    '/api/cash-sessions/:id/mandaditos',
+    { preHandler: fastify.authenticate },
+    async (request, reply) => {
+      const { id } = idParamSchema.parse(request.params);
+      const input = createMandaditoRequestSchema.parse(request.body);
+      return reply
+        .status(201)
+        .send(await createMandadito(fastify.prisma, id, request.user.sub, input));
+    },
+  );
+  fastify.get(
+    '/api/orders/:id/mandaditos',
+    { preHandler: fastify.authenticate },
+    async (request) => {
+      const { id } = idParamSchema.parse(request.params);
+      return listOrderMandaditos(fastify.prisma, id);
+    },
+  );
   fastify.get(
     '/api/cash-registers',
     { preHandler: fastify.authenticate },
@@ -37,16 +58,20 @@ export default async function cashRoutes(fastify: FastifyInstance): Promise<void
     },
   );
 
-  fastify.post('/api/cash-sessions', { preHandler: fastify.authenticate }, async (request, reply) => {
-    const input = openCashSessionRequestSchema.parse(request.body);
-    const session = await openSession(
-      fastify.prisma,
-      request.user.sub,
-      input.cashRegisterId,
-      input.openingAmount,
-    );
-    reply.status(201).send(session);
-  });
+  fastify.post(
+    '/api/cash-sessions',
+    { preHandler: fastify.authenticate },
+    async (request, reply) => {
+      const input = openCashSessionRequestSchema.parse(request.body);
+      const session = await openSession(
+        fastify.prisma,
+        request.user.sub,
+        input.cashRegisterId,
+        input.openingAmount,
+      );
+      reply.status(201).send(session);
+    },
+  );
 
   fastify.patch(
     '/api/cash-sessions/:id/close',

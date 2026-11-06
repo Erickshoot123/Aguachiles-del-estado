@@ -3,6 +3,9 @@ import Fastify from 'fastify';
 import { ZodError } from 'zod';
 import { loadEnv } from './config/env.js';
 import printRoutes from './print.routes.js';
+import { PrinterSettings } from './printers/printerSettings.js';
+import { printerSettingsRoutes } from './printerSettings.routes.js';
+import { PrintActivity } from './printers/printActivity.js';
 
 async function main(): Promise<void> {
   try {
@@ -27,8 +30,15 @@ async function main(): Promise<void> {
     reply.status(500).send({ code: 'INTERNAL_ERROR', message: 'Error interno del print-agent' });
   });
 
-  await app.register(cors, { origin: true });
-  await app.register(printRoutes, { env });
+  const settings = new PrinterSettings(env);
+  await settings.initialize();
+  await app.register(cors, {
+    origin: env.PRINT_ALLOWED_ORIGINS.split(','),
+    methods: ['GET', 'POST', 'PUT'],
+  });
+  await app.register(printerSettingsRoutes, { env, settings });
+  const activity = new PrintActivity();
+  await app.register(printRoutes, { env, activity });
   app.get('/health', async () => ({ status: 'ok' }));
 
   if (env.HOST !== '127.0.0.1') {
@@ -38,6 +48,26 @@ async function main(): Promise<void> {
     );
   }
   await app.listen({ port: env.PORT, host: env.HOST });
+  const shutdown = (): void => {
+    void app.close();
+  };
+  process.once('SIGINT', shutdown);
+  process.once('SIGTERM', shutdown);
+  process.on('message', (message) => {
+    if (message && typeof message === 'object' && 'type' in message && 'id' in message) {
+      if (message.type === 'prepare-update')
+        process.send?.({
+          type: 'printer-update-result',
+          id: message.id,
+          ready: activity.prepare(),
+        });
+      if (message.type === 'resume-update') activity.paused = false;
+    }
+    if (message === 'shutdown') {
+      shutdown();
+      process.disconnect?.();
+    }
+  });
 }
 
 main().catch((error: unknown) => {

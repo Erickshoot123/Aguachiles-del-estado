@@ -1,9 +1,12 @@
-import type { ProductSummary, SaleChannel } from '@aguachiles/shared';
+import type { SaleChannel } from '@aguachiles/shared';
 import type { JSX } from 'react';
 import { useState } from 'react';
 import { ModalBackdrop } from '../../components/ModalBackdrop';
 import { CHANNEL_LABELS, formatCurrency } from './channelLabels';
 import { useCreateOrder, useProducts } from './hooks';
+import { usePlateAvailability } from '../plates/hooks';
+import { ProductCard } from './ProductCard';
+import { ApiError } from '../../lib/apiClient';
 
 const UI_TEXT = {
   title: 'Nuevo pedido',
@@ -17,86 +20,20 @@ const UI_TEXT = {
   loadingProducts: 'Cargando menú…',
   error: 'No se pudo crear el pedido.',
   deliveryTitle: 'Datos de entrega',
-  customerName: 'Nombre del cliente',
+  customerName: 'Nombre del cliente (opcional)',
   customerPhone: 'Teléfono',
   deliveryAddress: 'Dirección',
   deliveryReferences: 'Referencias (opcional)',
   deliveryReferencesPlaceholder: 'Entre calles, color de fachada, piso, etc.',
-  notes: 'Notas del pedido (opcional)',
-  missingDeliveryInfo: 'Completa nombre, teléfono y dirección para pedidos de delivery',
+  missingDeliveryInfo: 'Completa teléfono y dirección para pedidos de delivery',
   total: 'Total',
-  decrease: 'Quitar uno',
-  increase: 'Agregar uno',
 } as const;
 
-const CHANNEL_OPTIONS: SaleChannel[] = ['counter', 'delivery'];
+const CHANNEL_OPTIONS: SaleChannel[] = ['delivery', 'counter'];
 
 // Grid táctil: tantas columnas como quepan sin bajar de 140px por tarjeta.
 const PRODUCT_GRID_CLASS =
   'grid gap-2.5 [grid-template-columns:repeat(auto-fill,minmax(140px,1fr))]';
-
-interface ProductCardProps {
-  product: ProductSummary;
-  quantity: number;
-  onIncrement: () => void;
-  onDecrement: () => void;
-}
-
-function ProductCard({ product, quantity, onIncrement, onDecrement }: ProductCardProps): JSX.Element {
-  const selected = quantity > 0;
-  return (
-    <div
-      className={`relative flex flex-col overflow-hidden rounded-xl border transition-colors ${
-        selected
-          ? 'border-accent bg-accent-soft shadow-sm'
-          : 'border-border bg-surface hover:border-border-hover'
-      }`}
-    >
-      {selected ? (
-        <span className="absolute right-2 top-2 z-10 flex h-6 min-w-6 items-center justify-center rounded-full bg-accent px-1.5 font-mono text-xs font-semibold text-white">
-          {quantity}
-        </span>
-      ) : null}
-
-      {/* Tap directo en el cuerpo de la tarjeta = +1 */}
-      <button
-        type="button"
-        onClick={onIncrement}
-        aria-label={`${UI_TEXT.increase}: ${product.name}`}
-        className="flex min-h-[64px] flex-1 flex-col justify-between gap-2 p-3 text-left"
-      >
-        <span className="text-sm font-medium leading-snug text-text">{product.name}</span>
-        <span className="font-mono text-sm font-semibold text-accent">
-          {formatCurrency(product.price)}
-        </span>
-      </button>
-
-      {selected ? (
-        <div className="flex items-stretch border-t border-accent/30">
-          <button
-            type="button"
-            onClick={onDecrement}
-            aria-label={`${UI_TEXT.decrease}: ${product.name}`}
-            className="flex h-12 flex-1 items-center justify-center text-xl font-semibold text-accent active:bg-accent/10"
-          >
-            −
-          </button>
-          <span className="flex h-12 w-12 items-center justify-center border-x border-accent/30 font-mono text-base font-semibold text-text">
-            {quantity}
-          </span>
-          <button
-            type="button"
-            onClick={onIncrement}
-            aria-label={`${UI_TEXT.increase}: ${product.name}`}
-            className="flex h-12 flex-1 items-center justify-center text-xl font-semibold text-accent active:bg-accent/10"
-          >
-            +
-          </button>
-        </div>
-      ) : null}
-    </div>
-  );
-}
 
 interface NewOrderModalProps {
   onClose: () => void;
@@ -107,7 +44,6 @@ interface DeliveryFormState {
   customerPhone: string;
   deliveryAddress: string;
   deliveryReferences: string;
-  notes: string;
 }
 
 const EMPTY_DELIVERY_INFO: DeliveryFormState = {
@@ -115,13 +51,14 @@ const EMPTY_DELIVERY_INFO: DeliveryFormState = {
   customerPhone: '',
   deliveryAddress: '',
   deliveryReferences: '',
-  notes: '',
 };
 
 export function NewOrderModal({ onClose }: NewOrderModalProps): JSX.Element {
+  const platesQuery = usePlateAvailability();
   const productsQuery = useProducts();
   const createOrder = useCreateOrder();
-  const [channel, setChannel] = useState<SaleChannel>('counter');
+  const [channel, setChannel] = useState<SaleChannel>('delivery');
+  const [notes, setNotes] = useState('');
   const [quantities, setQuantities] = useState<Record<string, number>>({});
   const [deliveryInfo, setDeliveryInfo] = useState<DeliveryFormState>(EMPTY_DELIVERY_INFO);
 
@@ -155,38 +92,52 @@ export function NewOrderModal({ onClose }: NewOrderModalProps): JSX.Element {
     .filter(([productId, quantity]) => quantity > 0 && orderableProductIds.has(productId))
     .map(([productId, quantity]) => ({ productId, quantity }));
 
-  const priceByProductId = new Map(
-    orderableProducts.map((product) => [product.id, product.price]),
-  );
-  const totalAmount = items.reduce(
+  const priceByProductId = new Map(orderableProducts.map((product) => [product.id, product.price]));
+  const foodAmount = items.reduce(
     (sum, item) => sum + (priceByProductId.get(item.productId) ?? 0) * item.quantity,
     0,
   );
+  const totalAmount = foodAmount;
   const totalUnits = items.reduce((sum, item) => sum + item.quantity, 0);
 
   const isDelivery = channel === 'delivery';
   const hasRequiredDeliveryInfo =
     !isDelivery ||
-    (deliveryInfo.customerName.trim() !== '' &&
-      deliveryInfo.customerPhone.trim() !== '' &&
-      deliveryInfo.deliveryAddress.trim() !== '');
-  const canSubmit = items.length > 0 && hasRequiredDeliveryInfo;
+    (deliveryInfo.customerPhone.trim() !== '' && deliveryInfo.deliveryAddress.trim() !== '');
+  const selectedPlates = { kilo: 0, half_kilo: 0 };
+  for (const product of mainProducts) {
+    if (product.plateSize) selectedPlates[product.plateSize] += quantities[product.id] ?? 0;
+  }
+  const availablePlates = (size: 'kilo' | 'half_kilo') =>
+    platesQuery.data?.buckets.find((bucket) => bucket.size === size)?.available ?? 0;
+  const hasPlates =
+    Boolean(platesQuery.data?.initialized) &&
+    selectedPlates.kilo <= availablePlates('kilo') &&
+    selectedPlates.half_kilo <= availablePlates('half_kilo');
+  const canSubmit = items.length > 0 && hasRequiredDeliveryInfo && hasPlates;
 
   const handleSubmit = (): void => {
     if (!canSubmit) return;
     const deliveryPayload = isDelivery
       ? {
-          customerName: deliveryInfo.customerName.trim(),
           customerPhone: deliveryInfo.customerPhone.trim(),
           deliveryAddress: deliveryInfo.deliveryAddress.trim(),
           deliveryReferences:
             deliveryInfo.deliveryReferences.trim() === ''
               ? undefined
               : deliveryInfo.deliveryReferences.trim(),
-          notes: deliveryInfo.notes.trim() === '' ? undefined : deliveryInfo.notes.trim(),
         }
       : {};
-    createOrder.mutate({ channel, items, ...deliveryPayload }, { onSuccess: onClose });
+    createOrder.mutate(
+      {
+        channel,
+        items,
+        customerName: deliveryInfo.customerName.trim() || undefined,
+        ...deliveryPayload,
+        notes: notes.trim() || undefined,
+      },
+      { onSuccess: onClose },
+    );
   };
 
   return (
@@ -223,19 +174,20 @@ export function NewOrderModal({ onClose }: NewOrderModalProps): JSX.Element {
           </div>
         </div>
 
+        <label className="flex flex-col gap-1 text-sm">
+          {UI_TEXT.customerName}
+          <input
+            value={deliveryInfo.customerName}
+            onChange={(event) => setDeliveryField('customerName', event.target.value)}
+            className="h-11 rounded-lg border border-border px-3"
+          />
+        </label>
+
         {isDelivery ? (
           <div className="flex flex-col gap-3 rounded-lg border border-border p-3">
             <span className="text-sm font-medium text-text">{UI_TEXT.deliveryTitle}</span>
 
-            <div className="grid grid-cols-2 gap-3">
-              <label className="flex flex-col gap-1 text-sm">
-                {UI_TEXT.customerName}
-                <input
-                  value={deliveryInfo.customerName}
-                  onChange={(event) => setDeliveryField('customerName', event.target.value)}
-                  className="h-11 rounded-lg border border-border px-3"
-                />
-              </label>
+            <div className="grid gap-3">
               <label className="flex flex-col gap-1 text-sm">
                 {UI_TEXT.customerPhone}
                 <input
@@ -265,16 +217,6 @@ export function NewOrderModal({ onClose }: NewOrderModalProps): JSX.Element {
                 className="h-11 rounded-lg border border-border px-3"
               />
             </label>
-
-            <label className="flex flex-col gap-1 text-sm">
-              {UI_TEXT.notes}
-              <textarea
-                value={deliveryInfo.notes}
-                onChange={(event) => setDeliveryField('notes', event.target.value)}
-                rows={2}
-                className="rounded-lg border border-border px-3 py-2"
-              />
-            </label>
           </div>
         ) : null}
 
@@ -288,6 +230,10 @@ export function NewOrderModal({ onClose }: NewOrderModalProps): JSX.Element {
                 <ProductCard
                   key={product.id}
                   product={product}
+                  disabled={Boolean(
+                    product.plateSize &&
+                    selectedPlates[product.plateSize] >= availablePlates(product.plateSize),
+                  )}
                   quantity={quantities[product.id] ?? 0}
                   onIncrement={() => incrementProduct(product.id)}
                   onDecrement={() => decrementProduct(product.id)}
@@ -299,7 +245,9 @@ export function NewOrderModal({ onClose }: NewOrderModalProps): JSX.Element {
 
         {hasMainItem && extraProducts.length > 0 ? (
           <div>
-            <span className="mb-1.5 block text-sm font-medium text-text">{UI_TEXT.extrasLabel}</span>
+            <span className="mb-1.5 block text-sm font-medium text-text">
+              {UI_TEXT.extrasLabel}
+            </span>
             <div className={PRODUCT_GRID_CLASS}>
               {extraProducts.map((product) => (
                 <ProductCard
@@ -314,7 +262,31 @@ export function NewOrderModal({ onClose }: NewOrderModalProps): JSX.Element {
           </div>
         ) : null}
 
-        {createOrder.isError ? <p className="text-sm text-red-600">{UI_TEXT.error}</p> : null}
+        <label className="flex flex-col gap-1 text-sm">
+          Notas generales del pedido (opcional)
+          <textarea
+            value={notes}
+            onChange={(event) => setNotes(event.target.value)}
+            rows={2}
+            placeholder="Indicaciones generales de entrega…"
+            className="rounded-lg border border-border px-3 py-2"
+          />
+        </label>
+
+        {!hasPlates ? (
+          <p role="alert" className="text-sm text-red-600">
+            Revisa la disponibilidad de platos antes de crear el pedido.
+          </p>
+        ) : null}
+        <p className="text-sm text-muted">
+          Disponibles: {availablePlates('kilo')} de kilo · {availablePlates('half_kilo')} de medio
+          kilo. Se comparten entre todos los sabores.
+        </p>
+        {createOrder.isError ? (
+          <p className="text-sm text-red-600">
+            {createOrder.error instanceof ApiError ? createOrder.error.message : UI_TEXT.error}
+          </p>
+        ) : null}
       </div>
 
       <div className="flex items-center gap-3 border-t border-divider bg-bg px-5 py-4">

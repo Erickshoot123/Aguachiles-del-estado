@@ -1,4 +1,4 @@
-import type { Product } from '@aguachiles/shared';
+import type { PlateSize, Product } from '@aguachiles/shared';
 import type { JSX } from 'react';
 import { useState } from 'react';
 import { ModalBackdrop } from '../../components/ModalBackdrop';
@@ -31,6 +31,7 @@ interface ProductFormModalProps {
 }
 
 interface FormState {
+  plateSize: PlateSize | '';
   sku: string;
   barcode: string;
   name: string;
@@ -46,6 +47,7 @@ interface FormState {
 function toFormState(product: Product | undefined): FormState {
   if (!product) {
     return {
+      plateSize: '',
       sku: '',
       barcode: '',
       name: '',
@@ -59,6 +61,7 @@ function toFormState(product: Product | undefined): FormState {
     };
   }
   return {
+    plateSize: product.plateSize ?? '',
     sku: product.sku,
     barcode: product.barcode ?? '',
     name: product.name,
@@ -103,10 +106,9 @@ export function ProductFormModal({ product, onClose }: ProductFormModalProps): J
   const hasError = createProduct.isError || updateProduct.isError;
 
   const handleSubmit = (): void => {
-    // Costo y stock no aplican a este negocio (todo se prepara al momento,
-    // sin inventario real que trackear), así que no se capturan en el
-    // formulario; el backend igual los requiere en el payload por ahora.
+    // La disponibilidad diaria de platos se registra en el tablero, separada del inventario de insumos.
     const basePayload = {
+      plateSize: form.isComplement ? null : form.plateSize || null,
       sku: form.sku,
       barcode: form.barcode.trim() === '' ? null : form.barcode.trim(),
       name: form.name,
@@ -265,6 +267,14 @@ export function ProductFormModal({ product, onClose }: ProductFormModalProps): J
           {UI_TEXT.isComplement}
         </label>
 
+        {!form.isComplement ? <label className="flex flex-col gap-1 text-sm">
+          Presentación para conteo de platos
+          <select value={form.plateSize} onChange={(event) => setField('plateSize', event.target.value as PlateSize | '')}
+            className="rounded-lg border border-border px-3 py-2">
+            <option value="">No usa platos de kilo ni medio kilo</option>
+            <option value="kilo">1 kilo</option><option value="half_kilo">1/2 kilo</option>
+          </select>
+        </label> : null}
         {isEditing ? (
           <label className="flex items-center gap-2 text-sm">
             <input

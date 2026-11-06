@@ -1,10 +1,11 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
-import type { ChargeOrderRequest, CreateOrderRequest, Order } from '@aguachiles/shared';
+import type { ChargeOrderRequest, CreateOrderRequest, MoveOrderRequest, Order } from '@aguachiles/shared';
 import { ApiError } from '../../lib/apiClient';
 import { useIsLoggedIn } from '../auth/authStore';
 import { CASH_SESSION_QUERY_KEY } from '../cash/hooks';
 import {
   advanceOrder,
+  moveOrder,
   cancelOrder,
   chargeOrder,
   createOrder,
@@ -14,6 +15,8 @@ import {
   lookupOrderByTicketNumber,
 } from './api';
 import { useOfflineQueueStore } from './offlineQueue';
+import { printNewOrderKitchen } from '../receipts/kitchenPrinting';
+import { PLATES_QUERY_KEY } from '../plates/hooks';
 
 export const ORDERS_QUERY_KEY = ['orders'] as const;
 const PRODUCTS_QUERY_KEY = ['products'] as const;
@@ -45,8 +48,9 @@ export function useCreateOrder() {
 
   return useMutation({
     mutationFn: async (input: CreateOrderRequest): Promise<Order | null> => {
+      const request = { ...input, clientRequestId: input.clientRequestId ?? crypto.randomUUID() };
       try {
-        return await createOrder(input);
+        return await createOrder(request);
       } catch (error) {
         // Sin respuesta del servidor (servidor local caído, red intermitente):
         // se guarda el pedido localmente para reintentarlo, en vez de perder
@@ -55,12 +59,14 @@ export function useCreateOrder() {
         if (error instanceof ApiError) {
           throw error;
         }
-        enqueue(input);
+        enqueue(request);
         return null;
       }
     },
-    onSuccess: () => {
+    onSuccess: async (order) => {
       void queryClient.invalidateQueries({ queryKey: ORDERS_QUERY_KEY });
+      void queryClient.invalidateQueries({ queryKey: PLATES_QUERY_KEY });
+      if (order) await printNewOrderKitchen(order);
     },
   });
 }
@@ -83,6 +89,7 @@ export function useCancelOrder() {
     mutationFn: (orderId: string) => cancelOrder(orderId),
     onSuccess: () => {
       void queryClient.invalidateQueries({ queryKey: ORDERS_QUERY_KEY });
+      void queryClient.invalidateQueries({ queryKey: PLATES_QUERY_KEY });
     },
   });
 }
@@ -95,6 +102,7 @@ export function useChargeOrder() {
       chargeOrder(orderId, input),
     onSuccess: () => {
       void queryClient.invalidateQueries({ queryKey: ORDERS_QUERY_KEY });
+      void queryClient.invalidateQueries({ queryKey: PLATES_QUERY_KEY });
       void queryClient.invalidateQueries({ queryKey: CASH_SESSION_QUERY_KEY });
     },
   });
@@ -117,5 +125,14 @@ export function useOrderLookup(ticketNumber: string, enabled: boolean) {
     queryFn: () => lookupOrderByTicketNumber(ticketNumber),
     enabled: enabled && isLoggedIn && ticketNumber !== '',
     retry: false,
+  });
+}
+
+export function useMoveOrder() {
+  const client = useQueryClient();
+  return useMutation({
+    mutationFn: ({ id, ...input }: MoveOrderRequest & { id: string }) => moveOrder(id, input),
+    onSuccess: (order) => client.setQueryData<Order[]>(ORDERS_QUERY_KEY, (orders) => orders?.map((item) => item.id === order.id ? order : item)),
+    onSettled: () => { void client.invalidateQueries({ queryKey: ORDERS_QUERY_KEY }); },
   });
 }

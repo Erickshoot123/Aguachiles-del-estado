@@ -109,7 +109,18 @@ export function ReportsPage(): JSX.Element {
 
         <ReportTable
           title={UI_TEXT.cashHistory}
-          columns={['Caja', 'Abrió', 'Cerró', 'Fondo', 'Esperado', 'Contado', 'Diferencia']}
+          columns={[
+            'Caja',
+            'Abrió',
+            'Cerró',
+            'Fondo',
+            'Esperado',
+            'Contado',
+            'Diferencia',
+            'Mandaditos total',
+            'Mandaditos efectivo',
+            'Mandaditos transferencia',
+          ]}
           rows={(cashHistoryQuery.data ?? []).map((session) => [
             session.cashRegisterName,
             `${session.openedByName} · ${formatDateTime(session.openedAt)}`,
@@ -124,6 +135,9 @@ export function ReportsPage(): JSX.Element {
               ? formatCurrency(session.actualClosingAmount)
               : '—',
             session.difference !== null ? formatCurrency(session.difference) : '—',
+            formatCurrency(session.mandaditoTotal ?? 0),
+            formatCurrency(session.mandaditoCashTotal ?? 0),
+            formatCurrency(session.mandaditoTransferTotal ?? 0),
           ])}
           emptyText={UI_TEXT.emptyHistory}
         />

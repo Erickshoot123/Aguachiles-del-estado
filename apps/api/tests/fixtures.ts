@@ -1,6 +1,7 @@
 import bcrypt from 'bcryptjs';
 import type { PrismaClient } from '@prisma/client';
 import type { PermissionCode } from '@aguachiles/shared';
+import { plateBusinessDate } from '../src/modules/plates/plateDate.js';
 
 export const TEST_PASSWORD = 'ChangeMe123!';
 
@@ -69,6 +70,8 @@ export async function seedBaseFixtures(prisma: PrismaClient): Promise<BaseFixtur
   });
 
   const location = await prisma.location.create({ data: { name: 'Sucursal de prueba' } });
+  await prisma.plateDay.create({ data: { locationId: location.id, businessDate: plateBusinessDate(),
+    initialKilo: 10000, initialHalf: 10000, kiloLimit: 10000, halfLimit: 10000 } });
   const cashRegister = await prisma.cashRegister.create({
     data: { name: 'Caja de prueba', locationId: location.id },
   });
@@ -115,6 +118,7 @@ export async function createTestProduct(
       price,
       cost,
       unit: 'pieza',
+      plateSize: 'half_kilo',
     },
   });
   await prisma.inventory.create({

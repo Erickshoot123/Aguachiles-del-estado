@@ -28,3 +28,26 @@ export const analyticsDashboardSchema = z.object({
   dailyTrend: z.array(analyticsTrendPointSchema),
 });
 export type AnalyticsDashboard = z.infer<typeof analyticsDashboardSchema>;
+
+export const operationalAnalyticsSchema = z.object({
+  orders: z.number(),
+  foodSales: z.number(),
+  mandaditoTotal: z.number(),
+  mandaditoCashTotal: z.number(),
+  mandaditoTransferTotal: z.number(),
+  averageTicket: z.number(),
+  mix: z.array(
+    z.object({ flavor: z.string(), size: z.string(), units: z.number(), kilos: z.number() }),
+  ),
+  payments: z.array(
+    z.object({
+      name: z.string(),
+      amount: z.number(),
+      refunds: z.number(),
+      mandaditoExpenses: z.number(),
+      net: z.number(),
+      transactions: z.number(),
+    }),
+  ),
+});
+export type OperationalAnalytics = z.infer<typeof operationalAnalyticsSchema>;

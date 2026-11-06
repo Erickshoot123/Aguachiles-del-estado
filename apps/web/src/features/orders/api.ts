@@ -2,6 +2,7 @@ import type {
   ChargeOrderRequest,
   CreateOrderRequest,
   Order,
+  MoveOrderRequest,
   ProductSummary,
   WhatsAppShare,
 } from '@aguachiles/shared';
@@ -41,4 +42,8 @@ export function lookupOrderByTicketNumber(ticketNumber: string): Promise<Order> 
 
 export function getWhatsAppShare(orderId: string): Promise<WhatsAppShare> {
   return authFetch<WhatsAppShare>(`/api/orders/${orderId}/whatsapp`);
+}
+
+export function moveOrder(orderId: string, input: MoveOrderRequest): Promise<Order> {
+  return authFetch<Order>(`/api/orders/${orderId}/move`, { method: 'PATCH', body: input });
 }

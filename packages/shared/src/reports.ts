@@ -53,6 +53,9 @@ export const salesReportSchema = z.object({
 export type SalesReport = z.infer<typeof salesReportSchema>;
 
 export const cashSessionHistoryItemSchema = z.object({
+  mandaditoTotal: z.number().optional(),
+  mandaditoCashTotal: z.number().optional(),
+  mandaditoTransferTotal: z.number().optional(),
   id: z.string().uuid(),
   cashRegisterName: z.string(),
   openedByName: z.string(),
