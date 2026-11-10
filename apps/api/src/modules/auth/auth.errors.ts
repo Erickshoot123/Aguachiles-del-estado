@@ -2,7 +2,7 @@ import { UnauthorizedError } from '../../lib/errors.js';
 
 export class InvalidCredentialsError extends UnauthorizedError {
   constructor() {
-    super('Correo o contraseña incorrectos');
+    super('Usuario o contraseña incorrectos');
   }
 }
 

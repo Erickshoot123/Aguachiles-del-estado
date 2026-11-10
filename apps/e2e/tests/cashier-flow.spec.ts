@@ -10,6 +10,12 @@ const EXTRA_PRODUCT_NAME = 'Tostadas extra (5 pzas)';
 test('flujo completo de cajero: login, abrir caja, vender con pago dividido, imprimir ticket, cerrar caja', async ({
   page,
 }) => {
+  await page.addInitScript(() => {
+    window.print = () => {
+      const root = document.documentElement;
+      root.dataset.printDialogCalls = String(Number(root.dataset.printDialogCalls ?? 0) + 1);
+    };
+  });
   await test.step('login', async () => {
     await page.goto('/');
     await page.getByLabel('Usuario').fill(CAJERO_USERNAME);
@@ -27,6 +33,18 @@ test('flujo completo de cajero: login, abrir caja, vender con pago dividido, imp
     await expect(page.getByText('Caja abierta desde')).toBeVisible();
   });
 
+  await test.step('consultar las pantallas de operación e impresoras', async () => {
+    await page.getByRole('link', { name: 'Menú y productos', exact: true }).click();
+    await expect(page.getByRole('heading', { name: 'Menú y productos' })).toBeVisible();
+    await expect(page.getByText(PRODUCT_NAME, { exact: true })).toBeVisible();
+    await expect(page.getByRole('button', { name: 'Nuevo producto' })).toHaveCount(0);
+    await page.getByRole('link', { name: 'Proveedores y compras', exact: true }).click();
+    await expect(page.getByRole('heading', { name: 'Proveedores y compras' })).toBeVisible();
+    await expect(page.getByRole('button', { name: 'Nueva compra' })).toHaveCount(0);
+    await page.getByRole('link', { name: 'Impresoras', exact: true }).click();
+    await expect(page.getByRole('heading', { name: 'Impresoras', exact: true })).toBeVisible();
+  });
+
   let ticketNumber = '';
 
   await test.step('crear pedido', async () => {
@@ -42,11 +60,15 @@ test('flujo completo de cajero: login, abrir caja, vender con pago dividido, imp
     // al menos un producto principal con cantidad > 0.
     await dialog.getByRole('button', { name: `Agregar uno: ${EXTRA_PRODUCT_NAME}`, exact: true }).click();
 
+    const created = page.waitForResponse(
+      (response) => response.request().method() === 'POST' && response.url().endsWith('/api/orders'),
+    );
     await dialog.getByRole('button', { name: 'Crear pedido' }).click();
+    const createdOrder = await created;
+    expect(createdOrder.ok()).toBeTruthy();
+    ticketNumber = (await createdOrder.json()).ticketNumber;
     await expect(page.getByRole('dialog')).toHaveCount(0);
 
-    const lastCard = page.locator('article').last();
-    ticketNumber = (await lastCard.locator('span').first().innerText()).trim();
     expect(ticketNumber).toMatch(/^#\d+$/);
     const comanda = (await readFile('../print-agent/print-output/e2e-ticket.bin', 'latin1')).replace(/\s+/g, ' ');
     expect(comanda).toContain('COMANDA DE COCINA');
@@ -57,7 +79,21 @@ test('flujo completo de cajero: login, abrir caja, vender con pago dividido, imp
   });
 
   await test.step('cobrar con pago dividido (efectivo + tarjeta)', async () => {
-    await page.locator('article', { hasText: ticketNumber }).click();
+    await page.getByRole('article', { name: `Pedido ${ticketNumber}`, exact: true }).click();
+    await page.getByRole('button', { name: 'Comanda en otra impresora…', exact: true }).click();
+    await page.getByRole('button', { name: 'Elegir impresora…', exact: true }).click();
+    await expect(page.locator('html')).toHaveAttribute('data-print-dialog-calls', '1');
+    const printable = page.locator('body > .pos-print-document');
+    await expect(printable).toBeHidden();
+    await page.emulateMedia({ media: 'print' });
+    await expect(page.locator('#root')).toBeHidden();
+    await expect(printable).toBeVisible();
+    await expect(printable).toContainText('Comanda de cocina');
+    await expect(printable).toContainText('Total$155.00');
+    await page.emulateMedia({ media: null });
+    await page.keyboard.press('Escape');
+    await expect(page.getByRole('dialog')).toHaveCount(1);
+
     const detailDialog = page.getByRole('dialog').last();
     await detailDialog.getByRole('button', { name: 'Cobrar', exact: true }).click();
 
@@ -85,6 +121,9 @@ test('flujo completo de cajero: login, abrir caja, vender con pago dividido, imp
     await detailDialog.getByRole('button', { name: 'Ticket', exact: true }).click();
 
     const ticketDialog = page.getByRole('dialog').last();
+    await ticketDialog.getByRole('button', { name: 'Elegir impresora…', exact: true }).click();
+    await expect(page.locator('html')).toHaveAttribute('data-print-dialog-calls', '2');
+    await expect(page.locator('body > .pos-print-document')).toContainText('Ticket de venta');
     await ticketDialog.getByRole('button', { name: 'Imprimir', exact: true }).click();
     await expect(ticketDialog.getByRole('button', { name: 'Reimprimir' })).toBeVisible();
     await ticketDialog.getByRole('button', { name: 'Cerrar', exact: true }).click();
@@ -102,4 +141,19 @@ test('flujo completo de cajero: login, abrir caja, vender con pago dividido, imp
     await expect(page.getByText('Último cierre')).toBeVisible();
     await expect(page.getByText('Diferencia')).toBeVisible();
   });
+});
+
+test('Gerente conserva Operación e Impresoras, y Usuarios y Actualizaciones son solo de Admin', async ({ page }) => {
+  await page.goto('/login');
+  await page.getByLabel('Usuario').fill('gerente');
+  await page.getByLabel('Contraseña').fill(CAJERO_PASSWORD);
+  await page.getByRole('button', { name: 'Ingresar' }).click();
+  for (const label of ['Pedidos', 'Menú y productos', 'Proveedores y compras', 'Impresoras']) {
+    await expect(page.getByRole('link', { name: label, exact: true })).toBeVisible();
+  }
+  for (const [label, path] of [['Usuarios', '/usuarios'], ['Actualizaciones', '/actualizaciones']] as const) {
+    await expect(page.getByRole('link', { name: label, exact: true })).toHaveCount(0);
+    await page.goto(path);
+    await expect(page).toHaveURL('/');
+  }
 });

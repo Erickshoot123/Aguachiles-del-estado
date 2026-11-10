@@ -59,7 +59,7 @@ export function App(): JSX.Element {
           <Route
             path="/menu"
             element={
-              <ProtectedRoute permission="catalog.write">
+              <ProtectedRoute>
                 <CatalogPage />
               </ProtectedRoute>
             }
@@ -75,7 +75,7 @@ export function App(): JSX.Element {
           <Route
             path="/compras"
             element={
-              <ProtectedRoute permission="suppliers.write">
+              <ProtectedRoute>
                 <SuppliersPage />
               </ProtectedRoute>
             }

@@ -1,0 +1,93 @@
+.pos-print-document {
+  display: none;
+}
+
+.pos-ticket-document {
+  color: #000;
+  background: #fff;
+  font:
+    12px/1.35 system-ui,
+    sans-serif;
+  overflow-wrap: anywhere;
+}
+
+.pos-ticket-document header,
+.pos-ticket-document figure {
+  text-align: center;
+}
+
+.pos-ticket-document h2 {
+  font-size: 15px;
+  font-weight: 700;
+}
+
+.pos-ticket-document .pos-ticket-section {
+  margin-top: 8px;
+  padding-top: 8px;
+  border-top: 1px dashed #555;
+}
+
+.pos-ticket-document li + li {
+  margin-top: 4px;
+}
+
+.pos-ticket-document li {
+  break-inside: avoid;
+}
+
+.pos-ticket-document p {
+  white-space: pre-wrap;
+}
+
+.pos-ticket-row {
+  display: flex;
+  justify-content: space-between;
+  gap: 6px;
+}
+
+.pos-ticket-row > :last-child:not(:first-child) {
+  white-space: nowrap;
+}
+
+.pos-ticket-document figure {
+  margin-top: 8px;
+  break-inside: avoid;
+}
+
+.pos-ticket-document svg {
+  width: 35mm;
+  max-width: 100%;
+  margin: 0 auto;
+}
+
+@page pos-ticket {
+  margin: 3mm;
+}
+
+@media print {
+  body:has(> .pos-print-document) > :not(.pos-print-document) {
+    display: none !important;
+  }
+
+  body:has(> .pos-print-document) {
+    background: white;
+  }
+
+  .pos-print-document {
+    display: block;
+    page: pos-ticket;
+  }
+
+  .pos-print-document .pos-ticket-document {
+    width: 76mm;
+    max-width: 100%;
+  }
+
+  .pos-print-document .pos-ticket-document[data-format='thermal_58'] {
+    width: 48mm;
+  }
+
+  .pos-print-document .pos-ticket-document[data-format='thermal_80'] {
+    width: 70mm;
+  }
+}

@@ -1,8 +1,13 @@
-import type { CreateSupplierRequest, Supplier, UpdateSupplierRequest } from '@aguachiles/shared';
+import type {
+  CreateSupplierRequest,
+  Supplier,
+  SupplierRow,
+  UpdateSupplierRequest,
+} from '@aguachiles/shared';
 import { authFetch } from '../../lib/authFetch';
 
-export function listSuppliers(): Promise<Supplier[]> {
-  return authFetch<Supplier[]>('/api/suppliers');
+export function listSuppliers(): Promise<(Supplier | SupplierRow)[]> {
+  return authFetch<(Supplier | SupplierRow)[]>('/api/suppliers');
 }
 
 export function createSupplier(input: CreateSupplierRequest): Promise<Supplier> {

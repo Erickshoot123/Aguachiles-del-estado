@@ -1,8 +1,8 @@
 import { create } from 'zustand';
 import { persist } from 'zustand/middleware';
-import type { Order, Ticket } from '@aguachiles/shared';
+import type { Order } from '@aguachiles/shared';
 import { authFetch } from '../../lib/authFetch';
-import { printAtAgent } from './api';
+import { getKitchenTicket, printAtAgent } from './api';
 import { usePrintSettingsStore } from './printSettingsStore';
 
 interface KitchenJob { orderId: string; ticketNumber: string }
@@ -26,7 +26,7 @@ export async function printKitchenJob(job: KitchenJob, isReprint = true): Promis
   useKitchenQueue.setState((state) => ({ busy: [...state.busy, job.orderId] }));
   try {
     const settings = usePrintSettingsStore.getState();
-    const { ticket } = await authFetch<{ ticket: Ticket }>(`/api/orders/${job.orderId}/comanda`);
+    const ticket = await getKitchenTicket(job.orderId);
     if (settings.printMode === 'agente_local') {
       await printAtAgent({ ...ticket, format: settings.ticketFormat, isReprint }, settings.printerId);
     } else {

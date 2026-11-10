@@ -31,9 +31,8 @@ const UI_TEXT = {
 
 const CHANNEL_OPTIONS: SaleChannel[] = ['delivery', 'counter'];
 
-// Grid táctil: tantas columnas como quepan sin bajar de 140px por tarjeta.
 const PRODUCT_GRID_CLASS =
-  'grid gap-2.5 [grid-template-columns:repeat(auto-fill,minmax(140px,1fr))]';
+  'grid gap-3 [grid-template-columns:repeat(auto-fill,minmax(min(100%,155px),1fr))]';
 
 interface NewOrderModalProps {
   onClose: () => void;
@@ -143,13 +142,13 @@ export function NewOrderModal({ onClose }: NewOrderModalProps): JSX.Element {
   return (
     <ModalBackdrop
       onClose={onClose}
-      contentClassName="flex max-h-[90vh] w-full max-w-2xl flex-col rounded-2xl bg-surface"
+      contentClassName="flex max-h-[calc(100dvh-48px)] w-full max-w-6xl flex-col overflow-hidden rounded-2xl bg-surface"
     >
       <div className="border-b border-divider px-5 py-4">
-        <h2 className="m-0 text-[17px] font-semibold">{UI_TEXT.title}</h2>
+        <h2 className="m-0 text-xl font-semibold">{UI_TEXT.title}</h2>
       </div>
 
-      <div className="flex flex-1 flex-col gap-4 overflow-y-auto px-5 py-4">
+      <div className="flex min-h-0 flex-1 flex-col gap-4 overflow-y-auto px-5 py-4 sm:px-6">
         <div>
           <span className="mb-1.5 block text-sm font-medium text-text">{UI_TEXT.channelLabel}</span>
           <div role="group" aria-label={UI_TEXT.channelLabel} className="grid grid-cols-2 gap-2">
@@ -184,20 +183,20 @@ export function NewOrderModal({ onClose }: NewOrderModalProps): JSX.Element {
         </label>
 
         {isDelivery ? (
-          <div className="flex flex-col gap-3 rounded-lg border border-border p-3">
-            <span className="text-sm font-medium text-text">{UI_TEXT.deliveryTitle}</span>
+          <div className="grid gap-3 rounded-lg border border-border p-3 md:grid-cols-[1fr_2fr]">
+            <span className="text-sm font-medium text-text md:col-span-2">
+              {UI_TEXT.deliveryTitle}
+            </span>
 
-            <div className="grid gap-3">
-              <label className="flex flex-col gap-1 text-sm">
-                {UI_TEXT.customerPhone}
-                <input
-                  type="tel"
-                  value={deliveryInfo.customerPhone}
-                  onChange={(event) => setDeliveryField('customerPhone', event.target.value)}
-                  className="h-11 rounded-lg border border-border px-3"
-                />
-              </label>
-            </div>
+            <label className="flex flex-col gap-1 text-sm">
+              {UI_TEXT.customerPhone}
+              <input
+                type="tel"
+                value={deliveryInfo.customerPhone}
+                onChange={(event) => setDeliveryField('customerPhone', event.target.value)}
+                className="h-11 rounded-lg border border-border px-3"
+              />
+            </label>
 
             <label className="flex flex-col gap-1 text-sm">
               {UI_TEXT.deliveryAddress}
@@ -208,7 +207,7 @@ export function NewOrderModal({ onClose }: NewOrderModalProps): JSX.Element {
               />
             </label>
 
-            <label className="flex flex-col gap-1 text-sm">
+            <label className="flex flex-col gap-1 text-sm md:col-span-2">
               {UI_TEXT.deliveryReferences}
               <input
                 value={deliveryInfo.deliveryReferences}
@@ -289,7 +288,7 @@ export function NewOrderModal({ onClose }: NewOrderModalProps): JSX.Element {
         ) : null}
       </div>
 
-      <div className="flex items-center gap-3 border-t border-divider bg-bg px-5 py-4">
+      <div className="flex shrink-0 flex-wrap items-center gap-3 border-t border-divider bg-bg px-5 py-4">
         <div className="flex flex-col">
           <span className="text-xs uppercase tracking-wide text-muted">{UI_TEXT.total}</span>
           <span className="font-mono text-xl font-semibold text-text">

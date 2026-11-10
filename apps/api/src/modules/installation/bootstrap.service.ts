@@ -1,7 +1,11 @@
 import type { PrismaClient } from '@prisma/client';
 import bcrypt from 'bcryptjs';
 import { randomUUID } from 'node:crypto';
-import { PERMISSION_DESCRIPTIONS } from '@aguachiles/shared';
+import {
+  BUILT_IN_ROLE_PERMISSIONS,
+  PERMISSION_DESCRIPTIONS,
+  type PermissionCode,
+} from '@aguachiles/shared';
 import { MAIN_DISHES, COMPLEMENTS } from '../../../prisma/menu.js';
 
 export interface BootstrapInput {
@@ -44,16 +48,18 @@ export async function bootstrapLocalInstallation(
         return;
       }
       const roles: Record<string, string> = {};
-      for (const name of ['admin', 'gerente', 'cajero']) {
+      const rolePermissions = Object.entries<readonly PermissionCode[]>(BUILT_IN_ROLE_PERMISSIONS);
+      for (const [name] of rolePermissions) {
         roles[name] = (await tx.role.upsert({ where: { name }, update: {}, create: { name } })).id;
       }
-      for (const [code, description] of Object.entries(PERMISSION_DESCRIPTIONS)) {
+      for (const code of BUILT_IN_ROLE_PERMISSIONS.admin) {
         const permission = await tx.permission.upsert({
           where: { code },
           update: {},
-          create: { code, description },
+          create: { code, description: PERMISSION_DESCRIPTIONS[code] },
         });
-        for (const name of ['admin', 'gerente']) {
+        for (const [name, codes] of rolePermissions) {
+          if (!codes.includes(code)) continue;
           const roleId = roles[name]!;
           await tx.rolePermission.upsert({
             where: { roleId_permissionId: { roleId, permissionId: permission.id } },

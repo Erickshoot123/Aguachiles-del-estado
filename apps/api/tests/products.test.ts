@@ -31,13 +31,12 @@ describe('productos: complementos/extras', () => {
     await resetDatabase();
   });
 
-  it('crea un producto marcado como extra/complemento', async () => {
+  it('crea un complemento con SKU automático y sin impuesto cuando se omiten', async () => {
     const response = await app.inject({
       method: 'POST',
       url: '/api/products',
       headers: authHeader(token),
       payload: {
-        sku: 'TOSTADAS-10',
         name: 'Tostadas extra (10 pzas)',
         categoryId,
         price: 12,
@@ -49,7 +48,13 @@ describe('productos: complementos/extras', () => {
     });
 
     expect(response.statusCode).toBe(201);
-    expect(response.json().isComplement).toBe(true);
+    expect(response.json()).toMatchObject({
+      sku: expect.stringMatching(/^PRD-[a-f0-9-]+$/),
+      barcode: null,
+      description: null,
+      taxRate: 0,
+      isComplement: true,
+    });
   });
 
   it('un producto creado sin especificar isComplement no es un extra por defecto', async () => {

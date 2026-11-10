@@ -11,6 +11,9 @@ export const supplierSchema = z.object({
 });
 export type Supplier = z.infer<typeof supplierSchema>;
 
+export const supplierRowSchema = supplierSchema.omit({ email: true, taxId: true });
+export type SupplierRow = z.infer<typeof supplierRowSchema>;
+
 export const createSupplierRequestSchema = z.object({
   name: z.string().min(1),
   contactName: z.string().min(1).nullable().optional(),

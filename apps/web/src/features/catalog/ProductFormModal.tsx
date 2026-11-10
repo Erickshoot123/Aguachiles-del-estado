@@ -2,6 +2,7 @@ import type { PlateSize, Product } from '@aguachiles/shared';
 import type { JSX } from 'react';
 import { useState } from 'react';
 import { ModalBackdrop } from '../../components/ModalBackdrop';
+import { ApiError } from '../../lib/apiClient';
 import { useCategories, useCreateCategory, useCreateProduct, useUpdateProduct } from './hooks';
 
 const UI_TEXT = {
@@ -22,7 +23,7 @@ const UI_TEXT = {
   cancel: 'Cancelar',
   save: 'Guardar',
   saving: 'Guardando…',
-  error: 'No se pudo guardar el producto. Revisa que el SKU no esté repetido.',
+  error: 'No se pudo guardar el producto.',
 } as const;
 
 interface ProductFormModalProps {
@@ -75,6 +76,23 @@ function toFormState(product: Product | undefined): FormState {
   };
 }
 
+function plateSizeForUnit(unit: string): PlateSize | null {
+  switch (unit.toLowerCase().replace(/\s+/g, '')) {
+    case '1kilo':
+    case 'kilo':
+    case '1kg':
+      return 'kilo';
+    case '1/2kilo':
+    case 'mediokilo':
+    case '1/2kg':
+    case '½kilo':
+    case '½kg':
+      return 'half_kilo';
+    default:
+      return null;
+  }
+}
+
 export function ProductFormModal({ product, onClose }: ProductFormModalProps): JSX.Element {
   const categoriesQuery = useCategories();
   const createCategory = useCreateCategory();
@@ -103,40 +121,60 @@ export function ProductFormModal({ product, onClose }: ProductFormModalProps): J
   };
 
   const isPending = createProduct.isPending || updateProduct.isPending;
-  const hasError = createProduct.isError || updateProduct.isError;
+  const productError = createProduct.error ?? updateProduct.error;
+  const selectedCategory = categoriesQuery.data?.find(
+    (category) => category.id === form.categoryId,
+  );
 
   const handleSubmit = (): void => {
-    // La disponibilidad diaria de platos se registra en el tablero, separada del inventario de insumos.
     const basePayload = {
-      plateSize: form.isComplement ? null : form.plateSize || null,
-      sku: form.sku,
-      barcode: form.barcode.trim() === '' ? null : form.barcode.trim(),
-      name: form.name,
-      description: form.description.trim() === '' ? null : form.description.trim(),
+      name: form.name.trim(),
       categoryId: form.categoryId,
       price: Number(form.price),
-      cost: 0,
-      taxRate: Number(form.taxRate),
-      unit: form.unit,
-      isComplement: form.isComplement,
+      unit: form.unit.trim(),
     };
 
-    if (isEditing && product) {
+    if (product) {
       updateProduct.mutate(
-        { productId: product.id, input: { ...basePayload, isActive: form.isActive } },
+        {
+          productId: product.id,
+          input: {
+            ...basePayload,
+            sku: form.sku.trim(),
+            barcode: form.barcode.trim() || null,
+            description: form.description.trim() || null,
+            taxRate: Number(form.taxRate),
+            plateSize: form.isComplement ? null : form.plateSize || null,
+            isComplement: form.isComplement,
+            isActive: form.isActive,
+          },
+        },
         { onSuccess: onClose },
       );
       return;
     }
 
-    createProduct.mutate({ ...basePayload, initialStock: 0 }, { onSuccess: onClose });
+    const categoryName = selectedCategory?.name.trim().toLowerCase();
+    createProduct.mutate(
+      {
+        ...basePayload,
+        cost: 0,
+        taxRate: 0,
+        initialStock: 0,
+        isComplement: categoryName === 'extras' || categoryName === 'complementos',
+        plateSize: categoryName === 'aguachiles' ? plateSizeForUnit(basePayload.unit) : null,
+      },
+      { onSuccess: onClose },
+    );
   };
 
   const canSubmit =
-    form.sku.trim() !== '' &&
+    (!isEditing || form.sku.trim() !== '') &&
     form.name.trim() !== '' &&
-    form.categoryId !== '' &&
+    selectedCategory !== undefined &&
     form.price !== '' &&
+    Number.isFinite(Number(form.price)) &&
+    Number(form.price) >= 0 &&
     form.unit.trim() !== '';
 
   return (
@@ -151,7 +189,7 @@ export function ProductFormModal({ product, onClose }: ProductFormModalProps): J
       </div>
 
       <div className="flex max-h-[70vh] flex-col gap-3 overflow-y-auto px-5 py-4">
-        <div className="grid grid-cols-2 gap-3">
+        <div className={isEditing ? 'grid grid-cols-2 gap-3' : undefined}>
           <label className="flex flex-col gap-1 text-sm">
             {UI_TEXT.name}
             <input
@@ -160,34 +198,40 @@ export function ProductFormModal({ product, onClose }: ProductFormModalProps): J
               className="rounded-lg border border-border px-3 py-2"
             />
           </label>
+          {isEditing ? (
+            <label className="flex flex-col gap-1 text-sm">
+              {UI_TEXT.sku}
+              <input
+                value={form.sku}
+                onChange={(event) => setField('sku', event.target.value)}
+                className="rounded-lg border border-border px-3 py-2"
+              />
+            </label>
+          ) : null}
+        </div>
+
+        {isEditing ? (
           <label className="flex flex-col gap-1 text-sm">
-            {UI_TEXT.sku}
+            {UI_TEXT.barcode}
             <input
-              value={form.sku}
-              onChange={(event) => setField('sku', event.target.value)}
+              value={form.barcode}
+              onChange={(event) => setField('barcode', event.target.value)}
               className="rounded-lg border border-border px-3 py-2"
             />
           </label>
-        </div>
+        ) : null}
 
-        <label className="flex flex-col gap-1 text-sm">
-          {UI_TEXT.barcode}
-          <input
-            value={form.barcode}
-            onChange={(event) => setField('barcode', event.target.value)}
-            className="rounded-lg border border-border px-3 py-2"
-          />
-        </label>
-
-        <label className="flex flex-col gap-1 text-sm">
-          {UI_TEXT.description}
-          <textarea
-            value={form.description}
-            onChange={(event) => setField('description', event.target.value)}
-            rows={2}
-            className="rounded-lg border border-border px-3 py-2"
-          />
-        </label>
+        {isEditing ? (
+          <label className="flex flex-col gap-1 text-sm">
+            {UI_TEXT.description}
+            <textarea
+              value={form.description}
+              onChange={(event) => setField('description', event.target.value)}
+              rows={2}
+              className="rounded-lg border border-border px-3 py-2"
+            />
+          </label>
+        ) : null}
 
         <label className="flex flex-col gap-1 text-sm">
           {UI_TEXT.category}
@@ -219,62 +263,86 @@ export function ProductFormModal({ product, onClose }: ProductFormModalProps): J
           <button
             type="button"
             onClick={handleAddCategory}
-            disabled={createCategory.isPending}
+            disabled={createCategory.isPending || !newCategoryName.trim()}
             className="h-[42px] rounded-lg border border-border px-3 text-sm hover:border-border-hover"
           >
             {UI_TEXT.addCategory}
           </button>
         </div>
+        {createCategory.isError ? (
+          <p role="alert" className="text-sm text-red-600">
+            {createCategory.error instanceof ApiError
+              ? createCategory.error.message
+              : 'No se pudo crear la categoría.'}
+          </p>
+        ) : null}
 
-        <div className="grid grid-cols-2 gap-3">
+        <div className={isEditing ? 'grid grid-cols-2 gap-3' : undefined}>
           <label className="flex flex-col gap-1 text-sm">
             {UI_TEXT.price}
             <input
               type="number"
               min={0}
+              step="0.01"
               value={form.price}
               onChange={(event) => setField('price', event.target.value)}
               className="rounded-lg border border-border px-3 py-2"
             />
           </label>
-          <label className="flex flex-col gap-1 text-sm">
-            {UI_TEXT.taxRate}
-            <input
-              type="number"
-              min={0}
-              value={form.taxRate}
-              onChange={(event) => setField('taxRate', event.target.value)}
-              className="rounded-lg border border-border px-3 py-2"
-            />
-          </label>
+          {isEditing ? (
+            <label className="flex flex-col gap-1 text-sm">
+              {UI_TEXT.taxRate}
+              <input
+                type="number"
+                min={0}
+                value={form.taxRate}
+                onChange={(event) => setField('taxRate', event.target.value)}
+                className="rounded-lg border border-border px-3 py-2"
+              />
+            </label>
+          ) : null}
         </div>
 
         <label className="flex flex-col gap-1 text-sm">
           {UI_TEXT.unit}
           <input
             value={form.unit}
+            list="product-unit-options"
             onChange={(event) => setField('unit', event.target.value)}
             className="rounded-lg border border-border px-3 py-2"
           />
+          <datalist id="product-unit-options">
+            <option value="pieza" />
+            <option value="1 kilo" />
+            <option value="1/2 kilo" />
+          </datalist>
         </label>
 
-        <label className="flex items-center gap-2 text-sm">
-          <input
-            type="checkbox"
-            checked={form.isComplement}
-            onChange={(event) => setField('isComplement', event.target.checked)}
-          />
-          {UI_TEXT.isComplement}
-        </label>
+        {isEditing ? (
+          <label className="flex items-center gap-2 text-sm">
+            <input
+              type="checkbox"
+              checked={form.isComplement}
+              onChange={(event) => setField('isComplement', event.target.checked)}
+            />
+            {UI_TEXT.isComplement}
+          </label>
+        ) : null}
 
-        {!form.isComplement ? <label className="flex flex-col gap-1 text-sm">
-          Presentación para conteo de platos
-          <select value={form.plateSize} onChange={(event) => setField('plateSize', event.target.value as PlateSize | '')}
-            className="rounded-lg border border-border px-3 py-2">
-            <option value="">No usa platos de kilo ni medio kilo</option>
-            <option value="kilo">1 kilo</option><option value="half_kilo">1/2 kilo</option>
-          </select>
-        </label> : null}
+        {isEditing && !form.isComplement ? (
+          <label className="flex flex-col gap-1 text-sm">
+            Presentación para conteo de platos
+            <select
+              value={form.plateSize}
+              onChange={(event) => setField('plateSize', event.target.value as PlateSize | '')}
+              className="rounded-lg border border-border px-3 py-2"
+            >
+              <option value="">No usa platos de kilo ni medio kilo</option>
+              <option value="kilo">1 kilo</option>
+              <option value="half_kilo">1/2 kilo</option>
+            </select>
+          </label>
+        ) : null}
         {isEditing ? (
           <label className="flex items-center gap-2 text-sm">
             <input
@@ -286,7 +354,11 @@ export function ProductFormModal({ product, onClose }: ProductFormModalProps): J
           </label>
         ) : null}
 
-        {hasError ? <p className="text-sm text-red-600">{UI_TEXT.error}</p> : null}
+        {productError ? (
+          <p role="alert" className="text-sm text-red-600">
+            {productError instanceof ApiError ? productError.message : UI_TEXT.error}
+          </p>
+        ) : null}
       </div>
 
       <div className="flex gap-2.5 bg-bg px-5 py-4">

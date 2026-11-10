@@ -1,4 +1,4 @@
-import type { Supplier } from '@aguachiles/shared';
+import type { SupplierRow } from '@aguachiles/shared';
 import type { JSX } from 'react';
 import { useState } from 'react';
 import { ModalBackdrop } from '../../components/ModalBackdrop';
@@ -20,7 +20,7 @@ const UI_TEXT = {
 } as const;
 
 interface PurchaseFormModalProps {
-  suppliers: Supplier[];
+  suppliers: SupplierRow[];
   onClose: () => void;
 }
 

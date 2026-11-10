@@ -15,7 +15,11 @@ test('nombre opcional, colores, arrastre persistente, reimpresión y ESC por cap
   await page.getByRole('button', { name: 'Nuevo pedido', exact: true }).click();
   const dialog = page.getByRole('dialog').last();
   await expect(dialog.getByLabel('Nombre del cliente (opcional)')).toBeVisible();
-  for (const [variant, color] of [['Tradicional', 'rgb(240, 253, 244)'], ['Colorado', 'rgb(254, 242, 242)'], ['Prieto', 'rgb(31, 41, 55)']] as const) {
+  for (const [variant, color] of [
+    ['Tradicional', 'rgb(225, 239, 225)'],
+    ['Colorado', 'rgb(251, 228, 225)'],
+    ['Prieto', 'rgb(232, 234, 242)'],
+  ] as const) {
     const button = dialog.getByRole('button', { name: `Agregar uno: Aguachile ${variant} (1 kilo)`, exact: true }).first();
     await expect(button.locator('..')).toHaveCSS('background-color', color);
   }

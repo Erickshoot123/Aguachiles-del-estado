@@ -6,7 +6,7 @@ import { createPurchase, listPurchases } from './purchases.service.js';
 export default async function purchasesRoutes(fastify: FastifyInstance): Promise<void> {
   fastify.get(
     '/api/purchases',
-    { preHandler: [fastify.authenticate, requirePermission('suppliers.write')] },
+    { preHandler: fastify.authenticate },
     async (_request, reply) => {
       reply.status(200).send(await listPurchases(fastify.prisma));
     },

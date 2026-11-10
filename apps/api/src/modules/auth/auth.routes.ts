@@ -1,29 +1,52 @@
 import {
+  changePasswordRequestSchema,
+  createUserRequestSchema,
   loginRequestSchema,
   refreshRequestSchema,
   resetPasswordRequestSchema,
+  userStatusRequestSchema,
   type LoginResponse,
   type RefreshResponse,
 } from '@aguachiles/shared';
-import type { FastifyInstance } from 'fastify';
+import type { FastifyInstance, FastifyReply } from 'fastify';
 import type { Env } from '../../config/env.js';
 import { requirePermission } from '../../lib/authorize.js';
 import { NotFoundError } from '../../lib/errors.js';
 import { idParamSchema } from '../../lib/paramsSchemas.js';
 import {
-  authenticateUser,
-  getRolePermissions,
-  issueRefreshToken,
-  listUsers,
-  resetUserPassword,
+  changeOwnPassword,
+  loginUser,
   revokeRefreshToken,
   rotateRefreshToken,
+  toAuthUser,
+  type AuthenticatedSession,
 } from './auth.service.js';
+import {
+  createStaffUser,
+  listUsers,
+  resetUserPassword,
+  setStaffUserActive,
+} from './userManagement.service.js';
+
+async function signSession(
+  reply: FastifyReply,
+  session: AuthenticatedSession,
+): Promise<LoginResponse> {
+  const { authUser, refreshToken, sessionVersion } = session;
+  const accessToken = await reply.jwtSign({
+    sub: authUser.id,
+    roleName: authUser.roleName,
+    permissions: authUser.permissions,
+    sessionVersion,
+  });
+  return { accessToken, refreshToken, user: authUser };
+}
 
 export default async function authRoutes(
   fastify: FastifyInstance,
   opts: { env: Env },
 ): Promise<void> {
+  const manageUsers = [fastify.authenticate, requirePermission('users.manage')];
   fastify.post(
     '/api/auth/login',
     {
@@ -36,39 +59,21 @@ export default async function authRoutes(
     },
     async (request, reply) => {
       const input = loginRequestSchema.parse(request.body);
-      const { authUser } = await authenticateUser(fastify.prisma, input);
-
-      const accessToken = await reply.jwtSign({
-        sub: authUser.id,
-        roleName: authUser.roleName,
-        permissions: authUser.permissions,
-      });
-      const refreshToken = await issueRefreshToken(
-        fastify.prisma,
-        authUser.id,
-        opts.env.REFRESH_TOKEN_TTL_HOURS,
-      );
-
-      const body: LoginResponse = { accessToken, refreshToken, user: authUser };
+      const session = await loginUser(fastify.prisma, input, opts.env.REFRESH_TOKEN_TTL_HOURS);
+      const body: LoginResponse = await signSession(reply, session);
       reply.status(200).send(body);
     },
   );
 
   fastify.post('/api/auth/refresh', async (request, reply) => {
     const input = refreshRequestSchema.parse(request.body);
-    const { authUser, refreshToken } = await rotateRefreshToken(
+    const session = await rotateRefreshToken(
       fastify.prisma,
       input.refreshToken,
       opts.env.REFRESH_TOKEN_TTL_HOURS,
     );
 
-    const accessToken = await reply.jwtSign({
-      sub: authUser.id,
-      roleName: authUser.roleName,
-      permissions: authUser.permissions,
-    });
-
-    const body: RefreshResponse = { accessToken, refreshToken, user: authUser };
+    const body: RefreshResponse = await signSession(reply, session);
     reply.status(200).send(body);
   });
 
@@ -88,28 +93,47 @@ export default async function authRoutes(
       throw new NotFoundError('Usuario no encontrado');
     }
 
-    const permissions = await getRolePermissions(fastify.prisma, user.roleId);
-
-    reply.status(200).send({
-      id: user.id,
-      name: user.name,
-      username: user.username,
-      roleName: user.role.name,
-      permissions,
-    });
+    reply.status(200).send(await toAuthUser(fastify.prisma, user));
   });
 
-  fastify.get(
-    '/api/auth/users',
-    { preHandler: [fastify.authenticate, requirePermission('users.manage')] },
-    async (_request, reply) => {
-      reply.status(200).send(await listUsers(fastify.prisma));
+  fastify.post(
+    '/api/auth/change-password',
+    { preHandler: fastify.authenticateForPasswordChange },
+    async (request, reply) => {
+      const input = changePasswordRequestSchema.parse(request.body);
+      await changeOwnPassword(
+        fastify.prisma,
+        request.user.sub,
+        request.user.sessionVersion ?? 0,
+        input,
+      );
+      reply.status(204).send();
+    },
+  );
+
+  fastify.get('/api/auth/users', { preHandler: manageUsers }, async (_request, reply) => {
+    reply.status(200).send(await listUsers(fastify.prisma));
+  });
+
+  fastify.post('/api/auth/users', { preHandler: manageUsers }, async (request, reply) => {
+    const input = createUserRequestSchema.parse(request.body);
+    reply.status(201).send(await createStaffUser(fastify.prisma, request.user.sub, input));
+  });
+
+  fastify.patch(
+    '/api/auth/users/:id/status',
+    { preHandler: manageUsers },
+    async (request, reply) => {
+      const { id } = idParamSchema.parse(request.params);
+      const { isActive } = userStatusRequestSchema.parse(request.body);
+      await setStaffUserActive(fastify.prisma, request.user.sub, id, isActive);
+      reply.status(204).send();
     },
   );
 
   fastify.post(
     '/api/auth/users/:id/reset-password',
-    { preHandler: [fastify.authenticate, requirePermission('users.manage')] },
+    { preHandler: manageUsers },
     async (request, reply) => {
       const { id } = idParamSchema.parse(request.params);
       const input = resetPasswordRequestSchema.parse(request.body);

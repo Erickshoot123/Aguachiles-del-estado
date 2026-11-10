@@ -171,6 +171,8 @@ model User {
   roleId       String  @map("role_id")
   role         Role    @relation(fields: [roleId], references: [id], onDelete: Restrict)
   isActive     Boolean @default(true) @map("is_active")
+  mustChangePassword Boolean @default(false) @map("must_change_password")
+  sessionVersion Int @default(0) @map("session_version")
 
   inventoryMovements   InventoryMovement[]
   openedCashSessions   CashRegisterSession[] @relation("OpenedBy")

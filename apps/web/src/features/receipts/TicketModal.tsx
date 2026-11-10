@@ -2,9 +2,10 @@ import type { PrintMode, PrintTarget, TicketFormat } from '@aguachiles/shared';
 import type { JSX } from 'react';
 import { ModalBackdrop } from '../../components/ModalBackdrop';
 import { ApiError } from '../../lib/apiClient';
-import { formatCurrency } from '../orders/channelLabels';
 import { useAgentPrinters, usePrintTicket, useReceipt } from './hooks';
 import { usePrintSettingsStore } from './printSettingsStore';
+import { SystemPrintButton } from './SystemPrintButton';
+import { TicketDocument } from './TicketDocument';
 
 const UI_TEXT = {
   loading: 'Cargando ticket…',
@@ -16,10 +17,6 @@ const UI_TEXT = {
   printError: 'No se pudo imprimir. Revisa la impresora e intenta de nuevo.',
   reprintCountLabel: (count: number) => `${count} reimpresión(es)`,
   close: 'Cerrar',
-  subtitle: 'Cocina · solo delivery',
-  order: 'Pedido',
-  time: 'Hora',
-  total: 'TOTAL',
   format58: '58mm',
   format80: '80mm',
   printerLabel: 'Impresora',
@@ -198,7 +195,7 @@ export function TicketModal({ orderId, onClose }: TicketModalProps): JSX.Element
     <ModalBackdrop
       onClose={onClose}
       zIndexClassName="z-50"
-      contentClassName="flex w-80 flex-col gap-3.5 rounded-xl bg-surface p-6 font-mono"
+      contentClassName="flex max-h-[calc(100dvh-48px)] w-full max-w-sm flex-col gap-3.5 overflow-y-auto rounded-xl bg-surface p-6"
     >
       {receiptQuery.isLoading ? (
         <p className="text-center text-sm text-muted">{UI_TEXT.loading}</p>
@@ -209,42 +206,7 @@ export function TicketModal({ orderId, onClose }: TicketModalProps): JSX.Element
 
       {ticket ? (
         <>
-          <div className="flex flex-col items-center gap-1 text-center">
-            <span className="font-sans text-[17px] font-bold">
-              {ticket.businessName.toUpperCase()}
-            </span>
-            <span className="text-[11px] text-muted">{UI_TEXT.subtitle}</span>
-          </div>
-
-          <div className="flex flex-col gap-1.5 border-y border-dashed border-border-hover py-3 text-[12px]">
-            <div className="flex justify-between">
-              <span>{UI_TEXT.order}</span>
-              <span>{ticket.ticketNumber}</span>
-            </div>
-            <div className="flex justify-between">
-              <span>{UI_TEXT.time}</span>
-              <span>{new Date(ticket.issuedAt).toLocaleTimeString('es-MX')}</span>
-            </div>
-          </div>
-
-          <div className="flex flex-col gap-1.5 text-[12px]">
-            {ticket.lines.map((line) => (
-              <div
-                key={`${line.productName}-${line.quantity}`}
-                className="flex justify-between gap-2.5"
-              >
-                <span>
-                  {line.quantity}x {line.productName}
-                </span>
-                <span>{formatCurrency(line.subtotal)}</span>
-              </div>
-            ))}
-          </div>
-
-          <div className="flex justify-between border-t border-dashed border-border-hover pt-3 text-[15px] font-semibold">
-            <span>{UI_TEXT.total}</span>
-            <span>{formatCurrency(ticket.total)}</span>
-          </div>
+          <TicketDocument ticket={ticket} />
 
           {receiptQuery.data && receiptQuery.data.reprintCount > 0 ? (
             <p className="text-center text-[11px] text-muted-2">
@@ -274,6 +236,7 @@ export function TicketModal({ orderId, onClose }: TicketModalProps): JSX.Element
                   ? UI_TEXT.reprint
                   : UI_TEXT.print}
           </button>
+          <SystemPrintButton ticket={{ ...ticket, format: ticketFormat }} />
         </>
       ) : null}
 

@@ -53,6 +53,26 @@ it('no consulta actualizaciones al arrancar, exige permisos y permite buscar/des
   expect((await action('download')).statusCode).toBe(200);
   expect(calls).toEqual(['check', 'download']);
 });
+it('bloquea Usuarios y Actualizaciones para un gerente incluso con un token anterior', async () => {
+  const manager = await db.user.create({
+    data: {
+      name: 'Gerente de prueba',
+      username: 'gerente-prueba',
+      roleId: fixture.roleIds.gerente,
+      passwordHash: 'hash-no-usado-en-esta-prueba',
+    },
+  });
+  const managerToken = app.jwt.sign({
+    sub: manager.id,
+    roleName: 'gerente',
+    permissions: ['users.manage'],
+  });
+  const headers = authHeader(managerToken);
+  expect((await app.inject({ url: '/api/auth/users', headers })).statusCode).toBe(403);
+  expect((await app.inject({ url: '/api/updates/status', headers })).statusCode).toBe(403);
+  expect((await action('check', false, managerToken)).statusCode).toBe(403);
+  expect(calls).toEqual([]);
+});
 it('requiere confirmación y cajas cerradas; no envía la orden de instalación si el negocio sigue operando', async () => {
   expect((await action('install')).statusCode).toBe(409);
   await app.inject({

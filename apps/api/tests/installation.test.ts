@@ -23,6 +23,11 @@ describe('primera instalación local', () => {
     expect(await db.product.count({ where: { plateSize: { not: null } } })).toBe(6);
     expect(await db.inventory.count({ where: { quantity: { not: 0 } } })).toBe(0);
     expect(await db.cashRegister.count()).toBe(1);
+    const assignments = await db.rolePermission.findMany({
+      where: { permission: { code: 'users.manage' } },
+      include: { role: true },
+    });
+    expect(assignments.map(({ role }) => role.name)).toEqual(['admin']);
   });
   it('reintentar o actualizar no borra usuarios, cambia precios ni renombra la sucursal', async () => {
     await bootstrapLocalInstallation(db, input);

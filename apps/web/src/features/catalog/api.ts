@@ -1,5 +1,6 @@
 import type {
   Category,
+  CatalogRow,
   CreateCategoryRequest,
   CreateProductRequest,
   Product,
@@ -15,8 +16,8 @@ export function createCategory(input: CreateCategoryRequest): Promise<Category> 
   return authFetch<Category>('/api/categories', { method: 'POST', body: input });
 }
 
-export function listCatalogProducts(): Promise<Product[]> {
-  return authFetch<Product[]>('/api/products/catalog');
+export function listCatalogProducts(): Promise<(Product | CatalogRow)[]> {
+  return authFetch<(Product | CatalogRow)[]>('/api/products/catalog');
 }
 
 export function createProduct(input: CreateProductRequest): Promise<Product> {
