@@ -1,9 +1,16 @@
-import { PERMISSION_DESCRIPTIONS, type PermissionCode } from '@aguachiles/shared';
+import {
+  PERMISSION_DESCRIPTIONS,
+  roleAllowsPermission,
+  type PermissionCode,
+} from '@aguachiles/shared';
 import type { FastifyReply, FastifyRequest } from 'fastify';
 import { ForbiddenError } from './errors.js';
 
 export function assertPermission(request: FastifyRequest, code: PermissionCode): void {
-  if (!request.user.permissions.includes(code)) {
+  if (
+    !roleAllowsPermission(request.user.roleName, code) ||
+    !request.user.permissions.includes(code)
+  ) {
     throw new ForbiddenError(`Necesitas permiso para: ${PERMISSION_DESCRIPTIONS[code]}`);
   }
 }

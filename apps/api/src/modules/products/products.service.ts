@@ -1,3 +1,4 @@
+import { randomUUID } from 'node:crypto';
 import { Prisma, type Product as PrismaProduct, type PrismaClient } from '@prisma/client';
 import type {
   CreateInventoryAdjustmentRequest,
@@ -102,7 +103,7 @@ export async function createProduct(
     const created = await prisma.$transaction(async (tx) => {
       const product = await tx.product.create({
         data: {
-          sku: input.sku,
+          sku: input.sku ?? `PRD-${randomUUID()}`,
           barcode: input.barcode ?? null,
           name: input.name,
           description: input.description ?? null,

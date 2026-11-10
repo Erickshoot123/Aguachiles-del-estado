@@ -1,4 +1,4 @@
-import type { PermissionCode } from '@aguachiles/shared';
+import { roleAllowsPermission, type PermissionCode } from '@aguachiles/shared';
 import type { JSX, ReactNode } from 'react';
 import { Link, useLocation } from 'react-router-dom';
 import { useAuthStore, usePermissions } from '../features/auth/authStore';
@@ -18,8 +18,8 @@ const NAV_SECTIONS: readonly { title: string; items: readonly NavItem[] }[] = [
     title: 'Operación',
     items: [
       { label: 'Pedidos', path: '/' },
-      { label: 'Menú y productos', path: '/menu', permission: 'catalog.write' },
-      { label: 'Proveedores y compras', path: '/compras', permission: 'suppliers.write' },
+      { label: 'Menú y productos', path: '/menu' },
+      { label: 'Proveedores y compras', path: '/compras' },
     ],
   },
   {
@@ -60,11 +60,14 @@ function NavRow({ item, isActive }: { item: NavItem; isActive: boolean }): JSX.E
 
 function useVisibleNavSections(): readonly { title: string; items: readonly NavItem[] }[] {
   const permissions = usePermissions();
+  const roleName = useAuthStore((state) => state.user?.roleName ?? '');
 
   return NAV_SECTIONS.map((section) => ({
     ...section,
     items: section.items.filter(
-      (item) => !item.permission || permissions.includes(item.permission),
+      (item) =>
+        !item.permission ||
+        (roleAllowsPermission(roleName, item.permission) && permissions.includes(item.permission)),
     ),
   })).filter((section) => section.items.length > 0);
 }

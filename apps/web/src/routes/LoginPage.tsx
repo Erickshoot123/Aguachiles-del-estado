@@ -5,6 +5,7 @@ import { useForm } from 'react-hook-form';
 import { Navigate } from 'react-router-dom';
 import { useAuthStore } from '../features/auth/authStore';
 import { useLogin } from '../features/auth/useLogin';
+import { ApiError } from '../lib/apiClient';
 
 const UI_TEXT = {
   brand: 'Aguachiles del Estado',
@@ -18,6 +19,7 @@ const UI_TEXT = {
 export function LoginPage(): JSX.Element {
   const accessToken = useAuthStore((state) => state.accessToken);
   const loginMutation = useLogin();
+  const passwordChanged = useAuthStore((state) => state.passwordChanged);
 
   const {
     register,
@@ -79,7 +81,16 @@ export function LoginPage(): JSX.Element {
         )}
 
         {loginMutation.isError ? (
-          <p className="mb-3 text-sm text-red-600">{UI_TEXT.genericError}</p>
+          <p className="mb-3 text-sm text-red-600" role="alert">
+            {loginMutation.error instanceof ApiError
+              ? loginMutation.error.message
+              : UI_TEXT.genericError}
+          </p>
+        ) : null}
+        {passwordChanged ? (
+          <p className="mb-3 text-sm text-green-800" role="status">
+            Contraseña actualizada. Inicia sesión con tu nueva contraseña.
+          </p>
         ) : null}
 
         <button

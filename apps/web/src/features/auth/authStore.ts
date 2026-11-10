@@ -1,15 +1,17 @@
 import { create } from 'zustand';
 import { persist } from 'zustand/middleware';
 import type { AuthUser, PermissionCode } from '@aguachiles/shared';
+import { roleAllowsPermission } from '@aguachiles/shared';
 
 interface AuthState {
   accessToken: string | null;
   refreshToken: string | null;
   user: AuthUser | null;
   isBootstrapping: boolean;
+  passwordChanged: boolean;
   setSession: (accessToken: string, refreshToken: string, user: AuthUser) => void;
   setBootstrapped: () => void;
-  clearSession: () => void;
+  clearSession: (options?: { passwordChanged: boolean }) => void;
 }
 
 export const useAuthStore = create<AuthState>()(
@@ -19,11 +21,18 @@ export const useAuthStore = create<AuthState>()(
       refreshToken: null,
       user: null,
       isBootstrapping: true,
+      passwordChanged: false,
       setSession: (accessToken, refreshToken, user) =>
-        set({ accessToken, refreshToken, user, isBootstrapping: false }),
+        set({ accessToken, refreshToken, user, isBootstrapping: false, passwordChanged: false }),
       setBootstrapped: () => set({ isBootstrapping: false }),
-      clearSession: () =>
-        set({ accessToken: null, refreshToken: null, user: null, isBootstrapping: false }),
+      clearSession: (options) =>
+        set({
+          accessToken: null,
+          refreshToken: null,
+          user: null,
+          isBootstrapping: false,
+          passwordChanged: options?.passwordChanged ?? false,
+        }),
     }),
     {
       name: 'aguachiles-auth',
@@ -37,7 +46,12 @@ export function useIsLoggedIn(): boolean {
 }
 
 export function usePermission(code: PermissionCode): boolean {
-  return useAuthStore((state) => state.user?.permissions.includes(code) ?? false);
+  return useAuthStore((state) => {
+    const user = state.user;
+    return user
+      ? roleAllowsPermission(user.roleName, code) && user.permissions.includes(code)
+      : false;
+  });
 }
 
 // Referencia estable: un `?? []` dentro del selector crearía un arreglo nuevo

@@ -1,4 +1,5 @@
 import {
+  catalogRowSchema,
   createInventoryAdjustmentRequestSchema,
   createProductRequestSchema,
   updateProductRequestSchema,
@@ -21,9 +22,16 @@ export default async function productsRoutes(fastify: FastifyInstance): Promise<
 
   fastify.get(
     '/api/products/catalog',
-    { preHandler: [fastify.authenticate, requirePermission('catalog.write')] },
-    async (_request, reply) => {
-      reply.status(200).send(await listCatalogProducts(fastify.prisma));
+    { preHandler: fastify.authenticate },
+    async (request, reply) => {
+      const products = await listCatalogProducts(fastify.prisma);
+      reply
+        .status(200)
+        .send(
+          request.user.permissions.includes('catalog.write')
+            ? products
+            : catalogRowSchema.array().parse(products),
+        );
     },
   );
 

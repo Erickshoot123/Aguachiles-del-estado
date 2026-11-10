@@ -1,60 +1,42 @@
 import { createHash, randomBytes } from 'node:crypto';
 import bcrypt from 'bcryptjs';
-import { Prisma, type PrismaClient } from '@prisma/client';
-import type { AuthUser, LoginRequest, PermissionCode, UserSummary } from '@aguachiles/shared';
+import type { Prisma, PrismaClient } from '@prisma/client';
+import type {
+  AuthUser,
+  ChangePasswordRequest,
+  LoginRequest,
+  PermissionCode,
+} from '@aguachiles/shared';
 import { recordAuditLog } from '../audit/audit.service.js';
-import { NotFoundError } from '../../lib/errors.js';
-import { InactiveUserError, InvalidCredentialsError, InvalidRefreshTokenError } from './auth.errors.js';
+import { ValidationError } from '../../lib/errors.js';
+import {
+  InactiveUserError,
+  InvalidCredentialsError,
+  InvalidRefreshTokenError,
+} from './auth.errors.js';
 
 type PrismaClientOrTx = PrismaClient | Prisma.TransactionClient;
+const userWithRole = { role: true } satisfies Prisma.UserInclude;
+type UserWithRole = Prisma.UserGetPayload<{ include: typeof userWithRole }>;
 
-export interface AuthenticatedUser {
+export interface AuthenticatedSession {
   authUser: AuthUser;
+  refreshToken: string;
+  sessionVersion: number;
 }
 
-export async function getRolePermissions(
-  prisma: PrismaClientOrTx,
-  roleId: string,
-): Promise<PermissionCode[]> {
+export async function toAuthUser(prisma: PrismaClientOrTx, user: UserWithRole): Promise<AuthUser> {
   const rolePermissions = await prisma.rolePermission.findMany({
-    where: { roleId },
+    where: { roleId: user.roleId },
     include: { permission: true },
   });
-  return rolePermissions.map((rolePermission) => rolePermission.permission.code as PermissionCode);
-}
-
-export async function authenticateUser(
-  prisma: PrismaClient,
-  input: LoginRequest,
-): Promise<AuthenticatedUser> {
-  const user = await prisma.user.findUnique({
-    where: { username: input.username },
-    include: { role: true },
-  });
-
-  if (!user) {
-    throw new InvalidCredentialsError();
-  }
-
-  const passwordMatches = await bcrypt.compare(input.password, user.passwordHash);
-  if (!passwordMatches) {
-    throw new InvalidCredentialsError();
-  }
-
-  if (!user.isActive) {
-    throw new InactiveUserError();
-  }
-
-  const permissions = await getRolePermissions(prisma, user.roleId);
-
   return {
-    authUser: {
-      id: user.id,
-      name: user.name,
-      username: user.username,
-      roleName: user.role.name,
-      permissions,
-    },
+    id: user.id,
+    name: user.name,
+    username: user.username,
+    roleName: user.role.name,
+    permissions: rolePermissions.map(({ permission }) => permission.code as PermissionCode),
+    mustChangePassword: user.mustChangePassword,
   };
 }
 
@@ -62,128 +44,121 @@ function hashRefreshToken(rawToken: string): string {
   return createHash('sha256').update(rawToken).digest('hex');
 }
 
-export async function issueRefreshToken(
-  prisma: PrismaClientOrTx,
-  userId: string,
+async function createSession(
+  tx: Prisma.TransactionClient,
+  user: UserWithRole,
   ttlHours: number,
-): Promise<string> {
-  const rawToken = randomBytes(32).toString('hex');
+): Promise<AuthenticatedSession> {
+  const refreshToken = randomBytes(32).toString('hex');
   const expiresAt = new Date(Date.now() + ttlHours * 60 * 60 * 1000);
-
-  await prisma.refreshToken.create({
-    data: { userId, tokenHash: hashRefreshToken(rawToken), expiresAt },
+  const authUser = await toAuthUser(tx, user);
+  await tx.refreshToken.create({
+    data: { userId: user.id, tokenHash: hashRefreshToken(refreshToken), expiresAt },
   });
-
-  return rawToken;
+  return { authUser, refreshToken, sessionVersion: user.sessionVersion };
 }
 
-export interface RotatedSession {
-  authUser: AuthUser;
-  refreshToken: string;
+async function lockUserForSession(
+  tx: Prisma.TransactionClient,
+  userId: string,
+): Promise<UserWithRole> {
+  // Serializa la emisión de sesiones con los cambios de contraseña y de estado de la cuenta.
+  await tx.$queryRaw`SELECT 1 FROM "users" WHERE "id" = ${userId} FOR UPDATE`;
+  const user = await tx.user.findUnique({ where: { id: userId }, include: userWithRole });
+  if (!user) throw new InvalidRefreshTokenError();
+  if (!user.isActive) throw new InactiveUserError();
+  return user;
+}
+
+export async function loginUser(
+  prisma: PrismaClient,
+  input: LoginRequest,
+  ttlHours: number,
+): Promise<AuthenticatedSession> {
+  const select = { id: true, passwordHash: true, sessionVersion: true } as const;
+  const candidate =
+    (await prisma.user.findUnique({ where: { username: input.username }, select })) ??
+    (await prisma.user.findUnique({
+      where: { username: input.username.trim().toLowerCase() },
+      select,
+    }));
+  if (!candidate || !(await bcrypt.compare(input.password, candidate.passwordHash))) {
+    throw new InvalidCredentialsError();
+  }
+  return prisma.$transaction(async (tx) => {
+    const user = await lockUserForSession(tx, candidate.id);
+    if (user.sessionVersion !== candidate.sessionVersion) throw new InvalidCredentialsError();
+    return createSession(tx, user, ttlHours);
+  });
 }
 
 export async function rotateRefreshToken(
   prisma: PrismaClient,
   rawToken: string,
   ttlHours: number,
-): Promise<RotatedSession> {
+): Promise<AuthenticatedSession> {
   const existing = await prisma.refreshToken.findUnique({
     where: { tokenHash: hashRefreshToken(rawToken) },
-    include: { user: { include: { role: true } } },
   });
-
-  if (!existing || existing.revokedAt || existing.expiresAt < new Date()) {
+  if (!existing || existing.revokedAt || existing.expiresAt <= new Date())
     throw new InvalidRefreshTokenError();
-  }
-  if (!existing.user.isActive) {
-    throw new InactiveUserError();
-  }
 
-  // Revocar el token viejo y emitir el nuevo en una sola transacción: si la
-  // emisión falla por lo que sea, la revocación se revierte con ella y el
-  // usuario conserva un token válido en vez de quedar con uno revocado y
-  // ninguno nuevo (lo que forzaría un re-login innecesario).
-  const newRawToken = await prisma.$transaction(async (tx) => {
-    // updateMany con `revokedAt: null` en el where hace de la revocación una
-    // operación atómica: si dos solicitudes concurrentes llegan con el mismo
-    // token, solo una afecta una fila (count === 1); la otra ve count === 0
-    // y falla, en vez de que ambas roten el mismo token una vez cada una.
+  return prisma.$transaction(async (tx) => {
+    const user = await lockUserForSession(tx, existing.userId);
     const revoked = await tx.refreshToken.updateMany({
-      where: { id: existing.id, revokedAt: null },
+      where: { id: existing.id, revokedAt: null, expiresAt: { gt: new Date() } },
       data: { revokedAt: new Date() },
     });
-    if (revoked.count === 0) {
-      throw new InvalidRefreshTokenError();
-    }
-
-    return issueRefreshToken(tx, existing.userId, ttlHours);
+    if (revoked.count === 0) throw new InvalidRefreshTokenError();
+    return createSession(tx, user, ttlHours);
   });
-
-  const permissions = await getRolePermissions(prisma, existing.user.roleId);
-
-  return {
-    authUser: {
-      id: existing.user.id,
-      name: existing.user.name,
-      username: existing.user.username,
-      roleName: existing.user.role.name,
-      permissions,
-    },
-    refreshToken: newRawToken,
-  };
 }
 
 export async function revokeRefreshToken(prisma: PrismaClient, rawToken: string): Promise<void> {
-  const tokenHash = hashRefreshToken(rawToken);
   await prisma.refreshToken.updateMany({
-    where: { tokenHash, revokedAt: null },
+    where: { tokenHash: hashRefreshToken(rawToken), revokedAt: null },
     data: { revokedAt: new Date() },
   });
 }
 
-export async function listUsers(prisma: PrismaClient): Promise<UserSummary[]> {
-  const users = await prisma.user.findMany({
-    include: { role: true },
-    orderBy: { name: 'asc' },
+export async function revokeUserRefreshTokens(
+  tx: Prisma.TransactionClient,
+  userId: string,
+): Promise<void> {
+  await tx.refreshToken.updateMany({
+    where: { userId, revokedAt: null },
+    data: { revokedAt: new Date() },
   });
-
-  return users.map((user) => ({
-    id: user.id,
-    name: user.name,
-    username: user.username,
-    roleName: user.role.name,
-    isActive: user.isActive,
-  }));
 }
 
-export async function resetUserPassword(
+export async function changeOwnPassword(
   prisma: PrismaClient,
-  adminUserId: string,
-  targetUserId: string,
-  newPassword: string,
+  userId: string,
+  sessionVersion: number,
+  input: ChangePasswordRequest,
 ): Promise<void> {
-  const user = await prisma.user.findUnique({ where: { id: targetUserId } });
-  if (!user) {
-    throw new NotFoundError('Usuario no encontrado');
+  const user = await prisma.user.findUnique({ where: { id: userId } });
+  if (!user?.isActive || user.sessionVersion !== sessionVersion)
+    throw new InvalidRefreshTokenError();
+  if (!(await bcrypt.compare(input.currentPassword, user.passwordHash))) {
+    throw new ValidationError('La contraseña actual es incorrecta.');
   }
-
-  const passwordHash = await bcrypt.hash(newPassword, 12);
-
+  if (input.currentPassword === input.newPassword) {
+    throw new ValidationError('La contraseña nueva debe ser distinta a la actual.');
+  }
+  const passwordHash = await bcrypt.hash(input.newPassword, 12);
   await prisma.$transaction(async (tx) => {
-    await tx.user.update({ where: { id: targetUserId }, data: { passwordHash } });
-    // Un reseteo de contraseña cierra todas las sesiones activas de ese
-    // usuario: si alguien más tenía acceso con la contraseña vieja, un
-    // refresh token vigente no debe seguir sirviendo para renovar sesión.
-    await tx.refreshToken.updateMany({
-      where: { userId: targetUserId, revokedAt: null },
-      data: { revokedAt: new Date() },
+    const updated = await tx.user.updateMany({
+      where: { id: userId, sessionVersion, isActive: true },
+      data: { passwordHash, mustChangePassword: false, sessionVersion: { increment: 1 } },
     });
+    if (updated.count === 0) throw new InvalidRefreshTokenError();
+    await revokeUserRefreshTokens(tx, userId);
     await recordAuditLog(tx, {
-      userId: adminUserId,
-      action: 'user.password_reset',
+      userId,
+      action: 'user.password_changed',
       entity: 'user',
-      entityId: targetUserId,
-      newValue: { targetUsername: user.username },
+      entityId: userId,
     });
   });
 }

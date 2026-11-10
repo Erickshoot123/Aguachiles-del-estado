@@ -5,3 +5,12 @@
 body {
   @apply bg-bg text-text font-sans;
 }
+
+.pos-zebra > tbody > tr {
+  background-color: #FFFFFF;
+  color: #382317;
+}
+
+.pos-zebra > tbody > tr:nth-child(even) {
+  background-color: #FFDAB9;
+}

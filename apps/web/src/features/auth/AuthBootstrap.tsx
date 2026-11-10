@@ -2,6 +2,7 @@ import type { JSX, ReactNode } from 'react';
 import { useEffect } from 'react';
 import { refreshOnce } from '../../lib/authFetch';
 import { useAuthStore } from './authStore';
+import { InitialPasswordPage } from './InitialPasswordPage';
 
 const UI_TEXT = {
   loading: 'Cargando…',
@@ -14,6 +15,9 @@ interface AuthBootstrapProps {
 export function AuthBootstrap({ children }: AuthBootstrapProps): JSX.Element {
   const refreshToken = useAuthStore((state) => state.refreshToken);
   const isBootstrapping = useAuthStore((state) => state.isBootstrapping);
+  const needsPasswordChange = useAuthStore((state) =>
+    Boolean(state.accessToken && state.user?.mustChangePassword),
+  );
   const setBootstrapped = useAuthStore((state) => state.setBootstrapped);
 
   useEffect(() => {
@@ -36,6 +40,8 @@ export function AuthBootstrap({ children }: AuthBootstrapProps): JSX.Element {
       </div>
     );
   }
+
+  if (needsPasswordChange) return <InitialPasswordPage />;
 
   return <>{children}</>;
 }

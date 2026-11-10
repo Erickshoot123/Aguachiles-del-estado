@@ -72,10 +72,10 @@ export function OrderDetailModal({
     <>
       <ModalBackdrop
         onClose={onClose}
-        contentClassName="flex max-h-[90vh] w-full max-w-md flex-col overflow-y-auto rounded-2xl bg-surface"
+        contentClassName="flex max-h-[calc(100dvh-48px)] w-full max-w-3xl flex-col overflow-y-auto rounded-2xl bg-surface"
       >
         <div className="flex items-baseline gap-2.5 border-b border-divider px-5 py-4">
-          <span className="font-mono text-[20px] font-semibold">{order.ticketNumber}</span>
+          <span className="font-mono text-2xl font-semibold">{order.ticketNumber}</span>
           <span className="text-[14px] text-muted">{CHANNEL_LABELS[order.channel]}</span>
           <span
             className={`ml-auto rounded-full px-2.5 py-1 text-[12px] font-semibold ${badge.className}`}

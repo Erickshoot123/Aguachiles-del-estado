@@ -34,6 +34,16 @@ internal sealed class PosWindow : Form {
           if (!Uri.TryCreate(e.Uri, UriKind.Absolute, out destination) || destination.GetLeftPart(UriPartial.Authority) != address.GetLeftPart(UriPartial.Authority)) e.Cancel = true;
         };
         view.CoreWebView2.NewWindowRequested += (s, e) => { e.Handled = true; OpenWhatsApp(e.Uri); };
+        view.CoreWebView2.WebMessageReceived += (s, e) => {
+          Uri source;
+          if (!Uri.TryCreate(e.Source, UriKind.Absolute, out source) ||
+              source.GetLeftPart(UriPartial.Authority) != address.GetLeftPart(UriPartial.Authority) ||
+              e.WebMessageAsJson != "\"aguachiles:print-document\"") return;
+          try { view.CoreWebView2.ShowPrintUI(CoreWebView2PrintDialogKind.System); }
+          catch (Exception) { MessageBox.Show(this, "No se pudo abrir el diálogo de impresión de Windows.", "Aguachiles POS"); }
+        };
+        await view.CoreWebView2.AddScriptToExecuteOnDocumentCreatedAsync("if (window.top === window) window.aguachilesSystemPrint = true;");
+        if (IsDisposed) return;
         view.CoreWebView2.NavigationCompleted += (s, e) => {
           if (e.IsSuccess) loading.Visible = false;
           else if (e.WebErrorStatus != CoreWebView2WebErrorStatus.OperationCanceled) {

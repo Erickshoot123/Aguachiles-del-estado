@@ -2,11 +2,11 @@ import { MAIN_DISHES, COMPLEMENTS } from './menu.js';
 import { PrismaClient } from '@prisma/client';
 import bcrypt from 'bcryptjs';
 import type { PermissionCode } from '@aguachiles/shared';
-import { PERMISSION_DESCRIPTIONS } from '@aguachiles/shared';
+import { BUILT_IN_ROLE_PERMISSIONS, PERMISSION_DESCRIPTIONS } from '@aguachiles/shared';
 
 const prisma = new PrismaClient();
 
-const BASE_ROLES = ['admin', 'gerente', 'cajero'] as const;
+const BASE_ROLES = Object.keys(BUILT_IN_ROLE_PERMISSIONS);
 
 const SEED_ADMIN_USERNAME = 'admin';
 const SEED_ADMIN_PASSWORD = 'ChangeMe123!';
@@ -60,15 +60,9 @@ async function seedTestUsers(roleIds: Record<string, string>): Promise<void> {
   }
 }
 
-// admin y gerente comparten todos los permisos granulares en este MVP: no hay
-// todavía ninguna accion "solo admin" (ej. gestion de usuarios) que los
-// distinga entre si. cajero no recibe ninguno -- son exactamente las
-// acciones que el cajero no necesita para el flujo diario de vender.
-const ELEVATED_PERMISSIONS = Object.keys(PERMISSION_DESCRIPTIONS) as PermissionCode[];
-
 async function seedPermissions(roleIds: Record<string, string>): Promise<void> {
   const permissionIds: Record<string, string> = {};
-  for (const code of ELEVATED_PERMISSIONS) {
+  for (const code of BUILT_IN_ROLE_PERMISSIONS.admin) {
     const permission = await prisma.permission.upsert({
       where: { code },
       update: { description: PERMISSION_DESCRIPTIONS[code] },
@@ -77,8 +71,8 @@ async function seedPermissions(roleIds: Record<string, string>): Promise<void> {
     permissionIds[code] = permission.id;
   }
 
-  for (const roleName of ['admin', 'gerente'] as const) {
-    for (const code of ELEVATED_PERMISSIONS) {
+  for (const [roleName, codes] of Object.entries<readonly PermissionCode[]>(BUILT_IN_ROLE_PERMISSIONS)) {
+    for (const code of codes) {
       await prisma.rolePermission.upsert({
         where: {
           roleId_permissionId: { roleId: roleIds[roleName] as string, permissionId: permissionIds[code] as string },

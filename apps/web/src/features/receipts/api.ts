@@ -12,6 +12,11 @@ export function getReceipt(orderId: string): Promise<ReceiptResponse> {
   return authFetch<ReceiptResponse>(`/api/orders/${orderId}/receipt`);
 }
 
+export async function getKitchenTicket(orderId: string): Promise<Ticket> {
+  const { ticket } = await authFetch<{ ticket: Ticket }>(`/api/orders/${orderId}/comanda`);
+  return ticket;
+}
+
 export function confirmPrinted(orderId: string): Promise<void> {
   return authFetch<void>(`/api/orders/${orderId}/receipt/printed`, { method: 'POST' });
 }

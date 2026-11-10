@@ -57,7 +57,7 @@ function AuditTable({ logs }: { logs: AuditLogEntry[] }): JSX.Element {
     return <p className="text-sm text-muted">{UI_TEXT.empty}</p>;
   }
   return (
-    <table className="w-full border-collapse overflow-hidden rounded-2xl bg-surface text-left text-sm">
+    <table className="pos-zebra w-full border-collapse overflow-hidden rounded-2xl bg-surface text-left text-sm">
       <thead>
         <tr className="border-b border-border text-[12px] uppercase tracking-wide text-muted-2">
           <th className="px-4 py-3">{UI_TEXT.colDate}</th>
@@ -69,10 +69,10 @@ function AuditTable({ logs }: { logs: AuditLogEntry[] }): JSX.Element {
       <tbody>
         {logs.map((log) => (
           <tr key={log.id} className="border-b border-divider last:border-0">
-            <td className="px-4 py-3 text-muted">{formatDateTime(log.createdAt)}</td>
+            <td className="px-4 py-3">{formatDateTime(log.createdAt)}</td>
             <td className="px-4 py-3 font-medium">{log.userName ?? UI_TEXT.unknownUser}</td>
             <td className="px-4 py-3">{ACTION_LABELS[log.action] ?? log.action}</td>
-            <td className="px-4 py-3 text-muted">{summarize(log)}</td>
+            <td className="px-4 py-3">{summarize(log)}</td>
           </tr>
         ))}
       </tbody>

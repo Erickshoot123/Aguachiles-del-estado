@@ -1,15 +1,16 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import type { CreateSupplierRequest, UpdateSupplierRequest } from '@aguachiles/shared';
-import { useIsLoggedIn } from '../auth/authStore';
+import { useIsLoggedIn, usePermission } from '../auth/authStore';
 import { createSupplier, listSuppliers, updateSupplier } from './api';
 
 const SUPPLIERS_QUERY_KEY = ['suppliers'] as const;
 
 export function useSuppliers() {
   const isLoggedIn = useIsLoggedIn();
+  const canEdit = usePermission('suppliers.write');
 
   return useQuery({
-    queryKey: SUPPLIERS_QUERY_KEY,
+    queryKey: [...SUPPLIERS_QUERY_KEY, canEdit],
     queryFn: listSuppliers,
     enabled: isLoggedIn,
   });

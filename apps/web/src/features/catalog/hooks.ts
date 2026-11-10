@@ -1,6 +1,6 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import type { CreateCategoryRequest, CreateProductRequest, UpdateProductRequest } from '@aguachiles/shared';
-import { useIsLoggedIn } from '../auth/authStore';
+import { useIsLoggedIn, usePermission } from '../auth/authStore';
 import { createCategory, createProduct, listCatalogProducts, listCategories, updateProduct } from './api';
 
 const CATEGORIES_QUERY_KEY = ['categories'] as const;
@@ -22,9 +22,10 @@ export function useCategories() {
 
 export function useCatalogProducts() {
   const isLoggedIn = useIsLoggedIn();
+  const canEdit = usePermission('catalog.write');
 
   return useQuery({
-    queryKey: CATALOG_PRODUCTS_QUERY_KEY,
+    queryKey: [...CATALOG_PRODUCTS_QUERY_KEY, canEdit],
     queryFn: listCatalogProducts,
     enabled: isLoggedIn,
     staleTime: CATALOG_STALE_TIME_MS,

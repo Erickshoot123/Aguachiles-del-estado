@@ -33,9 +33,21 @@ export const productSchema = z.object({
 });
 export type Product = z.infer<typeof productSchema>;
 
+export const catalogRowSchema = productSchema.pick({
+  id: true,
+  sku: true,
+  name: true,
+  categoryName: true,
+  price: true,
+  isActive: true,
+  isComplement: true,
+  stock: true,
+});
+export type CatalogRow = z.infer<typeof catalogRowSchema>;
+
 export const createProductRequestSchema = z.object({
   plateSize: plateSizeSchema.nullable().optional(),
-  sku: z.string().min(1),
+  sku: z.string().min(1).optional(),
   barcode: z.string().min(1).nullable().optional(),
   name: z.string().min(1),
   description: z.string().min(1).nullable().optional(),
@@ -73,7 +85,9 @@ export const createInventoryAdjustmentRequestSchema = z.object({
   quantity: z.number().positive(),
   reason: z.string().min(1, 'La razón del ajuste es obligatoria'),
 });
-export type CreateInventoryAdjustmentRequest = z.infer<typeof createInventoryAdjustmentRequestSchema>;
+export type CreateInventoryAdjustmentRequest = z.infer<
+  typeof createInventoryAdjustmentRequestSchema
+>;
 
 export const inventoryAdjustmentSchema = z.object({
   productId: z.string().uuid(),

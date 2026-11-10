@@ -89,14 +89,26 @@ describe('compras', () => {
     expect(response.statusCode).toBe(404);
   });
 
-  it('un cajero no puede registrar una compra', async () => {
+  it('un cajero consulta operación, pero no puede registrar una compra', async () => {
     const cajeroToken = await loginAs(app, fixtures.cajeroUsername, TEST_PASSWORD);
     const product = await createTestProduct(testPrisma, { stock: 10 });
+    const headers = authHeader(cajeroToken);
+
+    const catalog = await app.inject({ url: '/api/products/catalog', headers });
+    expect(catalog.statusCode).toBe(200);
+    const row = catalog.json().find((item: { id: string }) => item.id === product.id);
+    expect(row).toMatchObject({ name: product.name, stock: 10 });
+    expect(row).not.toHaveProperty('cost');
+    const suppliers = await app.inject({ url: '/api/suppliers', headers });
+    expect(suppliers.statusCode).toBe(200);
+    expect(suppliers.json()[0]).toMatchObject({ id: supplierId });
+    expect(suppliers.json()[0]).not.toHaveProperty('taxId');
+    expect((await app.inject({ url: '/api/purchases', headers })).statusCode).toBe(200);
 
     const response = await app.inject({
       method: 'POST',
       url: '/api/purchases',
-      headers: authHeader(cajeroToken),
+      headers,
       payload: {
         supplierId,
         items: [{ productId: product.id, quantity: 1 }],
